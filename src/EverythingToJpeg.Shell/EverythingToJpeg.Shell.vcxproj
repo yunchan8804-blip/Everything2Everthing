@@ -99,12 +99,22 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="packages.config" />
     <None Include="Source.def" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Windows.ImplementationLibrary" Version="1.0.260126.7" />
-  </ItemGroup>
-
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="..\..\packages\Microsoft.Windows.ImplementationLibrary.1.0.260126.7\build\native\Microsoft.Windows.ImplementationLibrary.targets"
+            Condition="Exists('..\..\packages\Microsoft.Windows.ImplementationLibrary.1.0.260126.7\build\native\Microsoft.Windows.ImplementationLibrary.targets')" />
+  </ImportGroup>
+
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>WIL NuGet 패키지가 복원되지 않았습니다. nuget restore를 먼저 실행하세요.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\..\packages\Microsoft.Windows.ImplementationLibrary.1.0.260126.7\build\native\Microsoft.Windows.ImplementationLibrary.targets')"
+           Text="$(ErrorText)" />
+  </Target>
 </Project>

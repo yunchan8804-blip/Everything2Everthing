@@ -75,8 +75,25 @@ if ($LASTEXITCODE -ne 0) { throw 'dotnet publish 실패' }
 # ---- 2) C++ Shell DLL ----
 Write-Host ''
 Write-Host '[2/5] C++ Shell DLL 빌드'
-& $msbuild $shellProj /t:Restore /p:RestorePackagesConfig=true /p:Configuration=$Configuration /p:Platform=$Platform /v:minimal | Out-Host
-if ($LASTEXITCODE -ne 0) { throw 'Shell restore 실패' }
+
+# nuget.exe 자동 다운로드 (없으면)
+$nuget = Get-Command nuget.exe -ErrorAction SilentlyContinue
+if (-not $nuget) {
+    $nugetExe = Join-Path $repoRoot 'tools\nuget.exe'
+    if (-not (Test-Path $nugetExe)) {
+        New-Item -ItemType Directory -Path (Split-Path $nugetExe) -Force | Out-Null
+        Write-Host '  nuget.exe 다운로드 중…'
+        Invoke-WebRequest -Uri 'https://dist.nuget.org/win-x86-commandline/latest/nuget.exe' -OutFile $nugetExe
+    }
+    $nugetCmd = $nugetExe
+} else {
+    $nugetCmd = $nuget.Source
+}
+
+$packagesDir = Join-Path $repoRoot 'packages'
+& $nugetCmd restore (Join-Path $repoRoot 'src\EverythingToJpeg.Shell\packages.config') -PackagesDirectory $packagesDir | Out-Host
+if ($LASTEXITCODE -ne 0) { throw 'NuGet restore 실패' }
+
 & $msbuild $shellProj /p:Configuration=$Configuration /p:Platform=$Platform /m /v:minimal | Out-Host
 if ($LASTEXITCODE -ne 0) { throw 'Shell build 실패' }
 $shellDll = Join-Path $repoRoot ("src\EverythingToJpeg.Shell\$Platform\$Configuration\EverythingToJpeg.Shell.dll")

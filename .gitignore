@@ -46,3 +46,7 @@ src/EverythingToJpeg.Shell/Everythi*/
 
 # .NET artifacts dir from BuildMsix.ps1
 artifacts/
+
+# NuGet packages restore + nuget.exe cache
+packages/
+tools/
