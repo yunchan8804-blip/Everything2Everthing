@@ -8,7 +8,8 @@
 param(
     [Parameter(Mandatory)] [string]$PfxPath,
     [Parameter(Mandatory)] [string]$MsixPath,
-    [securestring]$PfxPassword
+    [securestring]$PfxPassword,
+    [string]$Password = 'EverythingToJpegDev'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -17,7 +18,7 @@ if (-not (Test-Path $PfxPath)) { throw "PFX 파일을 찾을 수 없습니다: $
 if (-not (Test-Path $MsixPath)) { throw "MSIX 파일을 찾을 수 없습니다: $MsixPath" }
 
 if (-not $PfxPassword) {
-    $PfxPassword = Read-Host -AsSecureString -Prompt 'PFX 비밀번호'
+    $PfxPassword = ConvertTo-SecureString -String $Password -AsPlainText -Force
 }
 
 Write-Host '[1/3] 인증서를 LocalMachine\TrustedPeople에 임포트…'

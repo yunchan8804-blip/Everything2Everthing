@@ -20,16 +20,27 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     private CancellationTokenSource? _cts;
     private NameCollision _conflictRule = NameCollision.AppendNumber;
 
+    public ICommand AddFilesCommand { get; }
+    public ICommand ProcessQueueCommand { get; }
+    public ICommand CloseCommand { get; }
+    public ICommand RefreshCommand { get; }
+
     public MainWindow() : this(null) { }
 
     public MainWindow(IReadOnlyList<string>? initialFiles)
     {
+        AddFilesCommand = new RelayCommand(_ => PickAndAddFiles());
+        ProcessQueueCommand = new RelayCommand(_ => OnProcessQueueClick(this, new RoutedEventArgs()),
+            _ => _activeQueue.Count > 0 && _cts is null);
+        CloseCommand = new RelayCommand(_ => Close());
+        RefreshCommand = new RelayCommand(_ => ApplyAppDataStats());
+
         InitializeComponent();
 
         ActiveQueueList.ItemsSource = _activeQueue;
         PastResultsList.ItemsSource = _pastResults;
 
-        SeedDemoHistory();
+        LoadHistory();
         UpdateBadges();
         UpdateProcessQueueButton();
 
@@ -45,6 +56,47 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
         UpdateActiveQueueVisibility();
         ApplyAppDataStats();
+
+        _ = RefreshCapabilityStatusAsync();
+    }
+
+    private async Task RefreshCapabilityStatusAsync()
+    {
+        var engine = ((App)Application.Current).Engine;
+        var notReady = new List<string>();
+        foreach (var p in engine.Providers.All)
+        {
+            if (p.Capability.Status == EverythingToJpeg.Core.Providers.ProviderStatus.RequiresExternal)
+            {
+                var availability = await p.CheckAvailabilityAsync();
+                if (!availability.IsReady)
+                    notReady.Add(p.Capability.DisplayName);
+            }
+        }
+
+        if (notReady.Count == 0)
+        {
+            CapabilityStatusText.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        CapabilityStatusText.Text = $"⚠ {notReady.Count}개 형식이 외부 도구를 기다립니다 (Diagnose 참조)";
+        CapabilityStatusText.Visibility = Visibility.Visible;
+    }
+
+    private void PickAndAddFiles()
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Multiselect = true,
+            Title = "변환할 파일 추가",
+            Filter = "지원 파일|*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.tif;*.tiff;*.webp;*.avif;*.heic;*.heif;*.psd;*.dng;*.nef;*.cr2;*.cr3;*.arw;*.raf;*.orf;*.rw2;*.srw;*.pef;*.pdf;*.docx;*.doc;*.html;*.htm;*.hwp;*.hwpx|모든 파일|*.*",
+        };
+        if (dlg.ShowDialog(this) == true)
+        {
+            AddToQueue(dlg.FileNames);
+            ShowTab("Active");
+        }
     }
 
     // ============== Tabs ==============
@@ -518,6 +570,12 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
     private void AddToHistory(HistoryEntry entry)
     {
+        AddToHistoryGroups(entry);
+        HistoryStorage.Append(entry);
+    }
+
+    private void AddToHistoryGroups(HistoryEntry entry)
+    {
         var label = FormatDateLabel(entry.Date);
         var group = _pastResults.FirstOrDefault(g => g.DateTitle == label);
         if (group is null)
@@ -526,6 +584,21 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
             _pastResults.Insert(0, group);
         }
         group.Add(HistoryRow.From(entry));
+    }
+
+    private void LoadHistory()
+    {
+        var entries = HistoryStorage.Load();
+        if (entries.Count == 0)
+        {
+            // 첫 실행: 데모 데이터로 시각적 가이드 제공
+            SeedDemoHistory();
+            return;
+        }
+
+        // 가장 오래된 것부터 추가 (Insert(0)이 누적)
+        foreach (var e in entries.OrderBy(e => e.Timestamp))
+            AddToHistoryGroups(e);
     }
 
     private void SeedDemoHistory()
@@ -624,7 +697,14 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         }
         else if (TabPastBtn.IsChecked == true)
         {
+            var confirm = MessageBox.Show(this,
+                "Past Results 전체를 삭제하시겠습니까?\n영구 저장된 이력도 함께 삭제됩니다.",
+                "EverythingToJpeg",
+                MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (confirm != MessageBoxResult.OK) return;
+
             _pastResults.Clear();
+            HistoryStorage.Clear();
         }
         UpdateBadges();
         UpdateProcessQueueButton();
@@ -788,4 +868,25 @@ internal static class FormatPalette
             => ("RAW", "FsFmtRaw"),
         _ => (ext.ToUpperInvariant(), "FsFmtOther"),
     };
+}
+
+internal sealed class RelayCommand : ICommand
+{
+    private readonly Action<object?> _execute;
+    private readonly Func<object?, bool>? _canExecute;
+
+    public RelayCommand(Action<object?> execute, Func<object?, bool>? canExecute = null)
+    {
+        _execute = execute;
+        _canExecute = canExecute;
+    }
+
+    public bool CanExecute(object? parameter) => _canExecute?.Invoke(parameter) ?? true;
+    public void Execute(object? parameter) => _execute(parameter);
+
+    public event EventHandler? CanExecuteChanged
+    {
+        add { CommandManager.RequerySuggested += value; }
+        remove { CommandManager.RequerySuggested -= value; }
+    }
 }

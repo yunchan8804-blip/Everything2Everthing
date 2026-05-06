@@ -23,6 +23,13 @@
         </ResourceDictionary>
     </Window.Resources>
 
+    <Window.InputBindings>
+        <KeyBinding Key="O" Modifiers="Ctrl" Command="{Binding AddFilesCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+        <KeyBinding Key="Enter" Modifiers="Ctrl" Command="{Binding ProcessQueueCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+        <KeyBinding Key="Escape" Command="{Binding CloseCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+        <KeyBinding Key="F5" Command="{Binding RefreshCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+    </Window.InputBindings>
+
     <Grid Background="{StaticResource FsBgBase}">
         <Grid.RowDefinitions>
             <RowDefinition Height="32"/>
@@ -203,11 +210,16 @@
                     <!-- Sidebar footer -->
                     <Border Grid.Row="2" BorderBrush="{StaticResource FsBorderSubtle}"
                             BorderThickness="0,1,0,0" Padding="24">
-                        <Button x:Name="ProcessQueueButton"
-                                Content="Idle — drop files to begin"
-                                Style="{StaticResource FsPrimaryButtonStyle}"
-                                IsEnabled="False"
-                                Click="OnProcessQueueClick"/>
+                        <StackPanel>
+                            <TextBlock x:Name="CapabilityStatusText" Margin="0,0,0,12"
+                                       Style="{StaticResource FsCaptionStyle}"
+                                       TextWrapping="Wrap" Visibility="Collapsed"/>
+                            <Button x:Name="ProcessQueueButton"
+                                    Content="Idle — drop files to begin"
+                                    Style="{StaticResource FsPrimaryButtonStyle}"
+                                    IsEnabled="False"
+                                    Click="OnProcessQueueClick"/>
+                        </StackPanel>
                     </Border>
                 </Grid>
             </Border>

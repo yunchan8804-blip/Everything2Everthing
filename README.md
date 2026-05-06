@@ -63,9 +63,25 @@ dotnet publish src\EverythingToJpeg.App\EverythingToJpeg.App.csproj `
 
 | 단계 | 상태 | 내용 |
 |---|---|---|
-| Phase 1 | ✅ | 레지스트리 컨텍스트 메뉴 (Win11 "추가 옵션 표시"), 핵심 변환(이미지·HEIC·RAW·PDF·DOCX), Fluent UI |
-| Phase 2 | ✅ | C++ IExplorerCommand DLL, MSIX 패키징, 자체 서명 인증서, GitHub Releases 자동화 — `packaging/README.md` 참조 |
+| Phase 1 | ✅ | 레지스트리 컨텍스트 메뉴 (Win11 "추가 옵션 표시"), 핵심 변환, Fluent UI |
+| Phase 2 | ✅ | C++ IExplorerCommand DLL + MSIX Sparse Package |
 | Phase 3 | ✅ | HTML(WebView2), HWP/HWPX(LibreOffice + H2Orestart) 실구현 |
+| Phase 4 | ✅ | **자체 서명 MSIX 자동화** — `packaging/BuildAndSign.ps1` 한 방으로 인증서 생성 + 서명 + 패키지 |
+| Phase 5 | ✅ | GitHub 리모트 + Actions 릴리즈 워크플로 |
+| Phase 6 | ✅ | Past Results 영구 저장 (`%LocalAppData%\EverythingToJpeg\history.jsonl`) |
+| Phase 7 | ✅ | 단축키 (Ctrl+O 추가, Ctrl+Enter 변환, Esc 닫기, F5 새로고침), 코드 정리 |
+| Phase 8 | ✅ | 시작 시 Provider 가용성 자동 체크, 사이드바에 외부 도구 필요 안내 |
+
+## 키보드 단축키
+
+| 키 | 동작 |
+|---|---|
+| Ctrl+O | 파일 추가 |
+| Ctrl+Enter | Process Queue (변환 시작) |
+| Esc | 창 닫기 |
+| F5 | 통계 새로고침 |
+| Active Queue 행 클릭 | 우측 Preview에 즉시 표시 |
+| Past Results 행 클릭 | 원본 파일이 있으면 Preview 표시 |
 
 ## 두 가지 사용 방식
 
