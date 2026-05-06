@@ -3,47 +3,66 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
                  Title="JPEG로 변환"
-                 Width="640" Height="780"
-                 MinWidth="520" MinHeight="560"
+                 Width="720" Height="780"
+                 MinWidth="560" MinHeight="560"
                  ExtendsContentIntoTitleBar="True"
-                 WindowBackdropType="Mica"
+                 WindowBackdropType="None"
                  WindowCornerPreference="Round"
                  WindowStartupLocation="CenterOwner"
                  AllowDrop="True"
                  Drop="OnFilesDropped"
-                 DragOver="OnDragOver">
-    <Grid>
+                 DragOver="OnDragOver"
+                 TextOptions.TextFormattingMode="Display"
+                 UseLayoutRounding="True">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="FormatShiftTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Background="{StaticResource FsBgBase}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="32"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 0: TitleBar -->
-        <ui:TitleBar Grid.Row="0" Title="JPEG로 변환"/>
+        <!-- 0: TitleBar (window controls only) -->
+        <ui:TitleBar Grid.Row="0" Title=""/>
 
-        <!-- 1: 헤더 (제목 + 파일 카운트) -->
-        <Grid Grid.Row="1" Margin="32,8,32,12">
+        <!-- 1: 헤더 -->
+        <Grid Grid.Row="1" Margin="32,8,32,16">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <StackPanel>
-                <TextBlock Text="JPEG로 변환" Style="{StaticResource TextTitle}"/>
-                <TextBlock x:Name="FilesSummaryText" Style="{StaticResource TextCaption}" Margin="0,2,0,0"/>
+                <TextBlock Text="JPEG로 변환"
+                           FontFamily="{StaticResource FsFontSans}"
+                           FontSize="20" FontWeight="SemiBold"
+                           Foreground="{StaticResource FsTextPrimary}"/>
+                <TextBlock x:Name="FilesSummaryText" Margin="0,2,0,0"
+                           Style="{StaticResource FsCaptionStyle}"/>
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <ui:Button Content="추가" Icon="{ui:SymbolIcon Add24}"
-                           Click="OnAddFilesClick" Margin="0,0,8,0"/>
-                <ui:Button Content="비우기" Icon="{ui:SymbolIcon Delete24}"
-                           Click="OnClearFilesClick"/>
+                <Button Content="+ 추가" Margin="0,0,8,0"
+                        Style="{StaticResource FsSecondaryButtonStyle}"
+                        Click="OnAddFilesClick"/>
+                <Button Content="비우기"
+                        Style="{StaticResource FsSecondaryButtonStyle}"
+                        Click="OnClearFilesClick"/>
             </StackPanel>
         </Grid>
 
-        <!-- 2: 옵션 바 (고정 핵심 옵션 + 고급 expander) -->
-        <ui:Card Grid.Row="2" Margin="32,0,32,12" Padding="16,12">
+        <!-- 2: 옵션 카드 -->
+        <Border Grid.Row="2" Margin="32,0,32,16"
+                Background="{StaticResource FsBgPanel}"
+                BorderBrush="{StaticResource FsBorderSubtle}"
+                BorderThickness="1" CornerRadius="8" Padding="20">
             <StackPanel>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -53,128 +72,194 @@
                     </Grid.ColumnDefinitions>
 
                     <!-- 품질 -->
-                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                        <TextBlock Text="JPEG 품질" Style="{StaticResource TextCaption}"/>
-                        <Grid Margin="0,2,0,0">
+                    <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                        <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="32"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <Slider x:Name="QualitySlider" Minimum="50" Maximum="100" Value="92"
-                                    SmallChange="1" LargeChange="5" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Text="{Binding ElementName=QualitySlider, Path=Value, StringFormat={}{0:0}}"
-                                       FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                            <TextBlock Text="JPEG 품질" Style="{StaticResource FsLabelStyle}"/>
+                            <Border Grid.Column="1" CornerRadius="4"
+                                    Background="{StaticResource FsBgInput}"
+                                    BorderBrush="{StaticResource FsBorderSubtle}"
+                                    BorderThickness="1" Padding="6,1">
+                                <TextBlock x:Name="QualityValueText"
+                                           FontFamily="{StaticResource FsFontMono}" FontSize="11"
+                                           Foreground="{StaticResource FsAccentBlue}"
+                                           Text="92"/>
+                            </Border>
                         </Grid>
+                        <Slider x:Name="QualitySlider" Margin="0,8,0,0"
+                                Style="{StaticResource FsSliderStyle}"
+                                Minimum="50" Maximum="100" Value="92"
+                                ValueChanged="OnQualityChanged"/>
                     </StackPanel>
 
                     <!-- 출력 위치 -->
-                    <StackPanel Grid.Column="1" Margin="8,0,8,0">
-                        <TextBlock Text="출력 위치" Style="{StaticResource TextCaption}"/>
-                        <ComboBox x:Name="OutputModeCombo" SelectedIndex="0" Margin="0,2,0,0">
-                            <ComboBoxItem Content="원본 폴더 안 _jpeg 하위 폴더"/>
-                            <ComboBoxItem Content="원본과 같은 폴더"/>
-                            <ComboBoxItem Content="사용자 지정 폴더…"/>
-                        </ComboBox>
+                    <StackPanel Grid.Column="1" Margin="6,0,6,0">
+                        <TextBlock Text="출력 위치" Style="{StaticResource FsLabelStyle}"/>
+                        <Border Margin="0,8,0,0"
+                                Background="{StaticResource FsBgInput}"
+                                BorderBrush="{StaticResource FsBorderSubtle}"
+                                BorderThickness="1" CornerRadius="6" Padding="2">
+                            <UniformGrid Rows="1" Columns="3">
+                                <ToggleButton x:Name="OutputSubBtn" Content="하위"
+                                              Style="{StaticResource FsSegmentStyle}"
+                                              IsChecked="True"
+                                              Click="OnOutputSegmentClick" Tag="Sub"
+                                              ToolTip="원본 폴더 안 _jpeg 하위 폴더"/>
+                                <ToggleButton x:Name="OutputSameBtn" Content="동일"
+                                              Style="{StaticResource FsSegmentStyle}"
+                                              Click="OnOutputSegmentClick" Tag="Same"
+                                              ToolTip="원본과 같은 폴더"/>
+                                <ToggleButton x:Name="OutputCustomBtn" Content="지정"
+                                              Style="{StaticResource FsSegmentStyle}"
+                                              Click="OnOutputSegmentClick" Tag="Custom"
+                                              ToolTip="사용자 지정 폴더"/>
+                            </UniformGrid>
+                        </Border>
                     </StackPanel>
 
-                    <!-- 충돌 -->
-                    <StackPanel Grid.Column="2" Margin="8,0,0,0">
-                        <TextBlock Text="이름 충돌" Style="{StaticResource TextCaption}"/>
-                        <ComboBox x:Name="CollisionCombo" SelectedIndex="0" Margin="0,2,0,0">
-                            <ComboBoxItem Content="번호 붙여 새 파일"/>
-                            <ComboBoxItem Content="덮어쓰기"/>
-                            <ComboBoxItem Content="건너뛰기"/>
-                        </ComboBox>
+                    <!-- 이름 충돌 -->
+                    <StackPanel Grid.Column="2" Margin="12,0,0,0">
+                        <TextBlock Text="이름 충돌" Style="{StaticResource FsLabelStyle}"/>
+                        <Border Margin="0,8,0,0"
+                                Background="{StaticResource FsBgInput}"
+                                BorderBrush="{StaticResource FsBorderSubtle}"
+                                BorderThickness="1" CornerRadius="6" Padding="2">
+                            <UniformGrid Rows="1" Columns="3">
+                                <ToggleButton x:Name="ConflictRenameBtn" Content="번호"
+                                              Style="{StaticResource FsSegmentStyle}"
+                                              IsChecked="True"
+                                              Click="OnConflictSegmentClick" Tag="Rename"/>
+                                <ToggleButton x:Name="ConflictReplaceBtn" Content="덮어쓰기"
+                                              Style="{StaticResource FsSegmentStyle}"
+                                              Click="OnConflictSegmentClick" Tag="Replace"/>
+                                <ToggleButton x:Name="ConflictSkipBtn" Content="건너뛰기"
+                                              Style="{StaticResource FsSegmentStyle}"
+                                              Click="OnConflictSegmentClick" Tag="Skip"/>
+                            </UniformGrid>
+                        </Border>
                     </StackPanel>
                 </Grid>
 
-                <!-- 사용자 지정 폴더 (옵션) -->
-                <Grid Margin="0,8,0,0" x:Name="CustomFolderRow" Visibility="Collapsed">
+                <!-- 사용자 지정 폴더 -->
+                <Grid Margin="0,12,0,0" x:Name="CustomFolderRow" Visibility="Collapsed">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBox x:Name="CustomFolderTextBox"/>
-                    <ui:Button Grid.Column="1" Content="찾아보기" Margin="6,0,0,0" Click="OnBrowseClick"/>
+                    <TextBox x:Name="CustomFolderTextBox"
+                             Style="{StaticResource FsPathInputStyle}"/>
+                    <Button Grid.Column="1" Margin="8,0,0,0" Width="40"
+                            Content="…" Style="{StaticResource FsSecondaryButtonStyle}"
+                            Click="OnBrowseClick"/>
                 </Grid>
 
-                <!-- 고급 옵션 expander -->
-                <Expander Header="고급 옵션" Margin="0,8,0,0" IsExpanded="False"
-                          Foreground="{DynamicResource TextFillColorSecondaryBrush}">
-                    <Grid Margin="0,8,0,0">
+                <!-- 고급 옵션 -->
+                <Expander Margin="0,12,0,0" IsExpanded="False"
+                          Foreground="{StaticResource FsTextSecondary}">
+                    <Expander.Header>
+                        <TextBlock Text="고급 옵션" Style="{StaticResource FsLabelStyle}"/>
+                    </Expander.Header>
+                    <Grid Margin="0,12,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                            <TextBlock Text="긴 변 최대 픽셀" Style="{StaticResource TextCaption}"
+                        <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                            <TextBlock Text="긴 변 최대 픽셀" Style="{StaticResource FsLabelStyle}"
                                        ToolTip="비워 두면 원본 크기 유지"/>
-                            <TextBox x:Name="MaxLongEdgeTextBox" Margin="0,2,0,0"
-                                     ToolTip="비워 두면 원본 크기 유지"/>
+                            <TextBox x:Name="MaxLongEdgeTextBox" Margin="0,8,0,0"
+                                     Style="{StaticResource FsPathInputStyle}"/>
                         </StackPanel>
 
-                        <StackPanel Grid.Column="1" Margin="8,0,8,0">
-                            <TextBlock Text="PDF 렌더 DPI" Style="{StaticResource TextCaption}"/>
-                            <Grid Margin="0,2,0,0">
+                        <StackPanel Grid.Column="1" Margin="6,0,12,0">
+                            <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="32"/>
+                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <Slider x:Name="DpiSlider" Minimum="72" Maximum="450" Value="200"
-                                        VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="{Binding ElementName=DpiSlider, Path=Value, StringFormat={}{0:0}}"
-                                           VerticalAlignment="Center" HorizontalAlignment="Right" FontWeight="SemiBold"/>
+                                <TextBlock Text="PDF 렌더 DPI" Style="{StaticResource FsLabelStyle}"/>
+                                <TextBlock Grid.Column="1"
+                                           FontFamily="{StaticResource FsFontMono}" FontSize="11"
+                                           Foreground="{StaticResource FsAccentBlue}"
+                                           Text="{Binding ElementName=DpiSlider, Path=Value, StringFormat={}{0:0}}"/>
                             </Grid>
+                            <Slider x:Name="DpiSlider" Margin="0,8,0,0"
+                                    Style="{StaticResource FsSliderStyle}"
+                                    Minimum="72" Maximum="450" Value="200"/>
                         </StackPanel>
 
-                        <StackPanel Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Bottom">
-                            <CheckBox x:Name="FlattenCheckBox" Content="투명을 흰색으로"
-                                      IsChecked="True" Margin="0,0,0,4"/>
-                        </StackPanel>
+                        <CheckBox Grid.Column="2" x:Name="FlattenCheckBox"
+                                  Content="투명을 흰색으로"
+                                  IsChecked="True" VerticalAlignment="Bottom"
+                                  Foreground="{StaticResource FsTextSecondary}"
+                                  FontFamily="{StaticResource FsFontSans}"
+                                  FontSize="12"/>
                     </Grid>
                 </Expander>
             </StackPanel>
-        </ui:Card>
+        </Border>
 
-        <!-- 3: 파일 리스트 (메인 — 세로로 끝까지) -->
-        <ui:Card Grid.Row="3" Margin="32,0,32,0" Padding="0">
+        <!-- 3: 파일 리스트 -->
+        <Border Grid.Row="3" Margin="32,0,32,0"
+                Background="{StaticResource FsBgPanel}"
+                BorderBrush="{StaticResource FsBorderSubtle}"
+                BorderThickness="1" CornerRadius="8">
             <DockPanel>
-                <Border DockPanel.Dock="Top" Padding="20,12,20,8"
-                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                <Border DockPanel.Dock="Top" Padding="20,14,20,10"
+                        BorderBrush="{StaticResource FsBorderSubtle}"
                         BorderThickness="0,0,0,1">
-                    <TextBlock Text="대상 파일" Style="{StaticResource TextBodyStrong}"/>
+                    <TextBlock Text="대상 파일" Style="{StaticResource FsLabelStyle}"/>
                 </Border>
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,8,20,16">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,12,20,16">
                     <ItemsControl x:Name="FilesList">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Margin="0,0,0,6" Padding="12,8" CornerRadius="6"
-                                        Background="{DynamicResource SubtleFillColorTransparentBrush}"
-                                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                <Border Margin="0,0,0,8" Padding="12,10" CornerRadius="6"
+                                        Background="{StaticResource FsBgSurface}"
+                                        BorderBrush="{StaticResource FsBorderSubtle}"
                                         BorderThickness="1">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="44"/>
+                                            <ColumnDefinition Width="40"/>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <Border Width="40" Height="40" CornerRadius="4"
-                                                Background="{DynamicResource ControlFillColorDefaultBrush}">
-                                            <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"/>
+
+                                        <Border Width="32" Height="32" CornerRadius="4"
+                                                Background="{Binding FormatBrush}"
+                                                VerticalAlignment="Center">
+                                            <Grid>
+                                                <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"/>
+                                                <TextBlock Text="{Binding FormatLabel}"
+                                                           Foreground="White" FontSize="9"
+                                                           FontWeight="SemiBold"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           Visibility="{Binding ShowFormatLabel}"/>
+                                            </Grid>
                                         </Border>
-                                        <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding FileName}" FontWeight="SemiBold"
+
+                                        <StackPanel Grid.Column="1" Margin="14,0,8,0"
+                                                    VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding FileName}"
+                                                       FontFamily="{StaticResource FsFontSans}"
+                                                       FontSize="13" FontWeight="Medium"
+                                                       Foreground="{StaticResource FsTextPrimary}"
                                                        TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock Text="{Binding SubText}" FontSize="11"
-                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                            <TextBlock Text="{Binding SubText}"
+                                                       FontSize="11" Margin="0,2,0,0"
+                                                       Foreground="{StaticResource FsTextTertiary}"
                                                        TextTrimming="CharacterEllipsis"/>
                                             <TextBlock Text="{Binding State}" FontSize="11" Margin="0,2,0,0">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
                                                         <Setter Property="Foreground"
-                                                                Value="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                                                Value="{StaticResource FsTextTertiary}"/>
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding IsFailed}" Value="True">
                                                                 <Setter Property="Foreground" Value="#F87171"/>
@@ -184,9 +269,19 @@
                                                 </TextBlock.Style>
                                             </TextBlock>
                                         </StackPanel>
-                                        <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon Dismiss20}"
-                                                   Appearance="Transparent" Click="OnRemoveEntry"
-                                                   ToolTip="목록에서 제거"/>
+
+                                        <Button Grid.Column="2"
+                                                Style="{StaticResource FsSecondaryButtonStyle}"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                Padding="6"
+                                                Click="OnRemoveEntry"
+                                                ToolTip="목록에서 제거">
+                                            <Path Width="14" Height="14" Stretch="Uniform"
+                                                  Stroke="{StaticResource FsTextTertiary}"
+                                                  StrokeThickness="2"
+                                                  Data="M18,6 L6,18 M6,6 L18,18"/>
+                                        </Button>
                                     </Grid>
                                 </Border>
                             </DataTemplate>
@@ -194,31 +289,33 @@
                     </ItemsControl>
                 </ScrollViewer>
             </DockPanel>
-        </ui:Card>
+        </Border>
 
-        <!-- 4: 액션 바 (하단 고정) -->
-        <Border Grid.Row="4" Background="{DynamicResource LayerOnAcrylicFillColorDefaultBrush}"
-                BorderThickness="0,1,0,0"
-                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                Padding="32,16" Margin="0,16,0,0">
+        <!-- 4: 액션바 -->
+        <Border Grid.Row="4" Padding="32,16,32,20" Margin="0,16,0,0"
+                BorderBrush="{StaticResource FsBorderSubtle}" BorderThickness="0,1,0,0"
+                Background="{StaticResource FsBgPanel}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel VerticalAlignment="Center">
-                    <ProgressBar x:Name="OverallProgress" Height="6" Minimum="0" Maximum="1"
-                                 IsIndeterminate="False"/>
-                    <TextBlock x:Name="ProgressStatusText" Style="{StaticResource TextCaption}"
-                               Margin="0,6,0,0" TextTrimming="CharacterEllipsis"/>
+                    <ProgressBar x:Name="OverallProgress" Height="3"
+                                 Background="{StaticResource FsBgInput}"
+                                 Foreground="{StaticResource FsAccentBlue}"
+                                 Minimum="0" Maximum="1"/>
+                    <TextBlock x:Name="ProgressStatusText" Margin="0,8,0,0"
+                               Style="{StaticResource FsCaptionStyle}"
+                               TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="20,0,0,0">
-                    <ui:Button x:Name="CancelButton" Content="닫기" Click="OnCancelClick"
-                               Margin="0,0,8,0" Padding="20,6"/>
-                    <ui:Button x:Name="ConvertButton" Content="변환 시작"
-                               Icon="{ui:SymbolIcon ArrowRight24}"
-                               Appearance="Primary" Click="OnConvertClick"
-                               Padding="24,6"/>
+                    <Button x:Name="CancelButton" Content="닫기" Click="OnCancelClick"
+                            Margin="0,0,8,0" MinWidth="80"
+                            Style="{StaticResource FsSecondaryButtonStyle}"/>
+                    <Button x:Name="ConvertButton" Content="→ 변환 시작"
+                            Click="OnConvertClick" MinWidth="120"
+                            Style="{StaticResource FsPrimaryButtonStyle}"/>
                 </StackPanel>
             </Grid>
         </Border>

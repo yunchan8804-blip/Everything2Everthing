@@ -246,18 +246,6 @@
                                         </Border>
                                     </StackPanel>
                                 </ToggleButton>
-                                <ToggleButton x:Name="TabPreviewBtn" Margin="8,0,0,0"
-                                              Style="{StaticResource FsTabPillStyle}"
-                                              Click="OnTabClick" Tag="Preview">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="Preview" VerticalAlignment="Center"/>
-                                        <Border Margin="8,0,0,0" Style="{StaticResource FsTabBadgeStyle}">
-                                            <TextBlock x:Name="TabPreviewBadge" Text="0"
-                                                       FontSize="10" FontWeight="SemiBold"
-                                                       Foreground="{StaticResource FsTextTertiary}"/>
-                                        </Border>
-                                    </StackPanel>
-                                </ToggleButton>
                                 <ToggleButton x:Name="TabPastBtn" Margin="8,0,0,0"
                                               IsChecked="True"
                                               Style="{StaticResource FsTabPillStyle}"
@@ -292,8 +280,15 @@
                     </Grid>
                 </Border>
 
-                <!-- View content -->
+                <!-- View content (좌측: 탭 컨텐츠 / 우측: Preview 컬럼) -->
                 <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="360"/>
+                        <ColumnDefinition Width="380"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 좌측: Active Queue OR Past Results -->
+                    <Grid Grid.Column="0">
                     <!-- Active Queue view -->
                     <Grid x:Name="ActiveQueueView" Visibility="Collapsed">
                         <Grid x:Name="DropZoneEmpty">
@@ -323,7 +318,7 @@
                                                 BorderBrush="{StaticResource FsBorderSubtle}"
                                                 BorderThickness="1"
                                                 Cursor="Hand"
-                                                MouseLeftButtonUp="OnQueueRowClick"
+                                                PreviewMouseLeftButtonUp="OnQueueRowClick"
                                                 Tag="{Binding}">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
@@ -381,129 +376,6 @@
                         </ScrollViewer>
                     </Grid>
 
-                    <!-- Preview view -->
-                    <Grid x:Name="PreviewView" Visibility="Collapsed" Background="{StaticResource FsBgBase}">
-                        <Grid Margin="32">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="320"/>
-                            </Grid.ColumnDefinitions>
-
-                            <!-- Image area -->
-                            <Border Background="{StaticResource FsBgPanel}"
-                                    BorderBrush="{StaticResource FsBorderSubtle}"
-                                    BorderThickness="1" CornerRadius="8">
-                                <Grid>
-                                    <!-- Empty state -->
-                                    <StackPanel x:Name="PreviewEmpty" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <Path Width="40" Height="40" Stretch="Uniform"
-                                              Stroke="{StaticResource FsTextTertiary}" StrokeThickness="1.5"
-                                              Data="M1,12 C1,12 5,4 12,4 C19,4 23,12 23,12 C23,12 19,20 12,20 C5,20 1,12 1,12 Z M12,9 A3,3 0 1,1 12,15 A3,3 0 1,1 12,9 Z"/>
-                                        <TextBlock Margin="0,12,0,0" FontSize="14" FontWeight="SemiBold"
-                                                   Foreground="{StaticResource FsTextSecondary}"
-                                                   HorizontalAlignment="Center"
-                                                   Text="No preview selected"/>
-                                        <TextBlock Margin="0,4,0,0" Style="{StaticResource FsCaptionStyle}"
-                                                   HorizontalAlignment="Center" TextAlignment="Center"
-                                                   Text="Active Queue 항목을 클릭하면&#x0a;여기에 미리보기가 표시됩니다."/>
-                                    </StackPanel>
-
-                                    <!-- Loading -->
-                                    <StackPanel x:Name="PreviewLoading" Visibility="Collapsed"
-                                                HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <ProgressBar IsIndeterminate="True" Width="200" Height="3"
-                                                     Foreground="{StaticResource FsAccentBlue}"
-                                                     Background="{StaticResource FsBgInput}"/>
-                                        <TextBlock Margin="0,12,0,0" Style="{StaticResource FsCaptionStyle}"
-                                                   HorizontalAlignment="Center"
-                                                   Text="미리보기 생성 중…"/>
-                                    </StackPanel>
-
-                                    <!-- Image -->
-                                    <Image x:Name="PreviewImage" Stretch="Uniform" Margin="24"
-                                           Visibility="Collapsed"/>
-
-                                    <!-- Reason / fallback -->
-                                    <StackPanel x:Name="PreviewReason" Visibility="Collapsed"
-                                                HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <Path Width="36" Height="36" Stretch="Uniform"
-                                              Stroke="{StaticResource FsAccentAmber}" StrokeThickness="1.5"
-                                              Data="M12,2 L22,20 L2,20 Z M12,9 L12,14 M12,17 L12,17.01"/>
-                                        <TextBlock x:Name="PreviewReasonText" Margin="0,12,0,0"
-                                                   Style="{StaticResource FsBodyStyle}"
-                                                   HorizontalAlignment="Center" TextAlignment="Center"
-                                                   TextWrapping="Wrap" MaxWidth="360"/>
-                                    </StackPanel>
-                                </Grid>
-                            </Border>
-
-                            <!-- Meta panel -->
-                            <Border Grid.Column="1" Margin="16,0,0,0"
-                                    Background="{StaticResource FsBgPanel}"
-                                    BorderBrush="{StaticResource FsBorderSubtle}"
-                                    BorderThickness="1" CornerRadius="8" Padding="20">
-                                <StackPanel>
-                                    <TextBlock Text="FILE DETAIL" Style="{StaticResource FsLabelStyle}"/>
-                                    <TextBlock x:Name="PreviewFileName" Margin="0,8,0,0"
-                                               Style="{StaticResource FsBodyStyle}"
-                                               FontWeight="SemiBold" TextWrapping="Wrap"
-                                               Text="—"/>
-                                    <TextBlock x:Name="PreviewFilePath" Margin="0,4,0,0"
-                                               FontFamily="{StaticResource FsFontMono}" FontSize="11"
-                                               Foreground="{StaticResource FsTextTertiary}"
-                                               TextWrapping="Wrap"/>
-
-                                    <Border Margin="0,16,0,16" Height="1" Background="{StaticResource FsBorderSubtle}"/>
-
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-
-                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Format"
-                                                   Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,6"/>
-                                        <TextBlock x:Name="PreviewFormatText" Grid.Row="0" Grid.Column="1"
-                                                   FontFamily="{StaticResource FsFontMono}" FontSize="12"
-                                                   Foreground="{StaticResource FsTextPrimary}" Margin="0,0,0,6"/>
-
-                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Size"
-                                                   Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,6"/>
-                                        <TextBlock x:Name="PreviewSizeText" Grid.Row="1" Grid.Column="1"
-                                                   FontFamily="{StaticResource FsFontMono}" FontSize="12"
-                                                   Foreground="{StaticResource FsTextPrimary}" Margin="0,0,0,6"/>
-
-                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Dimensions"
-                                                   Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,6"/>
-                                        <TextBlock x:Name="PreviewDimText" Grid.Row="2" Grid.Column="1"
-                                                   FontFamily="{StaticResource FsFontMono}" FontSize="12"
-                                                   Foreground="{StaticResource FsTextPrimary}" Text="—"
-                                                   Margin="0,0,0,6"/>
-
-                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Pages"
-                                                   Style="{StaticResource FsCaptionStyle}"/>
-                                        <TextBlock x:Name="PreviewPageText" Grid.Row="3" Grid.Column="1"
-                                                   FontFamily="{StaticResource FsFontMono}" FontSize="12"
-                                                   Foreground="{StaticResource FsTextPrimary}" Text="—"/>
-                                    </Grid>
-
-                                    <Border Margin="0,20,0,16" Height="1" Background="{StaticResource FsBorderSubtle}"/>
-
-                                    <Button Content="Open in Explorer"
-                                            Style="{StaticResource FsSecondaryButtonStyle}"
-                                            Click="OnPreviewOpenFolder"
-                                            HorizontalAlignment="Stretch"/>
-                                </StackPanel>
-                            </Border>
-                        </Grid>
-                    </Grid>
-
                     <!-- Past Results view (default) -->
                     <ScrollViewer x:Name="PastResultsView" VerticalScrollBarVisibility="Auto"
                                   Padding="24">
@@ -537,7 +409,11 @@
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
                                                     <Border BorderBrush="#0DFFFFFF"
-                                                            BorderThickness="0,0,0,1" Padding="0,12">
+                                                            BorderThickness="0,0,0,1" Padding="0,12"
+                                                            Cursor="Hand"
+                                                            Background="Transparent"
+                                                            PreviewMouseLeftButtonUp="OnPastRowClick"
+                                                            Tag="{Binding}">
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="40"/>
@@ -617,8 +493,154 @@
                         </ItemsControl>
                     </ScrollViewer>
 
-                    <!-- Drop hint overlay -->
-                    <Border x:Name="DropHintOverlay" Visibility="Collapsed"
+                    </Grid>
+                    <!-- /좌측 컬럼 끝 -->
+
+                    <!-- 우측: Preview 컬럼 (항상 보임) -->
+                    <Border Grid.Column="1"
+                            Background="{StaticResource FsBgPanel}"
+                            BorderBrush="{StaticResource FsBorderSubtle}"
+                            BorderThickness="1,0,0,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- 헤더 -->
+                            <Border Grid.Row="0" Padding="20,16,20,12"
+                                    BorderBrush="{StaticResource FsBorderSubtle}"
+                                    BorderThickness="0,0,0,1">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Path Width="14" Height="14" Stretch="Uniform"
+                                          Stroke="{StaticResource FsTextSecondary}" StrokeThickness="2"
+                                          Data="M1,12 C1,12 5,4 12,4 C19,4 23,12 23,12 C23,12 19,20 12,20 C5,20 1,12 1,12 Z M12,9 A3,3 0 1,1 12,15 A3,3 0 1,1 12,9 Z"/>
+                                    <TextBlock Text="PREVIEW" Margin="8,0,0,0"
+                                               Style="{StaticResource FsLabelStyle}"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 이미지 영역 -->
+                            <Grid Grid.Row="1" Margin="20,16,20,16" x:Name="PreviewImageArea">
+                                <Border Background="{StaticResource FsBgInput}"
+                                        BorderBrush="{StaticResource FsBorderSubtle}"
+                                        BorderThickness="1" CornerRadius="6">
+                                    <Grid>
+                                        <!-- Empty state -->
+                                        <StackPanel x:Name="PreviewEmpty" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20">
+                                            <Path Width="36" Height="36" Stretch="Uniform"
+                                                  Stroke="{StaticResource FsTextTertiary}" StrokeThickness="1.5"
+                                                  Data="M1,12 C1,12 5,4 12,4 C19,4 23,12 23,12 C23,12 19,20 12,20 C5,20 1,12 1,12 Z M12,9 A3,3 0 1,1 12,15 A3,3 0 1,1 12,9 Z"/>
+                                            <TextBlock Margin="0,12,0,0" FontSize="13" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource FsTextSecondary}"
+                                                       HorizontalAlignment="Center"
+                                                       Text="No selection"/>
+                                            <TextBlock Margin="0,4,0,0" Style="{StaticResource FsCaptionStyle}"
+                                                       HorizontalAlignment="Center" TextAlignment="Center"
+                                                       TextWrapping="Wrap" MaxWidth="240"
+                                                       Text="Active Queue 항목을 클릭하면 여기에 미리보기가 표시됩니다."/>
+                                        </StackPanel>
+
+                                        <!-- Loading -->
+                                        <StackPanel x:Name="PreviewLoading" Visibility="Collapsed"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <ProgressBar IsIndeterminate="True" Width="180" Height="3"
+                                                         Foreground="{StaticResource FsAccentBlue}"
+                                                         Background="{StaticResource FsBgSurface}"/>
+                                            <TextBlock Margin="0,12,0,0" Style="{StaticResource FsCaptionStyle}"
+                                                       HorizontalAlignment="Center"
+                                                       Text="미리보기 생성 중…"/>
+                                        </StackPanel>
+
+                                        <!-- Image -->
+                                        <Image x:Name="PreviewImage" Stretch="Uniform" Margin="16"
+                                               Visibility="Collapsed"/>
+
+                                        <!-- Reason -->
+                                        <StackPanel x:Name="PreviewReason" Visibility="Collapsed"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20">
+                                            <Path Width="32" Height="32" Stretch="Uniform"
+                                                  Stroke="{StaticResource FsAccentAmber}" StrokeThickness="1.5"
+                                                  Data="M12,2 L22,20 L2,20 Z M12,9 L12,14 M12,17 L12,17.01"/>
+                                            <TextBlock x:Name="PreviewReasonText" Margin="0,12,0,0"
+                                                       Style="{StaticResource FsBodyStyle}"
+                                                       FontSize="12"
+                                                       HorizontalAlignment="Center" TextAlignment="Center"
+                                                       TextWrapping="Wrap" MaxWidth="280"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+
+                            <!-- 메타 -->
+                            <Border Grid.Row="2" Padding="20,12,20,20"
+                                    BorderBrush="{StaticResource FsBorderSubtle}"
+                                    BorderThickness="0,1,0,0">
+                                <StackPanel>
+                                    <TextBlock x:Name="PreviewFileName"
+                                               Style="{StaticResource FsBodyStyle}"
+                                               FontWeight="SemiBold" TextWrapping="NoWrap"
+                                               TextTrimming="CharacterEllipsis"
+                                               Text="—"/>
+                                    <TextBlock x:Name="PreviewFilePath" Margin="0,4,0,0"
+                                               FontFamily="{StaticResource FsFontMono}" FontSize="11"
+                                               Foreground="{StaticResource FsTextTertiary}"
+                                               TextTrimming="CharacterEllipsis" MaxHeight="32"/>
+
+                                    <Border Margin="0,12,0,12" Height="1"
+                                            Background="{StaticResource FsBorderSubtle}"/>
+
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Format"
+                                                   Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
+                                        <TextBlock x:Name="PreviewFormatText" Grid.Row="0" Grid.Column="1"
+                                                   FontFamily="{StaticResource FsFontMono}" FontSize="12"
+                                                   Foreground="{StaticResource FsTextPrimary}" Margin="0,0,0,4"/>
+
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Size"
+                                                   Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
+                                        <TextBlock x:Name="PreviewSizeText" Grid.Row="1" Grid.Column="1"
+                                                   FontFamily="{StaticResource FsFontMono}" FontSize="12"
+                                                   Foreground="{StaticResource FsTextPrimary}" Margin="0,0,0,4"/>
+
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Dimensions"
+                                                   Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
+                                        <TextBlock x:Name="PreviewDimText" Grid.Row="2" Grid.Column="1"
+                                                   FontFamily="{StaticResource FsFontMono}" FontSize="12"
+                                                   Foreground="{StaticResource FsTextPrimary}" Text="—"
+                                                   Margin="0,0,0,4"/>
+
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Pages"
+                                                   Style="{StaticResource FsCaptionStyle}"/>
+                                        <TextBlock x:Name="PreviewPageText" Grid.Row="3" Grid.Column="1"
+                                                   FontFamily="{StaticResource FsFontMono}" FontSize="12"
+                                                   Foreground="{StaticResource FsTextPrimary}" Text="—"/>
+                                    </Grid>
+
+                                    <Button Content="Open in Explorer" Margin="0,16,0,0"
+                                            Style="{StaticResource FsSecondaryButtonStyle}"
+                                            Click="OnPreviewOpenFolder"
+                                            HorizontalAlignment="Stretch"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <!-- Drop hint overlay (전체 덮음) -->
+                    <Border x:Name="DropHintOverlay" Visibility="Collapsed" Grid.ColumnSpan="2"
                             Background="#CC090A0C" IsHitTestVisible="False">
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                             <Path Width="64" Height="64" Stretch="Uniform"

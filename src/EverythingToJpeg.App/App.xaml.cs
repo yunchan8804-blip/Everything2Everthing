@@ -67,7 +67,7 @@ public partial class App : Application
 
     private void ShowConvertDialog(IReadOnlyList<string> files)
     {
-        var window = new ConvertWindow(Engine, files);
+        var window = new Views.MainWindow(files);
         MainWindow = window;
         window.Show();
     }

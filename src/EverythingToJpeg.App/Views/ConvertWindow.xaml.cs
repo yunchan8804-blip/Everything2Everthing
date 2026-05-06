@@ -1,34 +1,45 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using EverythingToJpeg.Core;
-using EverythingToJpeg.Core.Providers;
 using Wpf.Ui.Controls;
 
 namespace EverythingToJpeg.App.Views;
 
 public partial class ConvertWindow : FluentWindow
 {
+    private static readonly string DialogLogPath =
+        Path.Combine(Path.GetTempPath(), "EverythingToJpeg_dialog.log");
+
     private readonly ConversionEngine _engine;
-    private readonly ObservableCollection<FileEntry> _entries = new();
+    private readonly ObservableCollection<ConvertFileEntry> _entries = new();
     private CancellationTokenSource? _cts;
+    private OutputLocation _outputMode = OutputLocation.SubfolderBesideSource;
+    private NameCollision _conflictRule = NameCollision.AppendNumber;
 
     public ConvertWindow(ConversionEngine engine, IReadOnlyList<string> initialFiles)
     {
         _engine = engine;
         InitializeComponent();
-
         FilesList.ItemsSource = _entries;
-
         AddFiles(initialFiles);
-
-        OutputModeCombo.SelectionChanged += (_, _) =>
-            CustomFolderRow.Visibility = OutputModeCombo.SelectedIndex == 2
-                ? Visibility.Visible : Visibility.Collapsed;
     }
+
+    private static void DiagLog(string line)
+    {
+        try { File.AppendAllText(DialogLogPath,
+            $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {line}{Environment.NewLine}"); }
+        catch { }
+    }
+
+    // ============== Files ==============
 
     private void AddFiles(IEnumerable<string> paths)
     {
@@ -38,7 +49,7 @@ public partial class ConvertWindow : FluentWindow
             if (!File.Exists(p)) continue;
             if (existing.Contains(p)) continue;
 
-            var entry = new FileEntry(p, _engine);
+            var entry = ConvertFileEntry.From(p, _engine);
             _entries.Add(entry);
             _ = entry.LoadThumbnailAsync();
         }
@@ -85,7 +96,7 @@ public partial class ConvertWindow : FluentWindow
 
     private void OnRemoveEntry(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement fe && fe.DataContext is FileEntry entry)
+        if (sender is FrameworkElement fe && fe.DataContext is ConvertFileEntry entry)
         {
             _entries.Remove(entry);
             UpdateSummary();
@@ -105,33 +116,74 @@ public partial class ConvertWindow : FluentWindow
         {
             if (File.Exists(p)) yield return p;
             else if (Directory.Exists(p))
-            {
                 foreach (var f in Directory.EnumerateFiles(p, "*", SearchOption.TopDirectoryOnly))
                     yield return f;
-            }
         }
     }
 
-    private static readonly string DialogLogPath =
-        Path.Combine(Path.GetTempPath(), "EverythingToJpeg_dialog.log");
+    // ============== Segments ==============
 
-    private static void DiagLog(string line)
+    private void OnQualityChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        try
-        {
-            File.AppendAllText(DialogLogPath,
-                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {line}{Environment.NewLine}");
-        }
-        catch { }
+        if (QualityValueText is null) return;
+        QualityValueText.Text = ((int)e.NewValue).ToString(CultureInfo.InvariantCulture);
     }
+
+    private void OnOutputSegmentClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ToggleButton clicked) return;
+        OutputSubBtn.IsChecked = clicked == OutputSubBtn;
+        OutputSameBtn.IsChecked = clicked == OutputSameBtn;
+        OutputCustomBtn.IsChecked = clicked == OutputCustomBtn;
+
+        _outputMode = (clicked.Tag as string) switch
+        {
+            "Same" => OutputLocation.SameFolderAsSource,
+            "Custom" => OutputLocation.Custom,
+            _ => OutputLocation.SubfolderBesideSource,
+        };
+        CustomFolderRow.Visibility = _outputMode == OutputLocation.Custom
+            ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnConflictSegmentClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ToggleButton clicked) return;
+        ConflictRenameBtn.IsChecked = clicked == ConflictRenameBtn;
+        ConflictReplaceBtn.IsChecked = clicked == ConflictReplaceBtn;
+        ConflictSkipBtn.IsChecked = clicked == ConflictSkipBtn;
+        _conflictRule = (clicked.Tag as string) switch
+        {
+            "Skip" => NameCollision.Skip,
+            "Replace" => NameCollision.Overwrite,
+            _ => NameCollision.AppendNumber,
+        };
+    }
+
+    private ConvertOptions BuildOptions()
+    {
+        var opts = new ConvertOptions
+        {
+            Quality = (int)QualitySlider.Value,
+            PdfDpi = (int)DpiSlider.Value,
+            FlattenTransparency = FlattenCheckBox.IsChecked == true,
+            OutputLocation = _outputMode,
+            OnCollision = _conflictRule,
+        };
+        if (_outputMode == OutputLocation.Custom)
+            opts.CustomOutputDirectory = CustomFolderTextBox.Text;
+        if (int.TryParse(MaxLongEdgeTextBox.Text, out var maxEdge) && maxEdge > 0)
+            opts.MaxLongEdgePixels = maxEdge;
+        return opts;
+    }
+
+    // ============== Convert ==============
 
     private async void OnConvertClick(object sender, RoutedEventArgs e)
     {
         DiagLog($"OnConvertClick: entries={_entries.Count}");
-
         if (_entries.Count == 0)
         {
-            DiagLog("  → no entries, showing info");
             ShowInfo("변환할 파일이 없습니다.");
             return;
         }
@@ -145,7 +197,7 @@ public partial class ConvertWindow : FluentWindow
         try
         {
             options = BuildOptions();
-            DiagLog($"  options: Quality={options.Quality} OutputLocation={options.OutputLocation} Custom={options.CustomOutputDirectory} Collision={options.OnCollision} MaxLong={options.MaxLongEdgePixels} PdfDpi={options.PdfDpi}");
+            DiagLog($"  options: Quality={options.Quality} OutputLocation={options.OutputLocation} Custom={options.CustomOutputDirectory} Collision={options.OnCollision}");
         }
         catch (Exception ex)
         {
@@ -171,24 +223,19 @@ public partial class ConvertWindow : FluentWindow
             DiagLog($"  starting ConvertManyAsync, {sources.Count} files");
             var results = await _engine.ConvertManyAsync(sources, options, reporter, _cts.Token);
             DiagLog($"  finished, {results.Count} results");
-            foreach (var r in results)
-                DiagLog($"    [{r.Status}] {Path.GetFileName(r.SourcePath)} msg={r.Message}");
             ApplyResults(results);
             ProgressStatusText.Text = SummarizeResults(results);
         }
         catch (OperationCanceledException)
         {
-            DiagLog("  canceled");
             ProgressStatusText.Text = "변환이 취소되었습니다.";
         }
         catch (Exception ex)
         {
             DiagLog("  EXCEPTION: " + ex);
             ProgressStatusText.Text = "오류: " + ex.Message;
-            MessageBox.Show(this,
-                "변환 중 오류가 발생했습니다:\n\n" + ex.Message + "\n\n로그: " + DialogLogPath,
-                "EverythingToJpeg",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, "변환 중 오류:\n\n" + ex.Message + "\n\n로그: " + DialogLogPath,
+                "EverythingToJpeg", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -241,83 +288,67 @@ public partial class ConvertWindow : FluentWindow
         Close();
     }
 
-    private ConvertOptions BuildOptions()
-    {
-        var opts = new ConvertOptions
-        {
-            Quality = (int)QualitySlider.Value,
-            PdfDpi = (int)DpiSlider.Value,
-            FlattenTransparency = FlattenCheckBox.IsChecked == true,
-        };
-        opts.OutputLocation = OutputModeCombo.SelectedIndex switch
-        {
-            1 => OutputLocation.SameFolderAsSource,
-            2 => OutputLocation.Custom,
-            _ => OutputLocation.SubfolderBesideSource,
-        };
-        if (opts.OutputLocation == OutputLocation.Custom)
-            opts.CustomOutputDirectory = CustomFolderTextBox.Text;
-
-        opts.OnCollision = CollisionCombo.SelectedIndex switch
-        {
-            1 => NameCollision.Overwrite,
-            2 => NameCollision.Skip,
-            _ => NameCollision.AppendNumber,
-        };
-
-        if (int.TryParse(MaxLongEdgeTextBox.Text, out var maxEdge) && maxEdge > 0)
-            opts.MaxLongEdgePixels = maxEdge;
-
-        return opts;
-    }
-
     private void ShowInfo(string message)
         => MessageBox.Show(this, message, "EverythingToJpeg",
             MessageBoxButton.OK, MessageBoxImage.Information);
-
 }
 
-public sealed class FileEntry : System.ComponentModel.INotifyPropertyChanged
+public sealed class ConvertFileEntry : INotifyPropertyChanged
 {
-    private readonly ConversionEngine _engine;
     private string _state = "대기";
     private bool _isFailed;
     private ImageSource? _thumbnail;
 
-    public FileEntry(string path, ConversionEngine engine)
+    public required string Path { get; init; }
+    public required string FileName { get; init; }
+    public required string SubText { get; init; }
+    public required string FormatLabel { get; init; }
+    public required Brush FormatBrush { get; init; }
+
+    public string State
     {
-        Path = path;
-        _engine = engine;
+        get => _state;
+        set { _state = value; Raise(nameof(State)); }
     }
 
-    public string Path { get; }
-    public string FileName => System.IO.Path.GetFileName(Path);
-
-    public string SubText
+    public bool IsFailed
     {
-        get
+        get => _isFailed;
+        set { _isFailed = value; Raise(nameof(IsFailed)); }
+    }
+
+    public ImageSource? Thumbnail
+    {
+        get => _thumbnail;
+        set { _thumbnail = value; Raise(nameof(Thumbnail)); Raise(nameof(ShowFormatLabel)); }
+    }
+
+    public Visibility ShowFormatLabel => _thumbnail is null ? Visibility.Visible : Visibility.Collapsed;
+
+    public static ConvertFileEntry From(string path, ConversionEngine engine)
+    {
+        var ext = System.IO.Path.GetExtension(path).TrimStart('.').ToLowerInvariant();
+        var (label, brushKey) = FormatPalette.For(ext);
+
+        string handler;
+        if (engine.Providers.TryGetForFile(path, out var provider) && provider is not null)
+            handler = provider.Capability.DisplayName;
+        else
+            handler = "지원되지 않음";
+
+        long size = 0;
+        try { size = new FileInfo(path).Length; } catch { }
+        var sub = $".{ext}  ·  {handler}  ·  {MainWindow.HumanizeBytes(size)}";
+
+        return new ConvertFileEntry
         {
-            var ext = System.IO.Path.GetExtension(Path).ToLowerInvariant();
-            string handler;
-            if (_engine.Providers.TryGetForFile(Path, out var provider) && provider is not null)
-                handler = provider.Capability.DisplayName;
-            else
-                handler = "지원되지 않음";
-            try
-            {
-                var size = new FileInfo(Path).Length;
-                return $"{ext}  ·  {handler}  ·  {FormatBytes(size)}";
-            }
-            catch
-            {
-                return $"{ext}  ·  {handler}";
-            }
-        }
+            Path = path,
+            FileName = System.IO.Path.GetFileName(path),
+            SubText = sub,
+            FormatLabel = label,
+            FormatBrush = (Brush)Application.Current.FindResource(brushKey),
+        };
     }
-
-    public string State { get => _state; set { _state = value; Raise(nameof(State)); } }
-    public bool IsFailed { get => _isFailed; set { _isFailed = value; Raise(nameof(IsFailed)); } }
-    public ImageSource? Thumbnail { get => _thumbnail; set { _thumbnail = value; Raise(nameof(Thumbnail)); } }
 
     public Task LoadThumbnailAsync() => Task.Run(() =>
     {
@@ -333,21 +364,13 @@ public sealed class FileEntry : System.ComponentModel.INotifyPropertyChanged
                 bmp.CacheOption = BitmapCacheOption.OnLoad;
                 bmp.EndInit();
                 bmp.Freeze();
-                System.Windows.Application.Current.Dispatcher.Invoke(() => Thumbnail = bmp);
+                Application.Current.Dispatcher.Invoke(() => Thumbnail = bmp);
             }
         }
         catch { }
     });
 
-    private static string FormatBytes(long bytes)
-    {
-        string[] units = { "B", "KB", "MB", "GB" };
-        double size = bytes;
-        var unit = 0;
-        while (size >= 1024 && unit < units.Length - 1) { size /= 1024; unit++; }
-        return $"{size:0.#} {units[unit]}";
-    }
-
-    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
-    private void Raise(string n) => PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(n));
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void Raise([CallerMemberName] string? n = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
 }

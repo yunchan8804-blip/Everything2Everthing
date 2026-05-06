@@ -20,7 +20,9 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     private CancellationTokenSource? _cts;
     private NameCollision _conflictRule = NameCollision.AppendNumber;
 
-    public MainWindow()
+    public MainWindow() : this(null) { }
+
+    public MainWindow(IReadOnlyList<string>? initialFiles)
     {
         InitializeComponent();
 
@@ -30,9 +32,18 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         SeedDemoHistory();
         UpdateBadges();
         UpdateProcessQueueButton();
-        ShowTab("Past");
-        UpdateActiveQueueVisibility();
 
+        if (initialFiles is { Count: > 0 })
+        {
+            AddToQueue(initialFiles);
+            ShowTab("Active");
+        }
+        else
+        {
+            ShowTab("Past");
+        }
+
+        UpdateActiveQueueVisibility();
         ApplyAppDataStats();
     }
 
@@ -49,11 +60,9 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     private void ShowTab(string tag)
     {
         TabActiveBtn.IsChecked = tag == "Active";
-        TabPreviewBtn.IsChecked = tag == "Preview";
         TabPastBtn.IsChecked = tag == "Past";
 
         ActiveQueueView.Visibility = tag == "Active" ? Visibility.Visible : Visibility.Collapsed;
-        PreviewView.Visibility = tag == "Preview" ? Visibility.Visible : Visibility.Collapsed;
         PastResultsView.Visibility = tag == "Past" ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -98,6 +107,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
     private void AddToQueue(IEnumerable<string> paths)
     {
+        var wasEmpty = _activeQueue.Count == 0;
         var existing = new HashSet<string>(_activeQueue.Select(q => q.SourcePath), StringComparer.OrdinalIgnoreCase);
         foreach (var path in paths)
         {
@@ -107,6 +117,12 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         UpdateBadges();
         UpdateProcessQueueButton();
         UpdateActiveQueueVisibility();
+
+        if (wasEmpty && _activeQueue.Count > 0 && _selectedPreviewItem is null)
+        {
+            _selectedPreviewItem = _activeQueue[0];
+            _ = LoadPreviewAsync(_selectedPreviewItem);
+        }
     }
 
     private void OnRemoveQueueItem(object sender, RoutedEventArgs e)
@@ -130,7 +146,6 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     private void UpdateBadges()
     {
         TabActiveBadge.Text = _activeQueue.Count.ToString(CultureInfo.InvariantCulture);
-        TabPreviewBadge.Text = "0";
         var count = _pastResults.Sum(g => g.Entries.Count);
         TabPastBadge.Text = count.ToString(CultureInfo.InvariantCulture);
     }
@@ -211,37 +226,74 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     // ============== Preview ==============
 
     private QueueItem? _selectedPreviewItem;
+    private string? _selectedPreviewPath;
     private CancellationTokenSource? _previewCts;
 
     private async void OnQueueRowClick(object sender, MouseButtonEventArgs e)
     {
+        if (e.OriginalSource is DependencyObject src && IsInsideButton(src)) return;
         if (sender is not FrameworkElement fe || fe.Tag is not QueueItem item) return;
+
         _selectedPreviewItem = item;
-        ShowTab("Preview");
         await LoadPreviewAsync(item);
+        e.Handled = true;
     }
 
-    private async Task LoadPreviewAsync(QueueItem item)
+    private async void OnPastRowClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is DependencyObject src && IsInsideButton(src)) return;
+        if (sender is not FrameworkElement fe || fe.Tag is not HistoryRow row) return;
+
+        if (row.SourcePath == "<demo>")
+        {
+            SetPreviewMeta(row.FileName, row.SourcePath, row.FormatLabel, row.SizeText);
+            ShowPreviewReason("샘플 데모 항목입니다. 원본 파일이 없으므로 미리보기를 만들 수 없습니다.");
+            _selectedPreviewPath = null;
+        }
+        else if (!File.Exists(row.SourcePath))
+        {
+            SetPreviewMeta(row.FileName, row.SourcePath, row.FormatLabel, row.SizeText);
+            ShowPreviewReason("원본 파일을 찾을 수 없습니다. 파일이 이동·삭제되었을 수 있습니다.");
+            _selectedPreviewPath = null;
+        }
+        else
+        {
+            _selectedPreviewItem = null;
+            _selectedPreviewPath = row.SourcePath;
+            await LoadPreviewByPathAsync(row.SourcePath, row.FileName, row.FormatLabel, row.SizeText);
+        }
+        e.Handled = true;
+    }
+
+    private static bool IsInsideButton(DependencyObject? node)
+    {
+        while (node is not null)
+        {
+            if (node is Button) return true;
+            node = System.Windows.Media.VisualTreeHelper.GetParent(node)
+                   ?? (node is FrameworkElement fe ? fe.Parent : null);
+        }
+        return false;
+    }
+
+    private Task LoadPreviewAsync(QueueItem item)
+    {
+        _selectedPreviewPath = item.SourcePath;
+        return LoadPreviewByPathAsync(item.SourcePath, item.FileName, item.FormatLabel, item.SizeText);
+    }
+
+    private async Task LoadPreviewByPathAsync(string sourcePath, string fileName, string formatLabel, string sizeText)
     {
         _previewCts?.Cancel();
         _previewCts = new CancellationTokenSource();
         var token = _previewCts.Token;
 
-        PreviewEmpty.Visibility = Visibility.Collapsed;
-        PreviewImage.Visibility = Visibility.Collapsed;
-        PreviewReason.Visibility = Visibility.Collapsed;
-        PreviewLoading.Visibility = Visibility.Visible;
-
-        PreviewFileName.Text = item.FileName;
-        PreviewFilePath.Text = item.SourcePath;
-        PreviewFormatText.Text = item.FormatLabel;
-        PreviewSizeText.Text = item.SizeText;
-        PreviewDimText.Text = "—";
-        PreviewPageText.Text = "—";
+        SetPreviewMeta(fileName, sourcePath, formatLabel, sizeText);
+        ShowPreviewLoading();
 
         try
         {
-            var result = await PreviewService.CreateAsync(item.SourcePath, 720, token);
+            var result = await PreviewService.CreateAsync(sourcePath, 720, token);
             if (token.IsCancellationRequested) return;
 
             PreviewLoading.Visibility = Visibility.Collapsed;
@@ -264,20 +316,47 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         catch (Exception ex)
         {
             PreviewLoading.Visibility = Visibility.Collapsed;
-            PreviewReasonText.Text = "미리보기 오류: " + ex.Message;
-            PreviewReason.Visibility = Visibility.Visible;
+            ShowPreviewReason("미리보기 오류: " + ex.Message);
         }
+    }
+
+    private void SetPreviewMeta(string fileName, string filePath, string formatLabel, string sizeText)
+    {
+        PreviewFileName.Text = fileName;
+        PreviewFilePath.Text = filePath;
+        PreviewFormatText.Text = formatLabel;
+        PreviewSizeText.Text = sizeText;
+        PreviewDimText.Text = "—";
+        PreviewPageText.Text = "—";
+    }
+
+    private void ShowPreviewLoading()
+    {
+        PreviewEmpty.Visibility = Visibility.Collapsed;
+        PreviewImage.Visibility = Visibility.Collapsed;
+        PreviewReason.Visibility = Visibility.Collapsed;
+        PreviewLoading.Visibility = Visibility.Visible;
+    }
+
+    private void ShowPreviewReason(string reason)
+    {
+        PreviewEmpty.Visibility = Visibility.Collapsed;
+        PreviewImage.Visibility = Visibility.Collapsed;
+        PreviewLoading.Visibility = Visibility.Collapsed;
+        PreviewReasonText.Text = reason;
+        PreviewReason.Visibility = Visibility.Visible;
     }
 
     private void OnPreviewOpenFolder(object sender, RoutedEventArgs e)
     {
-        if (_selectedPreviewItem is null) return;
+        var path = _selectedPreviewPath ?? _selectedPreviewItem?.SourcePath;
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
         try
         {
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
                 FileName = "explorer.exe",
-                Arguments = $"/select,\"{_selectedPreviewItem.SourcePath}\"",
+                Arguments = $"/select,\"{path}\"",
                 UseShellExecute = true,
             });
         }

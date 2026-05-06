@@ -9,6 +9,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ui:ThemesDictionary Theme="Dark"/>
                 <ui:ControlsDictionary/>
+                <ResourceDictionary Source="Views/FormatShiftTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <!-- Spacing tokens (Fluent 8pt grid) -->
