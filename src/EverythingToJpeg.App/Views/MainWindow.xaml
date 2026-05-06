@@ -1,0 +1,111 @@
+<ui:FluentWindow x:Class="EverythingToJpeg.App.Views.MainWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 Title="EverythingToJpeg"
+                 Width="880" Height="640"
+                 MinWidth="640" MinHeight="480"
+                 ExtendsContentIntoTitleBar="True"
+                 WindowBackdropType="Mica"
+                 WindowCornerPreference="Round"
+                 WindowStartupLocation="CenterScreen"
+                 AllowDrop="True"
+                 Drop="OnFilesDropped"
+                 DragOver="OnDragOver"
+                 DragLeave="OnDragLeave">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="EverythingToJpeg">
+            <ui:TitleBar.Icon>
+                <ui:SymbolIcon Symbol="ImageMultiple24"/>
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
+
+        <Grid Grid.Row="1" Margin="32,16,32,32">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Hero -->
+            <StackPanel Grid.Row="0" Margin="0,0,0,24">
+                <TextBlock Text="모든 것을 JPEG로." Style="{StaticResource TextTitleLarge}"/>
+                <TextBlock Margin="0,4,0,0" Style="{StaticResource TextBody}"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                    파일을 우클릭하면 끝. PNG · GIF · HEIC · RAW · PDF · DOCX 가 모두 한 번에 변환됩니다.
+                </TextBlock>
+            </StackPanel>
+
+            <!-- Drop zone -->
+            <Border x:Name="DropZone" Grid.Row="1"
+                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                    BorderThickness="2"
+                    Background="{DynamicResource ControlFillColorDefaultBrush}"
+                    CornerRadius="12"
+                    Padding="32,24"
+                    Margin="0,0,0,20">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsDraggingOver, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorAttentionBrush}"/>
+                                <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel HorizontalAlignment="Center">
+                    <ui:SymbolIcon Symbol="ImageArrowCounterclockwise24" FontSize="36"
+                                   Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                   HorizontalAlignment="Center"/>
+                    <TextBlock Text="여기에 파일이나 폴더를 끌어다 놓으세요"
+                               Style="{StaticResource TextSubtitle}"
+                               HorizontalAlignment="Center" Margin="0,12,0,4"/>
+                    <TextBlock Style="{StaticResource TextCaption}" HorizontalAlignment="Center">
+                        또는
+                        <Hyperlink Click="OnPickFilesClick">파일 선택</Hyperlink>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <!-- Provider list -->
+            <ui:Card Grid.Row="2" Padding="0">
+                <DockPanel>
+                    <Grid DockPanel.Dock="Top" Margin="20,16,20,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="지원 형식" Style="{StaticResource TextSubtitle}"/>
+                        <TextBlock Grid.Column="1" Style="{StaticResource TextCaption}"
+                                   VerticalAlignment="Center">
+                            준비된 형식만 우클릭 메뉴에 등록됩니다
+                        </TextBlock>
+                    </Grid>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,0,20,16">
+                        <ItemsControl x:Name="ProvidersList"/>
+                    </ScrollViewer>
+                </DockPanel>
+            </ui:Card>
+
+            <!-- Action bar -->
+            <StackPanel Grid.Row="3" Orientation="Horizontal"
+                        HorizontalAlignment="Right" Margin="0,20,0,0">
+                <ui:Button Content="진단" Icon="{ui:SymbolIcon Stethoscope24}"
+                           Click="OnDiagnoseClick" Margin="0,0,8,0"/>
+                <ui:Button x:Name="UnregisterButton" Content="컨텍스트 메뉴 해제"
+                           Icon="{ui:SymbolIcon DismissCircle24}"
+                           Click="OnUnregisterClick" Margin="0,0,8,0"/>
+                <ui:Button x:Name="RegisterButton" Content="컨텍스트 메뉴 등록"
+                           Icon="{ui:SymbolIcon CheckmarkCircle24}"
+                           Appearance="Primary" Click="OnRegisterClick"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</ui:FluentWindow>

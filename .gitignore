@@ -1,0 +1,21 @@
+# build outputs
+bin/
+obj/
+publish/
+publish-self/
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# logs
+*.log
+
+# rider
+.idea/
