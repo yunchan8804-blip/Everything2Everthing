@@ -3,8 +3,8 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
                  Title="JPEG로 변환"
-                 Width="940" Height="700"
-                 MinWidth="720" MinHeight="540"
+                 Width="640" Height="780"
+                 MinWidth="520" MinHeight="560"
                  ExtendsContentIntoTitleBar="True"
                  WindowBackdropType="Mica"
                  WindowCornerPreference="Round"
@@ -15,107 +15,148 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
+        <!-- 0: TitleBar -->
         <ui:TitleBar Grid.Row="0" Title="JPEG로 변환"/>
 
-        <Grid Grid.Row="1" Margin="32,8,32,16">
+        <!-- 1: 헤더 (제목 + 파일 카운트) -->
+        <Grid Grid.Row="1" Margin="32,8,32,12">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" MinWidth="320"/>
-                <ColumnDefinition Width="320"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="JPEG로 변환" Style="{StaticResource TextTitle}"/>
+                <TextBlock x:Name="FilesSummaryText" Style="{StaticResource TextCaption}" Margin="0,2,0,0"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <ui:Button Content="추가" Icon="{ui:SymbolIcon Add24}"
+                           Click="OnAddFilesClick" Margin="0,0,8,0"/>
+                <ui:Button Content="비우기" Icon="{ui:SymbolIcon Delete24}"
+                           Click="OnClearFilesClick"/>
+            </StackPanel>
+        </Grid>
 
-            <!-- File list panel -->
-            <ui:Card Grid.Column="0" Padding="0" Margin="0,0,16,0">
-                <DockPanel>
-                    <Grid DockPanel.Dock="Top" Margin="20,16,20,12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel>
-                            <TextBlock Text="대상 파일" Style="{StaticResource TextSubtitle}"/>
-                            <TextBlock x:Name="FilesSummaryText" Style="{StaticResource TextCaption}"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal">
-                            <ui:Button Content="추가" Icon="{ui:SymbolIcon Add24}"
-                                       Click="OnAddFilesClick" Margin="0,0,8,0"/>
-                            <ui:Button Content="비우기" Icon="{ui:SymbolIcon Delete24}"
-                                       Click="OnClearFilesClick"/>
-                        </StackPanel>
-                    </Grid>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,0,20,16">
-                        <ItemsControl x:Name="FilesList"/>
-                    </ScrollViewer>
-                </DockPanel>
-            </ui:Card>
+        <!-- 2: 옵션 바 (고정 핵심 옵션 + 고급 expander) -->
+        <ui:Card Grid.Row="2" Margin="32,0,32,12" Padding="16,12">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
 
-            <!-- Options panel -->
-            <ui:Card Grid.Column="1" Padding="0">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,16,20,16">
-                    <StackPanel>
-                        <TextBlock Text="옵션" Style="{StaticResource TextSubtitle}" Margin="0,0,0,12"/>
-
-                        <TextBlock Text="JPEG 품질" Style="{StaticResource TextBodyStrong}" Margin="0,0,0,4"/>
-                        <Grid>
+                    <!-- 품질 -->
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock Text="JPEG 품질" Style="{StaticResource TextCaption}"/>
+                        <Grid Margin="0,2,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="48"/>
+                                <ColumnDefinition Width="32"/>
                             </Grid.ColumnDefinitions>
                             <Slider x:Name="QualitySlider" Minimum="50" Maximum="100" Value="92"
                                     SmallChange="1" LargeChange="5" VerticalAlignment="Center"/>
                             <TextBlock Grid.Column="1" Text="{Binding ElementName=QualitySlider, Path=Value, StringFormat={}{0:0}}"
-                                       VerticalAlignment="Center" HorizontalAlignment="Right"
-                                       FontWeight="SemiBold"/>
+                                       FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Right"/>
                         </Grid>
-                        <TextBlock Style="{StaticResource TextCaption}"
-                                   Text="92 권장. 90+에서 시각적으로 거의 무손실."/>
+                    </StackPanel>
 
-                        <TextBlock Text="출력 위치" Style="{StaticResource TextBodyStrong}" Margin="0,16,0,4"/>
-                        <ComboBox x:Name="OutputModeCombo" SelectedIndex="0">
-                            <ComboBoxItem Content="원본 폴더 안에 _jpeg 하위 폴더"/>
+                    <!-- 출력 위치 -->
+                    <StackPanel Grid.Column="1" Margin="8,0,8,0">
+                        <TextBlock Text="출력 위치" Style="{StaticResource TextCaption}"/>
+                        <ComboBox x:Name="OutputModeCombo" SelectedIndex="0" Margin="0,2,0,0">
+                            <ComboBoxItem Content="원본 폴더 안 _jpeg 하위 폴더"/>
                             <ComboBoxItem Content="원본과 같은 폴더"/>
                             <ComboBoxItem Content="사용자 지정 폴더…"/>
                         </ComboBox>
-                        <Grid Margin="0,8,0,0" x:Name="CustomFolderRow" Visibility="Collapsed">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBox x:Name="CustomFolderTextBox" />
-                            <ui:Button Grid.Column="1" Content="찾아보기" Margin="6,0,0,0"
-                                       Click="OnBrowseClick"/>
-                        </Grid>
+                    </StackPanel>
 
-                        <TextBlock Text="이름 충돌" Style="{StaticResource TextBodyStrong}" Margin="0,16,0,4"/>
-                        <ComboBox x:Name="CollisionCombo" SelectedIndex="0">
+                    <!-- 충돌 -->
+                    <StackPanel Grid.Column="2" Margin="8,0,0,0">
+                        <TextBlock Text="이름 충돌" Style="{StaticResource TextCaption}"/>
+                        <ComboBox x:Name="CollisionCombo" SelectedIndex="0" Margin="0,2,0,0">
                             <ComboBoxItem Content="번호 붙여 새 파일"/>
                             <ComboBoxItem Content="덮어쓰기"/>
                             <ComboBoxItem Content="건너뛰기"/>
                         </ComboBox>
-
-                        <TextBlock Text="긴 변 최대 픽셀 (선택)" Style="{StaticResource TextBodyStrong}" Margin="0,16,0,4"/>
-                        <TextBox x:Name="MaxLongEdgeTextBox" ToolTip="비워 두면 원본 크기 유지"/>
-
-                        <TextBlock Text="PDF 렌더 DPI" Style="{StaticResource TextBodyStrong}" Margin="0,16,0,4"/>
-                        <Slider x:Name="DpiSlider" Minimum="72" Maximum="450" Value="200"/>
-                        <TextBlock Style="{StaticResource TextCaption}"
-                                   Text="{Binding ElementName=DpiSlider, Path=Value, StringFormat=현재 {0:0} DPI}"/>
-
-                        <CheckBox x:Name="FlattenCheckBox" Content="투명 영역을 흰색으로 채우기"
-                                  IsChecked="True" Margin="0,16,0,0"/>
                     </StackPanel>
-                </ScrollViewer>
-            </ui:Card>
-        </Grid>
+                </Grid>
 
-        <!-- Bottom action bar -->
-        <Border Grid.Row="2" Background="{DynamicResource LayerOnAcrylicFillColorDefaultBrush}"
+                <!-- 사용자 지정 폴더 (옵션) -->
+                <Grid Margin="0,8,0,0" x:Name="CustomFolderRow" Visibility="Collapsed">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="CustomFolderTextBox"/>
+                    <ui:Button Grid.Column="1" Content="찾아보기" Margin="6,0,0,0" Click="OnBrowseClick"/>
+                </Grid>
+
+                <!-- 고급 옵션 expander -->
+                <Expander Header="고급 옵션" Margin="0,8,0,0" IsExpanded="False"
+                          Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                            <TextBlock Text="긴 변 최대 픽셀" Style="{StaticResource TextCaption}"
+                                       ToolTip="비워 두면 원본 크기 유지"/>
+                            <TextBox x:Name="MaxLongEdgeTextBox" Margin="0,2,0,0"
+                                     ToolTip="비워 두면 원본 크기 유지"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Margin="8,0,8,0">
+                            <TextBlock Text="PDF 렌더 DPI" Style="{StaticResource TextCaption}"/>
+                            <Grid Margin="0,2,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="32"/>
+                                </Grid.ColumnDefinitions>
+                                <Slider x:Name="DpiSlider" Minimum="72" Maximum="450" Value="200"
+                                        VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="{Binding ElementName=DpiSlider, Path=Value, StringFormat={}{0:0}}"
+                                           VerticalAlignment="Center" HorizontalAlignment="Right" FontWeight="SemiBold"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Bottom">
+                            <CheckBox x:Name="FlattenCheckBox" Content="투명을 흰색으로"
+                                      IsChecked="True" Margin="0,0,0,4"/>
+                        </StackPanel>
+                    </Grid>
+                </Expander>
+            </StackPanel>
+        </ui:Card>
+
+        <!-- 3: 파일 리스트 (메인 — 세로로 끝까지) -->
+        <ui:Card Grid.Row="3" Margin="32,0,32,0" Padding="0">
+            <DockPanel>
+                <Border DockPanel.Dock="Top" Padding="20,12,20,8"
+                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="0,0,0,1">
+                    <TextBlock Text="대상 파일" Style="{StaticResource TextBodyStrong}"/>
+                </Border>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,8,20,16">
+                    <ItemsControl x:Name="FilesList"/>
+                </ScrollViewer>
+            </DockPanel>
+        </ui:Card>
+
+        <!-- 4: 액션 바 (하단 고정) -->
+        <Border Grid.Row="4" Background="{DynamicResource LayerOnAcrylicFillColorDefaultBrush}"
                 BorderThickness="0,1,0,0"
                 BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                Padding="32,16">
+                Padding="32,16" Margin="0,16,0,0">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -125,7 +166,7 @@
                     <ProgressBar x:Name="OverallProgress" Height="6" Minimum="0" Maximum="1"
                                  IsIndeterminate="False"/>
                     <TextBlock x:Name="ProgressStatusText" Style="{StaticResource TextCaption}"
-                               Margin="0,6,0,0"/>
+                               Margin="0,6,0,0" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="20,0,0,0">
                     <ui:Button x:Name="CancelButton" Content="닫기" Click="OnCancelClick"
