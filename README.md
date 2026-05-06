@@ -59,31 +59,26 @@ dotnet publish src\EverythingToJpeg.App\EverythingToJpeg.App.csproj `
 - UI: **WPF-UI 4.3** (Win11 Fluent 2 — Mica 백드롭, Segoe UI Variable 타입 램프)
 - 변환 엔진: Magick.NET, PDFtoImage, PhotoSauce.MagicScaler + Libheif
 
-## 로드맵 (Phase 2)
+## 로드맵
 
-1. **IExplorerCommand 셸 익스텐션 + MSIX Sparse Package** — Win11 메인 컨텍스트 메뉴 직접 노출
-2. **HTML 변환** — WebView2 헤드리스, viewport 옵션
-3. **HWP/HWPX 변환** — LibreOffice + H2Orestart 자동 설치 가이드
-4. **GitHub Releases CI/CD** — 태그 푸시 시 자동 빌드 + MSIX 패키징
-5. **자체 서명 인증서 자동 생성·배포** — 내부 5대 PC 신뢰 체인 자동화 (현재는 unsigned MSIX → 개발자 모드 필요)
+| 단계 | 상태 | 내용 |
+|---|---|---|
+| Phase 1 | ✅ | 레지스트리 컨텍스트 메뉴 (Win11 "추가 옵션 표시"), 핵심 변환(이미지·HEIC·RAW·PDF·DOCX), Fluent UI |
+| Phase 2 | ✅ 빌드 가능 | C++ IExplorerCommand DLL, MSIX 패키징, 자체 서명 인증서, GitHub Releases 자동화 — `packaging/README.md` 참조 |
+| Phase 3 | 🕐 | HTML(WebView2), HWP/HWPX(LibreOffice + H2Orestart) 실구현 |
 
-## 미서명 빌드를 신뢰할 PC에 설치하기 (Phase 2 미리보기)
+## 두 가지 사용 방식
 
-본인 PC 5대에만 설치할 계획이므로 정식 코드사이닝 인증서 없이도 사용 가능합니다.
+### A) Portable EXE — 가장 가벼움 (Phase 1)
+- `dotnet publish` 산출물 그대로 사용
+- 우클릭 → **추가 옵션 표시** → "JPEG로 빠른 변환" / "JPEG로 변환…"
+- 인증서·서명 불필요
 
-### 옵션 A — Portable EXE (지금 바로 가능)
-1. `publish` 폴더 통째로 PC에 복사
-2. `EverythingToJpeg.exe` 실행 → 한 번만 "컨텍스트 메뉴 등록"
-3. 끝. SmartScreen 경고가 뜨면 "추가 정보" → "실행"
-
-### 옵션 B — MSIX Sparse Package (Phase 2)
-1. `EverythingToJpeg.Package` 프로젝트로 unsigned MSIX 빌드
-2. 각 PC에서 **개발자 모드 켜기** (설정 → 개인 정보 및 보안 → 개발자용)
-3. PowerShell:
-   ```powershell
-   Add-AppxPackage -AllowUnsigned -Path EverythingToJpeg.msix
-   ```
-4. 또는 Group Policy로 사이드로딩 허용 후 자체 서명 인증서를 Local Machine\Trusted People에 임포트
+### B) MSIX 패키지 — Win11 메인 메뉴 노출 (Phase 2)
+- `packaging/BuildMsix.ps1` 로 MSIX 빌드
+- 자체 서명 인증서를 `LocalMachine\TrustedPeople`에 임포트 후 사이드로드
+- 우클릭 → 바로 메인 메뉴에 항목 노출
+- 자세한 절차는 [packaging/README.md](packaging/README.md)
 
 ## 프로젝트 구조
 

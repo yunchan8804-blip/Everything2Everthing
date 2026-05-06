@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build MSIX (unsigned)
+        shell: pwsh
+        run: |
+          ./packaging/GenerateAssets.ps1
+          ./packaging/BuildMsix.ps1 -Configuration Release -Platform x64
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EverythingToJpeg-x64-msix
+          path: packaging/dist/EverythingToJpeg-x64.msix
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: packaging/dist/EverythingToJpeg-x64.msix
+          generate_release_notes: true
+          body: |
+            ## 설치 방법
+
+            1. 본 릴리즈에서 `EverythingToJpeg-x64.msix` 와 함께 배포된 PFX 인증서를 받습니다.
+            2. 관리자 PowerShell:
+               ```powershell
+               .\Install-EverythingToJpeg.ps1 -PfxPath .\EverythingToJpeg-DevCert.pfx -MsixPath .\EverythingToJpeg-x64.msix
+               ```
+            3. PNG/HEIC/PDF 등 파일을 우클릭 → "JPEG로 빠른 변환" 또는 "JPEG로 변환…"
+
+            > 이 패키지는 자체 서명입니다. 인증서를 `LocalMachine\TrustedPeople`에 신뢰 등록해야 설치됩니다.
