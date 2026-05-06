@@ -79,6 +79,11 @@ public partial class App : Application
 
     private async Task RunQuickAsync(IReadOnlyList<string> files)
     {
+        var logPath = Path.Combine(Path.GetTempPath(), "EverythingToJpeg_quick.log");
+        var log = new System.Text.StringBuilder();
+        log.AppendLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Quick start, {files.Count} file(s)");
+        foreach (var f in files) log.AppendLine($"  src: {f}");
+
         var progress = new QuickProgressWindow(files.Count);
         progress.Show();
 
@@ -87,14 +92,28 @@ public partial class App : Application
             var options = ConvertOptions.Quick();
             var reporter = new Progress<ConvertProgress>(p => progress.Report(p));
             var results = await Engine.ConvertManyAsync(files, options, reporter);
+
+            foreach (var r in results)
+            {
+                log.AppendLine($"  [{r.Status}] {Path.GetFileName(r.SourcePath)} → {r.OutputPaths.Count} output(s)");
+                if (r.Message is { Length: > 0 }) log.AppendLine($"    msg: {r.Message}");
+                if (r.Error is not null) log.AppendLine($"    err: {r.Error}");
+                foreach (var o in r.OutputPaths) log.AppendLine($"    out: {o}");
+            }
+
             progress.Finish(results);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"변환 중 오류: {ex.Message}", "EverythingToJpeg",
+            log.AppendLine($"  EXCEPTION {ex.GetType().Name}: {ex.Message}");
+            log.AppendLine(ex.ToString());
+            try { progress.Close(); } catch { }
+            MessageBox.Show($"변환 중 오류: {ex.Message}\n\n로그: {logPath}", "EverythingToJpeg",
                 MessageBoxButton.OK, MessageBoxImage.Error);
-            progress.Close();
-            Shutdown(1);
+        }
+        finally
+        {
+            try { File.WriteAllText(logPath, log.ToString()); } catch { }
         }
     }
 }
