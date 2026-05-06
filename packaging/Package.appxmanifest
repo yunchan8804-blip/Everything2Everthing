@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
+  xmlns:desktop5="http://schemas.microsoft.com/appx/manifest/desktop/windows10/5"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  IgnorableNamespaces="uap rescap desktop desktop4 desktop5 com">
+
+  <Identity
+    Name="EverythingToJpeg.YunChan"
+    Publisher="CN=EverythingToJpegDev"
+    Version="1.0.0.0"
+    ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>EverythingToJpeg</DisplayName>
+    <PublisherDisplayName>YunChan</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="ko-KR" />
+    <Resource Language="en-US" />
+  </Resources>
+
+  <Applications>
+    <Application Id="EverythingToJpeg"
+                 Executable="EverythingToJpeg.exe"
+                 EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="EverythingToJpeg"
+        Description="모든 파일을 JPEG로 변환"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+      </uap:VisualElements>
+
+      <Extensions>
+        <!-- COM Surrogate Server: hosts the two IExplorerCommand handlers -->
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:SurrogateServer DisplayName="EverythingToJpeg Shell Extension">
+              <com:Class Id="801B2DD3-632C-4731-9510-AEAE09345264"
+                         Path="EverythingToJpeg.Shell.dll"
+                         ThreadingModel="STA" />
+              <com:Class Id="CEBA1DB7-9175-4DF6-A362-490DEA49B598"
+                         Path="EverythingToJpeg.Shell.dll"
+                         ThreadingModel="STA" />
+            </com:SurrogateServer>
+          </com:ComServer>
+        </com:Extension>
+
+        <!-- File Explorer context menu registrations -->
+        <desktop4:Extension Category="windows.fileExplorerContextMenus">
+          <desktop4:FileExplorerContextMenus>
+            <!-- 이미지 -->
+            <desktop5:ItemType Type=".png">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".jpg">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".jpeg">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".gif">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".bmp">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".tif">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".tiff">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".webp">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".avif">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".psd">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+
+            <!-- HEIC/HEIF -->
+            <desktop5:ItemType Type=".heic">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".heif">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+
+            <!-- RAW -->
+            <desktop5:ItemType Type=".dng">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".nef">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".cr2">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".cr3">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".arw">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".raf">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".orf">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".rw2">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".srw">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".pef">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+
+            <!-- PDF -->
+            <desktop5:ItemType Type=".pdf">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+
+            <!-- DOCX -->
+            <desktop5:ItemType Type=".docx">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".doc">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+
+            <!-- HTML -->
+            <desktop5:ItemType Type=".html">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".htm">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+
+            <!-- HWP / HWPX -->
+            <desktop5:ItemType Type=".hwp">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".hwpx">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+          </desktop4:FileExplorerContextMenus>
+        </desktop4:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>
