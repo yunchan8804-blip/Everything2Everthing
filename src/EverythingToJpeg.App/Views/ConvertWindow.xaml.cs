@@ -22,7 +22,6 @@ public partial class ConvertWindow : FluentWindow
         InitializeComponent();
 
         FilesList.ItemsSource = _entries;
-        FilesList.ItemTemplate = (DataTemplate)CreateFileEntryTemplate();
 
         AddFiles(initialFiles);
 
@@ -113,19 +112,51 @@ public partial class ConvertWindow : FluentWindow
         }
     }
 
+    private static readonly string DialogLogPath =
+        Path.Combine(Path.GetTempPath(), "EverythingToJpeg_dialog.log");
+
+    private static void DiagLog(string line)
+    {
+        try
+        {
+            File.AppendAllText(DialogLogPath,
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {line}{Environment.NewLine}");
+        }
+        catch { }
+    }
+
     private async void OnConvertClick(object sender, RoutedEventArgs e)
     {
+        DiagLog($"OnConvertClick: entries={_entries.Count}");
+
         if (_entries.Count == 0)
         {
+            DiagLog("  → no entries, showing info");
             ShowInfo("변환할 파일이 없습니다.");
             return;
         }
 
         ConvertButton.IsEnabled = false;
         CancelButton.Content = "취소";
+        ProgressStatusText.Text = "준비 중…";
         _cts = new CancellationTokenSource();
 
-        var options = BuildOptions();
+        ConvertOptions options;
+        try
+        {
+            options = BuildOptions();
+            DiagLog($"  options: Quality={options.Quality} OutputLocation={options.OutputLocation} Custom={options.CustomOutputDirectory} Collision={options.OnCollision} MaxLong={options.MaxLongEdgePixels} PdfDpi={options.PdfDpi}");
+        }
+        catch (Exception ex)
+        {
+            DiagLog("  BuildOptions threw: " + ex);
+            ProgressStatusText.Text = "옵션 처리 오류: " + ex.Message;
+            ConvertButton.IsEnabled = true;
+            CancelButton.Content = "닫기";
+            _cts = null;
+            return;
+        }
+
         var reporter = new Progress<ConvertProgress>(p =>
         {
             var overall = p.Total == 0 ? 0 : (p.Index + p.FileProgress) / p.Total;
@@ -137,17 +168,27 @@ public partial class ConvertWindow : FluentWindow
         try
         {
             var sources = _entries.Select(en => en.Path).ToList();
+            DiagLog($"  starting ConvertManyAsync, {sources.Count} files");
             var results = await _engine.ConvertManyAsync(sources, options, reporter, _cts.Token);
+            DiagLog($"  finished, {results.Count} results");
+            foreach (var r in results)
+                DiagLog($"    [{r.Status}] {Path.GetFileName(r.SourcePath)} msg={r.Message}");
             ApplyResults(results);
             ProgressStatusText.Text = SummarizeResults(results);
         }
         catch (OperationCanceledException)
         {
+            DiagLog("  canceled");
             ProgressStatusText.Text = "변환이 취소되었습니다.";
         }
         catch (Exception ex)
         {
+            DiagLog("  EXCEPTION: " + ex);
             ProgressStatusText.Text = "오류: " + ex.Message;
+            MessageBox.Show(this,
+                "변환 중 오류가 발생했습니다:\n\n" + ex.Message + "\n\n로그: " + DialogLogPath,
+                "EverythingToJpeg",
+                MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -234,54 +275,6 @@ public partial class ConvertWindow : FluentWindow
         => MessageBox.Show(this, message, "EverythingToJpeg",
             MessageBoxButton.OK, MessageBoxImage.Information);
 
-    private object CreateFileEntryTemplate()
-    {
-        const string xaml = """
-        <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
-          <Border Margin="0,0,0,6" Padding="12,8" CornerRadius="6"
-                  Background="{DynamicResource SubtleFillColorTransparentBrush}"
-                  BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                  BorderThickness="1">
-            <Grid>
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="44"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-              </Grid.ColumnDefinitions>
-              <Border Width="40" Height="40" CornerRadius="4"
-                      Background="{DynamicResource ControlFillColorDefaultBrush}">
-                <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"/>
-              </Border>
-              <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
-                <TextBlock Text="{Binding FileName}" FontWeight="SemiBold"
-                           TextTrimming="CharacterEllipsis"/>
-                <TextBlock Text="{Binding SubText}" FontSize="11"
-                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                           TextTrimming="CharacterEllipsis"/>
-                <TextBlock Text="{Binding State}" FontSize="11" Margin="0,2,0,0">
-                  <TextBlock.Style>
-                    <Style TargetType="TextBlock">
-                      <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}"/>
-                      <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsFailed}" Value="True">
-                          <Setter Property="Foreground" Value="#F87171"/>
-                        </DataTrigger>
-                      </Style.Triggers>
-                    </Style>
-                  </TextBlock.Style>
-                </TextBlock>
-              </StackPanel>
-              <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon Dismiss20}"
-                         Appearance="Transparent" Click="OnRemoveEntry"
-                         ToolTip="목록에서 제거"/>
-            </Grid>
-          </Border>
-        </DataTemplate>
-        """;
-        return System.Windows.Markup.XamlReader.Parse(xaml);
-    }
 }
 
 public sealed class FileEntry : System.ComponentModel.INotifyPropertyChanged

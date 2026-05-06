@@ -13,6 +13,8 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        WireGlobalExceptionLogging();
+
         var parsed = CliRouter.Parse(e.Args);
 
         switch (parsed.Mode)
@@ -115,5 +117,39 @@ public partial class App : Application
         {
             try { File.WriteAllText(logPath, log.ToString()); } catch { }
         }
+    }
+
+    private static void WireGlobalExceptionLogging()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "EverythingToJpeg_unhandled.log");
+
+        void Append(string source, Exception? ex)
+        {
+            try
+            {
+                File.AppendAllText(path,
+                    $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {source}\n{ex}\n\n");
+            }
+            catch { }
+        }
+
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            Append("AppDomain.UnhandledException", e.ExceptionObject as Exception);
+
+        Current.DispatcherUnhandledException += (_, e) =>
+        {
+            Append("Application.DispatcherUnhandledException", e.Exception);
+            MessageBox.Show(
+                "예기치 못한 오류:\n\n" + e.Exception.Message + "\n\n로그: " + path,
+                "EverythingToJpeg",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            e.Handled = true;
+        };
+
+        System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            Append("TaskScheduler.UnobservedTaskException", e.Exception);
+            e.SetObserved();
+        };
     }
 }
