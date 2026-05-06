@@ -1,256 +1,532 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Documents;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using EverythingToJpeg.App.Shell;
-using EverythingToJpeg.Core.Providers;
-using Wpf.Ui.Controls;
+using EverythingToJpeg.Core;
 
 namespace EverythingToJpeg.App.Views;
 
-public partial class MainWindow : FluentWindow, INotifyPropertyChanged
+public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 {
-    private bool _isDraggingOver;
-    public bool IsDraggingOver
-    {
-        get => _isDraggingOver;
-        set { _isDraggingOver = value; OnPropertyChanged(); }
-    }
+    private readonly ObservableCollection<QueueItem> _activeQueue = new();
+    private readonly ObservableCollection<DateGroup> _pastResults = new();
+    private CancellationTokenSource? _cts;
+    private NameCollision _conflictRule = NameCollision.AppendNumber;
 
     public MainWindow()
     {
         InitializeComponent();
-        DataContext = this;
-        Loaded += async (_, _) => await PopulateAsync();
+
+        ActiveQueueList.ItemsSource = _activeQueue;
+        PastResultsList.ItemsSource = _pastResults;
+
+        SeedDemoHistory();
+        UpdateBadges();
+        UpdateProcessQueueButton();
+        ShowTab("Past");
+        UpdateActiveQueueVisibility();
+
+        ApplyAppDataStats();
     }
 
-    private async Task PopulateAsync()
+    // ============== Tabs ==============
+
+    private void OnTabClick(object sender, RoutedEventArgs e)
     {
-        var engine = ((App)Application.Current).Engine;
-        ProvidersList.Items.Clear();
-        foreach (var provider in engine.Providers.All)
+        if (sender is ToggleButton tb && tb.Tag is string tag)
         {
-            var availability = await provider.CheckAvailabilityAsync();
-            ProvidersList.Items.Add(BuildProviderRow(provider.Capability, availability));
+            ShowTab(tag);
         }
     }
 
-    private static UIElement BuildProviderRow(ProviderCapability cap, ProviderAvailability availability)
+    private void ShowTab(string tag)
     {
-        var (badge, badgeKey) = cap.Status switch
-        {
-            ProviderStatus.Available => availability.IsReady
-                ? ("준비됨", "BadgeReadyBrush")
-                : ("점검 필요", "BadgeWarnBrush"),
-            ProviderStatus.Preview => ("프리뷰", "BadgeInfoBrush"),
-            ProviderStatus.RequiresExternal => availability.IsReady
-                ? ("외부 도구 감지됨", "BadgeReadyBrush")
-                : ("외부 도구 필요", "BadgeWarnBrush"),
-            ProviderStatus.ComingSoon => ("개발 중", "BadgeMutedBrush"),
-            _ => ("비활성", "BadgeMutedBrush"),
-        };
+        TabActiveBtn.IsChecked = tag == "Active";
+        TabPreviewBtn.IsChecked = tag == "Preview";
+        TabPastBtn.IsChecked = tag == "Past";
 
-        var card = new CardControl
-        {
-            Padding = new Thickness(16, 12, 16, 12),
-            Margin = new Thickness(0, 0, 0, 8),
-        };
-
-        var stack = new StackPanel();
-
-        var headerStack = new StackPanel { Orientation = Orientation.Horizontal };
-        headerStack.Children.Add(new TextBlock
-        {
-            Text = cap.DisplayName,
-            FontFamily = new FontFamily("Segoe UI Variable Text, Segoe UI"),
-            FontSize = 14,
-            FontWeight = FontWeights.SemiBold,
-            VerticalAlignment = VerticalAlignment.Center,
-        });
-        headerStack.Children.Add(new Border
-        {
-            Background = (Brush)Application.Current.FindResource(badgeKey),
-            CornerRadius = new CornerRadius(10),
-            Padding = new Thickness(8, 2, 8, 2),
-            Margin = new Thickness(8, 0, 0, 0),
-            Child = new TextBlock { Text = badge, FontSize = 11, Foreground = Brushes.White },
-        });
-        stack.Children.Add(headerStack);
-
-        stack.Children.Add(new TextBlock
-        {
-            Text = cap.Summary,
-            FontFamily = new FontFamily("Segoe UI Variable Text, Segoe UI"),
-            FontSize = 12,
-            Foreground = (Brush)Application.Current.FindResource("TextFillColorSecondaryBrush"),
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 4, 0, 0),
-        });
-
-        stack.Children.Add(new TextBlock
-        {
-            Text = "확장자: " + string.Join(", ", cap.Extensions),
-            FontSize = 11,
-            Foreground = (Brush)Application.Current.FindResource("TextFillColorTertiaryBrush"),
-            Margin = new Thickness(0, 4, 0, 0),
-        });
-
-        if (!availability.IsReady && !string.IsNullOrEmpty(availability.Reason))
-        {
-            stack.Children.Add(new TextBlock
-            {
-                Text = availability.Reason,
-                FontSize = 11,
-                Foreground = (Brush)Application.Current.FindResource("BadgeWarnBrush"),
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 4, 0, 0),
-            });
-        }
-
-        if (cap.ExternalDependencies.Count > 0)
-        {
-            foreach (var dep in cap.ExternalDependencies)
-            {
-                var line = new TextBlock
-                {
-                    FontSize = 11,
-                    Foreground = (Brush)Application.Current.FindResource("TextFillColorSecondaryBrush"),
-                    Margin = new Thickness(0, 2, 0, 0),
-                    TextWrapping = TextWrapping.Wrap,
-                };
-                line.Inlines.Add(new Run($"• {dep.Name} — {dep.Description} "));
-                if (!string.IsNullOrEmpty(dep.DownloadUrl))
-                {
-                    var hl = new Hyperlink(new Run(dep.DownloadUrl)) { NavigateUri = new Uri(dep.DownloadUrl) };
-                    hl.RequestNavigate += (_, e) =>
-                    {
-                        try
-                        {
-                            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                            {
-                                FileName = e.Uri.AbsoluteUri,
-                                UseShellExecute = true
-                            });
-                        }
-                        catch { }
-                        e.Handled = true;
-                    };
-                    line.Inlines.Add(hl);
-                }
-                stack.Children.Add(line);
-            }
-        }
-
-        if (!string.IsNullOrEmpty(cap.RoadmapNote))
-        {
-            stack.Children.Add(new TextBlock
-            {
-                Text = "로드맵: " + cap.RoadmapNote,
-                FontSize = 11,
-                FontStyle = FontStyles.Italic,
-                Foreground = (Brush)Application.Current.FindResource("TextFillColorTertiaryBrush"),
-                Margin = new Thickness(0, 4, 0, 0),
-                TextWrapping = TextWrapping.Wrap,
-            });
-        }
-
-        card.Content = stack;
-        return card;
+        ActiveQueueView.Visibility = tag == "Active" ? Visibility.Visible : Visibility.Collapsed;
+        PreviewView.Visibility = tag == "Preview" ? Visibility.Visible : Visibility.Collapsed;
+        PastResultsView.Visibility = tag == "Past" ? Visibility.Visible : Visibility.Collapsed;
     }
+
+    // ============== Drag & Drop ==============
 
     private void OnDragOver(object sender, DragEventArgs e)
     {
-        if (e.Data.GetDataPresent(DataFormats.FileDrop))
-        {
-            e.Effects = DragDropEffects.Copy;
-            IsDraggingOver = true;
-        }
-        else
-        {
-            e.Effects = DragDropEffects.None;
-        }
+        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop)
+            ? DragDropEffects.Copy : DragDropEffects.None;
+        DropHintOverlay.Visibility = e.Effects == DragDropEffects.Copy
+            ? Visibility.Visible : Visibility.Collapsed;
         e.Handled = true;
     }
 
     private void OnDragLeave(object sender, DragEventArgs e)
     {
-        IsDraggingOver = false;
+        DropHintOverlay.Visibility = Visibility.Collapsed;
     }
 
     private void OnFilesDropped(object sender, DragEventArgs e)
     {
-        IsDraggingOver = false;
+        DropHintOverlay.Visibility = Visibility.Collapsed;
         if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
         if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths) return;
-        OpenConvertWindow(paths);
+
+        AddToQueue(ExpandPaths(paths));
+        ShowTab("Active");
     }
 
-    private void OnPickFilesClick(object sender, RoutedEventArgs e)
+    private static IEnumerable<string> ExpandPaths(IEnumerable<string> paths)
     {
-        var dlg = new Microsoft.Win32.OpenFileDialog
-        {
-            Title = "변환할 파일 선택",
-            Multiselect = true,
-            Filter = "지원 파일|*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.tif;*.tiff;*.webp;*.avif;*.heic;*.heif;*.psd;*.dng;*.nef;*.cr2;*.cr3;*.arw;*.raf;*.orf;*.rw2;*.srw;*.pef;*.pdf;*.docx;*.doc;*.html;*.htm;*.hwp;*.hwpx|모든 파일|*.*",
-        };
-        if (dlg.ShowDialog(this) == true)
-        {
-            OpenConvertWindow(dlg.FileNames);
-        }
-    }
-
-    private void OpenConvertWindow(string[] paths)
-    {
-        var files = ExpandPaths(paths);
-        if (files.Count == 0) return;
-        var window = new ConvertWindow(((App)Application.Current).Engine, files) { Owner = this };
-        window.ShowDialog();
-    }
-
-    private static List<string> ExpandPaths(IEnumerable<string> paths)
-    {
-        var list = new List<string>();
         foreach (var p in paths)
         {
-            try
+            if (File.Exists(p)) yield return p;
+            else if (Directory.Exists(p))
             {
-                if (File.Exists(p)) list.Add(p);
-                else if (Directory.Exists(p))
-                    list.AddRange(Directory.EnumerateFiles(p, "*", SearchOption.TopDirectoryOnly));
+                foreach (var f in Directory.EnumerateFiles(p, "*", SearchOption.TopDirectoryOnly))
+                    yield return f;
             }
-            catch { }
         }
-        return list;
     }
 
-    private async void OnRegisterClick(object sender, RoutedEventArgs e)
+    private void AddToQueue(IEnumerable<string> paths)
     {
+        var existing = new HashSet<string>(_activeQueue.Select(q => q.SourcePath), StringComparer.OrdinalIgnoreCase);
+        foreach (var path in paths)
+        {
+            if (!File.Exists(path) || existing.Contains(path)) continue;
+            _activeQueue.Add(QueueItem.FromPath(path));
+        }
+        UpdateBadges();
+        UpdateProcessQueueButton();
+        UpdateActiveQueueVisibility();
+    }
+
+    private void OnRemoveQueueItem(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.Tag is QueueItem item)
+        {
+            _activeQueue.Remove(item);
+            UpdateBadges();
+            UpdateProcessQueueButton();
+            UpdateActiveQueueVisibility();
+        }
+    }
+
+    private void UpdateActiveQueueVisibility()
+    {
+        var hasItems = _activeQueue.Count > 0;
+        DropZoneEmpty.Visibility = hasItems ? Visibility.Collapsed : Visibility.Visible;
+        ActiveQueueScroll.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void UpdateBadges()
+    {
+        TabActiveBadge.Text = _activeQueue.Count.ToString(CultureInfo.InvariantCulture);
+        TabPreviewBadge.Text = "0";
+        var count = _pastResults.Sum(g => g.Entries.Count);
+        TabPastBadge.Text = count.ToString(CultureInfo.InvariantCulture);
+    }
+
+    private void UpdateProcessQueueButton()
+    {
+        var count = _activeQueue.Count;
+        if (_cts is not null)
+        {
+            ProcessQueueButton.Content = $"Processing… ({count} files)";
+            ProcessQueueButton.IsEnabled = false;
+        }
+        else if (count == 0)
+        {
+            ProcessQueueButton.Content = "Idle — drop files to begin";
+            ProcessQueueButton.IsEnabled = false;
+        }
+        else
+        {
+            ProcessQueueButton.Content = $"Process Queue ({count})";
+            ProcessQueueButton.IsEnabled = true;
+        }
+    }
+
+    // ============== Sidebar inputs ==============
+
+    private void OnQualityChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (QualityValueText is null) return;
+        QualityValueText.Text = $"{(int)e.NewValue}%";
+    }
+
+    private void OnConflictSegmentClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ToggleButton clicked) return;
+        ConflictSkipBtn.IsChecked = clicked == ConflictSkipBtn;
+        ConflictRenameBtn.IsChecked = clicked == ConflictRenameBtn;
+        ConflictReplaceBtn.IsChecked = clicked == ConflictReplaceBtn;
+        _conflictRule = (clicked.Tag as string) switch
+        {
+            "Skip" => NameCollision.Skip,
+            "Replace" => NameCollision.Overwrite,
+            _ => NameCollision.AppendNumber,
+        };
+    }
+
+    private void OnPickOutputFolderClick(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "출력 폴더 선택" };
+        if (dlg.ShowDialog(this) == true)
+            OutputPathTextBox.Text = dlg.FolderName;
+    }
+
+    private ConvertOptions BuildOptions()
+    {
+        var opts = new ConvertOptions
+        {
+            Quality = (int)QualitySlider.Value,
+            OnCollision = _conflictRule,
+        };
+
+        var custom = OutputPathTextBox.Text?.Trim();
+        if (!string.IsNullOrEmpty(custom))
+        {
+            opts.OutputLocation = OutputLocation.Custom;
+            opts.CustomOutputDirectory = custom;
+        }
+        else
+        {
+            opts.OutputLocation = OutputLocation.SubfolderBesideSource;
+        }
+
+        return opts;
+    }
+
+    // ============== Process queue ==============
+
+    // ============== Preview ==============
+
+    private QueueItem? _selectedPreviewItem;
+    private CancellationTokenSource? _previewCts;
+
+    private async void OnQueueRowClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement fe || fe.Tag is not QueueItem item) return;
+        _selectedPreviewItem = item;
+        ShowTab("Preview");
+        await LoadPreviewAsync(item);
+    }
+
+    private async Task LoadPreviewAsync(QueueItem item)
+    {
+        _previewCts?.Cancel();
+        _previewCts = new CancellationTokenSource();
+        var token = _previewCts.Token;
+
+        PreviewEmpty.Visibility = Visibility.Collapsed;
+        PreviewImage.Visibility = Visibility.Collapsed;
+        PreviewReason.Visibility = Visibility.Collapsed;
+        PreviewLoading.Visibility = Visibility.Visible;
+
+        PreviewFileName.Text = item.FileName;
+        PreviewFilePath.Text = item.SourcePath;
+        PreviewFormatText.Text = item.FormatLabel;
+        PreviewSizeText.Text = item.SizeText;
+        PreviewDimText.Text = "—";
+        PreviewPageText.Text = "—";
+
         try
         {
-            ContextMenuRegistrar.Register(((App)Application.Current).Engine);
-            ShowToast("컨텍스트 메뉴를 등록했습니다.\n파일 위에서 우클릭 → \"추가 옵션 표시\"에서 보입니다.");
-            await PopulateAsync();
+            var result = await PreviewService.CreateAsync(item.SourcePath, 720, token);
+            if (token.IsCancellationRequested) return;
+
+            PreviewLoading.Visibility = Visibility.Collapsed;
+
+            if (result.Image is not null)
+            {
+                PreviewImage.Source = result.Image;
+                PreviewImage.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                PreviewReasonText.Text = result.Reason ?? "미리보기를 생성하지 못했습니다.";
+                PreviewReason.Visibility = Visibility.Visible;
+            }
+
+            PreviewDimText.Text = result.Dimensions ?? "—";
+            PreviewPageText.Text = result.PageCount?.ToString() ?? "—";
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            PreviewLoading.Visibility = Visibility.Collapsed;
+            PreviewReasonText.Text = "미리보기 오류: " + ex.Message;
+            PreviewReason.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void OnPreviewOpenFolder(object sender, RoutedEventArgs e)
+    {
+        if (_selectedPreviewItem is null) return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"/select,\"{_selectedPreviewItem.SourcePath}\"",
+                UseShellExecute = true,
+            });
+        }
+        catch { }
+    }
+
+    // ============== Export Log ==============
+
+    private void OnExportLogClick(object sender, RoutedEventArgs e)
+    {
+        if (_pastResults.Count == 0)
+        {
+            MessageBox.Show(this, "저장할 이력이 없습니다.", "EverythingToJpeg",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dlg = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Export Log",
+            FileName = $"EverythingToJpeg-log-{DateTime.Now:yyyyMMdd-HHmmss}.csv",
+            DefaultExt = ".csv",
+            Filter = "CSV (*.csv)|*.csv|JSON (*.json)|*.json",
+        };
+        if (dlg.ShowDialog(this) != true) return;
+
+        try
+        {
+            if (dlg.FileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+                ExportJson(dlg.FileName);
+            else
+                ExportCsv(dlg.FileName);
+
+            MessageBox.Show(this, "저장되었습니다:\n" + dlg.FileName, "EverythingToJpeg",
+                MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show("등록 중 오류: " + ex.Message, "EverythingToJpeg",
+            MessageBox.Show(this, "저장 중 오류: " + ex.Message, "EverythingToJpeg",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
-    private async void OnUnregisterClick(object sender, RoutedEventArgs e)
+    private void ExportCsv(string path)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Date,Format,FileName,SourcePath,Size,Savings,Meta");
+        foreach (var group in _pastResults)
+            foreach (var row in group.Entries)
+                sb.AppendLine(string.Join(",",
+                    EscapeCsv(group.DateTitle),
+                    EscapeCsv(row.FormatLabel),
+                    EscapeCsv(row.FileName),
+                    EscapeCsv(row.SourcePath),
+                    EscapeCsv(row.SizeText),
+                    EscapeCsv(row.SavingsText),
+                    EscapeCsv(row.MetaLine)));
+        File.WriteAllText(path, sb.ToString(), System.Text.Encoding.UTF8);
+    }
+
+    private void ExportJson(string path)
+    {
+        var data = _pastResults.Select(g => new
+        {
+            date = g.DateTitle,
+            sessionSavings = HumanizeBytes(g.SessionSavingsBytes),
+            entries = g.Entries.Select(r => new
+            {
+                format = r.FormatLabel,
+                fileName = r.FileName,
+                sourcePath = r.SourcePath,
+                size = r.SizeText,
+                savings = r.SavingsText,
+                meta = r.MetaLine,
+            }),
+        });
+        File.WriteAllText(path,
+            System.Text.Json.JsonSerializer.Serialize(data,
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = true }),
+            System.Text.Encoding.UTF8);
+    }
+
+    private static string EscapeCsv(string? s)
+    {
+        s ??= "";
+        if (s.Contains('"') || s.Contains(',') || s.Contains('\n'))
+            return "\"" + s.Replace("\"", "\"\"") + "\"";
+        return s;
+    }
+
+    private async void OnProcessQueueClick(object sender, RoutedEventArgs e)
+    {
+        if (_activeQueue.Count == 0) return;
+
+        var snapshot = _activeQueue.ToList();
+        foreach (var item in snapshot) item.SetPending();
+
+        _cts = new CancellationTokenSource();
+        UpdateProcessQueueButton();
+
+        var engine = ((App)Application.Current).Engine;
+        var options = BuildOptions();
+
+        var reporter = new Progress<ConvertProgress>(p =>
+        {
+            for (var i = 0; i < snapshot.Count; i++)
+            {
+                if (i < p.Index) snapshot[i].SetState("done");
+                else if (i == p.Index) snapshot[i].SetState($"{(int)(p.FileProgress * 100)}%");
+                else snapshot[i].SetState("queued");
+            }
+        });
+
+        try
+        {
+            var sources = snapshot.Select(s => s.SourcePath).ToList();
+            var results = await engine.ConvertManyAsync(sources, options, reporter, _cts.Token);
+
+            foreach (var (item, result) in snapshot.Zip(results))
+            {
+                long outputSize = 0;
+                foreach (var p in result.OutputPaths)
+                {
+                    try { outputSize += new FileInfo(p).Length; } catch { }
+                }
+
+                AddToHistory(new HistoryEntry(
+                    Timestamp: DateTime.Now,
+                    SourcePath: item.SourcePath,
+                    SourceFormat: item.FormatLabel,
+                    SourceSizeBytes: item.SourceSizeBytes,
+                    OutputSizeBytes: outputSize,
+                    OutputCount: result.OutputPaths.Count,
+                    MetaLine: item.MetaLine,
+                    Status: result.Status,
+                    Message: result.Message));
+
+                _activeQueue.Remove(item);
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, "변환 중 오류: " + ex.Message, "EverythingToJpeg",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _cts = null;
+            UpdateBadges();
+            UpdateProcessQueueButton();
+            UpdateActiveQueueVisibility();
+            ApplyAppDataStats();
+            if (_activeQueue.Count == 0) ShowTab("Past");
+        }
+    }
+
+    // ============== History ==============
+
+    private void AddToHistory(HistoryEntry entry)
+    {
+        var label = FormatDateLabel(entry.Date);
+        var group = _pastResults.FirstOrDefault(g => g.DateTitle == label);
+        if (group is null)
+        {
+            group = new DateGroup(label);
+            _pastResults.Insert(0, group);
+        }
+        group.Add(HistoryRow.From(entry));
+    }
+
+    private void SeedDemoHistory()
+    {
+        var today = FormatDateLabel(DateOnly.FromDateTime(DateTime.Today));
+        var todayGroup = new DateGroup(today);
+        todayGroup.Add(new HistoryRow(
+            FormatLabel: "PNG", FormatBrush: (Brush)FindResource("FsFmtPng"),
+            FileName: "hero_background_final_v2.png",
+            MetaLine: "08:42:12 • 3200x1800",
+            SizeText: "14.2 MB",
+            SavingsText: "↓ 1.1 MB",
+            SourcePath: "<demo>"));
+        todayGroup.Add(new HistoryRow(
+            FormatLabel: "HEIC", FormatBrush: (Brush)FindResource("FsFmtHeic"),
+            FileName: "portrait_session_04.heic",
+            MetaLine: "08:35:45 • 4032x3024",
+            SizeText: "6.8 MB",
+            SavingsText: "↓ 2.4 MB",
+            SourcePath: "<demo>"));
+        todayGroup.SessionSavingsBytes = (long)(842.4 * 1024 * 1024);
+        _pastResults.Add(todayGroup);
+
+        var yesterday = FormatDateLabel(DateOnly.FromDateTime(DateTime.Today.AddDays(-1)));
+        var yGroup = new DateGroup(yesterday);
+        yGroup.Add(new HistoryRow(
+            FormatLabel: "PDF", FormatBrush: (Brush)FindResource("FsFmtPdf"),
+            FileName: "Q3_Full_Marketing_Deck_v12.pdf",
+            MetaLine: "17:22:10 • 124 Pages",
+            SizeText: "245.4 MB",
+            SavingsText: "↓ 12.8 MB",
+            SourcePath: "<demo>"));
+        yGroup.Add(new HistoryRow(
+            FormatLabel: "PNG", FormatBrush: (Brush)FindResource("FsFmtPng"),
+            FileName: "asset_bundle_archive_raw.png",
+            MetaLine: "16:45:33 • 8000x8000",
+            SizeText: "82.1 MB",
+            SavingsText: "↓ 4.5 MB",
+            SourcePath: "<demo>"));
+        yGroup.SessionSavingsBytes = (long)(3.1 * 1024 * 1024 * 1024);
+        _pastResults.Add(yGroup);
+
+        UpdateBadges();
+    }
+
+    private static string FormatDateLabel(DateOnly date)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var label = date == today ? "Today"
+            : date == today.AddDays(-1) ? "Yesterday"
+            : date.ToString("dddd", CultureInfo.GetCultureInfo("en-US"));
+        return $"{label}, {date:MMM d}";
+    }
+
+    private void ApplyAppDataStats()
+    {
+        var todayLabel = FormatDateLabel(DateOnly.FromDateTime(DateTime.Today));
+        var todayGroup = _pastResults.FirstOrDefault(g => g.DateTitle == todayLabel);
+
+        var processedToday = todayGroup?.Entries.Count ?? 0;
+        var allSavings = _pastResults.Sum(g => g.SessionSavingsBytes);
+
+        ProcessedTodayText.Text = processedToday.ToString("N0", CultureInfo.InvariantCulture);
+        SpaceSavedText.Text = HumanizeBytes(allSavings);
+    }
+
+    // ============== Top-bar actions ==============
+
+    private void OnRegisterClick(object sender, RoutedEventArgs e)
     {
         try
         {
-            ContextMenuRegistrar.Unregister(((App)Application.Current).Engine);
-            ShowToast("컨텍스트 메뉴를 해제했습니다.");
-            await PopulateAsync();
+            ContextMenuRegistrar.Register(((App)Application.Current).Engine);
+            MessageBox.Show(this,
+                "컨텍스트 메뉴를 등록했습니다.\n파일 우클릭 → \"추가 옵션 표시\" 또는 \"JPEG로 빠른 변환/변환…\".",
+                "EverythingToJpeg", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show("해제 중 오류: " + ex.Message, "EverythingToJpeg",
+            MessageBox.Show(this, "등록 중 오류: " + ex.Message, "EverythingToJpeg",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -261,13 +537,176 @@ public partial class MainWindow : FluentWindow, INotifyPropertyChanged
         window.ShowDialog();
     }
 
-    private void ShowToast(string message)
+    private void OnClearAllClick(object sender, RoutedEventArgs e)
     {
-        MessageBox.Show(this, message, "EverythingToJpeg",
-            MessageBoxButton.OK, MessageBoxImage.Information);
+        if (TabActiveBtn.IsChecked == true)
+        {
+            _activeQueue.Clear();
+        }
+        else if (TabPastBtn.IsChecked == true)
+        {
+            _pastResults.Clear();
+        }
+        UpdateBadges();
+        UpdateProcessQueueButton();
+        UpdateActiveQueueVisibility();
+        ApplyAppDataStats();
+    }
+
+    private void OnOpenFolderClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.Tag is string path && File.Exists(path))
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = $"/select,\"{path}\"",
+                    UseShellExecute = true,
+                });
+            }
+            catch { }
+        }
+    }
+
+    public static string HumanizeBytes(long bytes)
+    {
+        if (bytes <= 0) return "0 B";
+        string[] units = { "B", "KB", "MB", "GB", "TB" };
+        double size = bytes;
+        var unit = 0;
+        while (size >= 1024 && unit < units.Length - 1) { size /= 1024; unit++; }
+        return $"{size:0.#} {units[unit]}";
+    }
+}
+
+// ============================================================
+// View models
+// ============================================================
+
+public sealed class QueueItem : INotifyPropertyChanged
+{
+    private string _state = "queued";
+
+    public required string SourcePath { get; init; }
+    public required string FileName { get; init; }
+    public required string FormatLabel { get; init; }
+    public required Brush FormatBrush { get; init; }
+    public required string SizeText { get; init; }
+    public required string MetaLine { get; init; }
+    public required long SourceSizeBytes { get; init; }
+
+    public string StateText
+    {
+        get => _state;
+        set { _state = value; Raise(nameof(StateText)); }
+    }
+
+    public Brush StateBrush => _state switch
+    {
+        "queued" => (Brush)Application.Current.FindResource("FsTextTertiary"),
+        "done" => (Brush)Application.Current.FindResource("FsAccentGreen"),
+        _ => (Brush)Application.Current.FindResource("FsAccentBlue"),
+    };
+
+    public void SetPending() => StateText = "queued";
+    public void SetState(string s)
+    {
+        StateText = s;
+        Raise(nameof(StateBrush));
+    }
+
+    public static QueueItem FromPath(string path)
+    {
+        var ext = Path.GetExtension(path).TrimStart('.').ToLowerInvariant();
+        var (label, brushKey) = FormatPalette.For(ext);
+        long size = 0;
+        try { size = new FileInfo(path).Length; } catch { }
+
+        return new QueueItem
+        {
+            SourcePath = path,
+            FileName = Path.GetFileName(path),
+            FormatLabel = label,
+            FormatBrush = (Brush)Application.Current.FindResource(brushKey),
+            SizeText = MainWindow.HumanizeBytes(size),
+            MetaLine = $"{ext.ToUpperInvariant()} • {MainWindow.HumanizeBytes(size)}",
+            SourceSizeBytes = size,
+        };
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
-    private void OnPropertyChanged([CallerMemberName] string? name = null)
-        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    private void Raise([CallerMemberName] string? n = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
+}
+
+public sealed class DateGroup : INotifyPropertyChanged
+{
+    public string DateTitle { get; }
+    public ObservableCollection<HistoryRow> Entries { get; } = new();
+    public long SessionSavingsBytes { get; set; }
+    public string SessionSavingsText => $"Session Savings: {MainWindow.HumanizeBytes(SessionSavingsBytes)}";
+
+    public DateGroup(string dateTitle) { DateTitle = dateTitle; }
+
+    public void Add(HistoryRow row)
+    {
+        Entries.Insert(0, row);
+        SessionSavingsBytes += row.SavingsBytes;
+        Raise(nameof(SessionSavingsText));
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void Raise([CallerMemberName] string? n = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
+}
+
+public sealed record HistoryRow(
+    string FormatLabel,
+    Brush FormatBrush,
+    string FileName,
+    string MetaLine,
+    string SizeText,
+    string SavingsText,
+    string SourcePath,
+    long SavingsBytes = 0)
+{
+    public static HistoryRow From(HistoryEntry e)
+    {
+        var ext = Path.GetExtension(e.SourcePath).TrimStart('.').ToLowerInvariant();
+        var (label, brushKey) = FormatPalette.For(ext);
+        var saved = e.SavingsBytes;
+        var arrow = saved >= 0 ? "↓" : "↑";
+        return new HistoryRow(
+            FormatLabel: label,
+            FormatBrush: (Brush)Application.Current.FindResource(brushKey),
+            FileName: Path.GetFileName(e.SourcePath),
+            MetaLine: $"{e.Timestamp:HH:mm:ss} • {e.OutputCount} output(s)",
+            SizeText: MainWindow.HumanizeBytes(e.SourceSizeBytes),
+            SavingsText: $"{arrow} {MainWindow.HumanizeBytes(Math.Abs(saved))}",
+            SourcePath: e.SourcePath,
+            SavingsBytes: saved);
+    }
+}
+
+internal static class FormatPalette
+{
+    public static (string Label, string BrushKey) For(string ext) => ext switch
+    {
+        "pdf" => ("PDF", "FsFmtPdf"),
+        "png" => ("PNG", "FsFmtPng"),
+        "heic" or "heif" => ("HEIC", "FsFmtHeic"),
+        "jpg" or "jpeg" or "jpe" => ("JPG", "FsFmtJpg"),
+        "doc" or "docx" => ("DOCX", "FsFmtDocx"),
+        "html" or "htm" => ("HTML", "FsFmtHtml"),
+        "hwp" or "hwpx" => ("HWP", "FsFmtHwp"),
+        "gif" => ("GIF", "FsFmtGif"),
+        "tif" or "tiff" => ("TIFF", "FsFmtTiff"),
+        "webp" => ("WEBP", "FsFmtWebp"),
+        "bmp" => ("BMP", "FsFmtBmp"),
+        "raw" or "dng" or "nef" or "cr2" or "cr3" or "arw" or "raf" or "orf" or "rw2" or "srw" or "pef"
+            => ("RAW", "FsFmtRaw"),
+        _ => (ext.ToUpperInvariant(), "FsFmtOther"),
+    };
 }
