@@ -170,6 +170,26 @@
               <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
               <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
             </desktop5:ItemType>
+
+            <!-- HTML -->
+            <desktop5:ItemType Type=".html">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".htm">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+
+            <!-- HWP / HWPX -->
+            <desktop5:ItemType Type=".hwp">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".hwpx">
+              <desktop5:Verb Id="Quick"  Clsid="801B2DD3-632C-4731-9510-AEAE09345264"/>
+              <desktop5:Verb Id="Dialog" Clsid="CEBA1DB7-9175-4DF6-A362-490DEA49B598"/>
+            </desktop5:ItemType>
           </desktop4:FileExplorerContextMenus>
         </desktop4:Extension>
       </Extensions>

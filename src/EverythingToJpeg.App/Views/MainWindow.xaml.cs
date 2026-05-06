@@ -193,7 +193,7 @@ public partial class MainWindow : FluentWindow, INotifyPropertyChanged
         {
             Title = "변환할 파일 선택",
             Multiselect = true,
-            Filter = "지원 파일|*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.tif;*.tiff;*.webp;*.avif;*.heic;*.heif;*.psd;*.dng;*.nef;*.cr2;*.cr3;*.arw;*.raf;*.orf;*.rw2;*.srw;*.pef;*.pdf;*.docx;*.doc|모든 파일|*.*",
+            Filter = "지원 파일|*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.tif;*.tiff;*.webp;*.avif;*.heic;*.heif;*.psd;*.dng;*.nef;*.cr2;*.cr3;*.arw;*.raf;*.orf;*.rw2;*.srw;*.pef;*.pdf;*.docx;*.doc;*.html;*.htm;*.hwp;*.hwpx|모든 파일|*.*",
         };
         if (dlg.ShowDialog(this) == true)
         {

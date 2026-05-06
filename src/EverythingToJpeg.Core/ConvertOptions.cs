@@ -36,5 +36,13 @@ public sealed class ConvertOptions
 
     public string TransparencyBackground { get; set; } = "#FFFFFF";
 
+    public int HtmlViewportWidth { get; set; } = 1280;
+
+    public int? HtmlViewportHeight { get; set; }
+
+    public int HtmlWaitMilliseconds { get; set; } = 2000;
+
+    public bool HtmlFullPage { get; set; } = true;
+
     public static ConvertOptions Quick() => new();
 }

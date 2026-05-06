@@ -49,9 +49,9 @@ dotnet publish src\EverythingToJpeg.App\EverythingToJpeg.App.csproj `
 | PNG · BMP · JPEG · WebP · AVIF · PSD · TIFF · GIF · RAW(NEF/CR2/CR3/ARW/DNG/RAF/ORF/RW2/SRW/PEF) | ✅ 준비됨 | Magick.NET 14.x |
 | HEIC · HEIF | ✅ 준비됨 | PhotoSauce + libheif 디코드 |
 | PDF | ✅ 준비됨 | PDFtoImage(PDFium) |
+| HTML · HTM | ✅ 준비됨 | WebView2 헤드리스 + CDP `Page.captureScreenshot` 풀페이지 |
 | DOCX · DOC | ⚙ 외부 도구 필요 | Microsoft Word 또는 LibreOffice 자동 감지 |
-| HTML · HTM | 🕐 개발 중 | WebView2 헤드리스 캡처 예정 |
-| HWP · HWPX | 🕐 개발 중 | LibreOffice + H2Orestart 파이프라인 예정 |
+| HWP · HWPX | ⚙ 외부 도구 필요 | LibreOffice + [H2Orestart](https://github.com/ebandal/H2Orestart) 확장 |
 
 ## 기술 스택
 
@@ -64,8 +64,8 @@ dotnet publish src\EverythingToJpeg.App\EverythingToJpeg.App.csproj `
 | 단계 | 상태 | 내용 |
 |---|---|---|
 | Phase 1 | ✅ | 레지스트리 컨텍스트 메뉴 (Win11 "추가 옵션 표시"), 핵심 변환(이미지·HEIC·RAW·PDF·DOCX), Fluent UI |
-| Phase 2 | ✅ 빌드 가능 | C++ IExplorerCommand DLL, MSIX 패키징, 자체 서명 인증서, GitHub Releases 자동화 — `packaging/README.md` 참조 |
-| Phase 3 | 🕐 | HTML(WebView2), HWP/HWPX(LibreOffice + H2Orestart) 실구현 |
+| Phase 2 | ✅ | C++ IExplorerCommand DLL, MSIX 패키징, 자체 서명 인증서, GitHub Releases 자동화 — `packaging/README.md` 참조 |
+| Phase 3 | ✅ | HTML(WebView2), HWP/HWPX(LibreOffice + H2Orestart) 실구현 |
 
 ## 두 가지 사용 방식
 
