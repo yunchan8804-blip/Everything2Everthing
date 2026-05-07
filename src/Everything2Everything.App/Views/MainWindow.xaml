@@ -233,6 +233,36 @@
                             <TextBlock x:Name="CapabilityStatusText" Margin="0,0,0,12"
                                        Style="{StaticResource FsCaptionStyle}"
                                        TextWrapping="Wrap" Visibility="Collapsed"/>
+
+                            <!-- Conversion progress (shown only while processing) -->
+                            <StackPanel x:Name="ProcessingProgressPanel" Margin="0,0,0,12"
+                                        Visibility="Collapsed">
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="ProcessingFileLabel"
+                                               Style="{StaticResource FsCaptionStyle}"
+                                               Foreground="{StaticResource FsTextPrimary}"
+                                               TextTrimming="CharacterEllipsis"
+                                               Text="처리 중…"/>
+                                    <TextBlock x:Name="ProcessingCountLabel" Grid.Column="1"
+                                               Margin="8,0,0,0"
+                                               FontFamily="{StaticResource FsFontMono}" FontSize="11"
+                                               Foreground="{StaticResource FsAccentBlue}"
+                                               Text="0 / 0"/>
+                                </Grid>
+                                <ProgressBar x:Name="ProcessingProgressBar"
+                                             Height="6" Minimum="0" Maximum="100" Value="0"/>
+                                <TextBlock x:Name="ProcessingPercentLabel"
+                                           Margin="0,4,0,0"
+                                           FontFamily="{StaticResource FsFontMono}" FontSize="10"
+                                           Foreground="{StaticResource FsTextSecondary}"
+                                           HorizontalAlignment="Right"
+                                           Text="0%"/>
+                            </StackPanel>
+
                             <Button x:Name="ProcessQueueButton"
                                     Content="Idle — drop files to begin"
                                     Style="{StaticResource FsPrimaryButtonStyle}"

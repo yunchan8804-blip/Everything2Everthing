@@ -515,6 +515,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
         _cts = new CancellationTokenSource();
         UpdateProcessQueueButton();
+        ShowProcessingProgress(snapshot.Count);
 
         var engine = ((App)Application.Current).Engine;
         var options = BuildOptions();
@@ -527,6 +528,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
                 else if (i == p.Index) snapshot[i].SetState($"{(int)(p.FileProgress * 100)}%");
                 else snapshot[i].SetState("queued");
             }
+            UpdateProcessingProgress(p);
         });
 
         try
@@ -573,8 +575,39 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
             UpdateProcessQueueButton();
             UpdateActiveQueueVisibility();
             ApplyAppDataStats();
+            HideProcessingProgress();
             if (_activeQueue.Count == 0) ShowTab("Past");
         }
+    }
+
+    private void ShowProcessingProgress(int totalCount)
+    {
+        if (ProcessingProgressPanel is null) return;
+        ProcessingProgressPanel.Visibility = Visibility.Visible;
+        ProcessingProgressBar.Value = 0;
+        ProcessingPercentLabel.Text = "0%";
+        ProcessingCountLabel.Text = $"0 / {totalCount}";
+        ProcessingFileLabel.Text = "준비 중…";
+    }
+
+    private void UpdateProcessingProgress(ConvertProgress p)
+    {
+        if (ProcessingProgressPanel is null) return;
+        var total = Math.Max(1, p.Total);
+        var overall = ((p.Index + p.FileProgress) / total) * 100.0;
+        overall = Math.Clamp(overall, 0, 100);
+        ProcessingProgressBar.Value = overall;
+        ProcessingPercentLabel.Text = $"{overall:0.#}%";
+        ProcessingCountLabel.Text = $"{Math.Min(p.Index + 1, p.Total)} / {p.Total}";
+        ProcessingFileLabel.Text = string.IsNullOrEmpty(p.CurrentPath)
+            ? "처리 중…"
+            : Path.GetFileName(p.CurrentPath);
+    }
+
+    private void HideProcessingProgress()
+    {
+        if (ProcessingProgressPanel is null) return;
+        ProcessingProgressPanel.Visibility = Visibility.Collapsed;
     }
 
     // ============== History ==============
