@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 # MSIX 빌드 파이프라인.
 # 1) .NET App publish (framework-dependent)
 # 2) C++ Shell DLL 빌드

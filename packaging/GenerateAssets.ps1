@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 # packaging/Assets/ 의 placeholder 아이콘들을 생성한다.
 # 추후 진짜 로고로 교체.
 

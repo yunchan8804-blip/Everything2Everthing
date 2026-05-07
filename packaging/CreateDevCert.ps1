@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 # 자체 서명 코드 사이닝 인증서 생성 + PFX export.
 # Subject가 Package.appxmanifest 의 <Identity Publisher="..."> 와 정확히 일치해야 한다.
 

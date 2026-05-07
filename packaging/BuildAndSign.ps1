@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 # 한방에 빌드+자체서명: 인증서 자동 생성 → MSIX 빌드 → 서명까지 일관 처리.
 # 산출:
 #   - packaging/dist/Everything2Everything-x64.msix (서명됨)
@@ -65,4 +65,4 @@ Write-Host '       cd packaging'
 Write-Host "       .\Install-Everything2Everything.ps1 -PfxPath .\Everything2Everything-DevCert.pfx -MsixPath .\dist\Everything2Everything-x64.msix"
 Write-Host '     PFX 비밀번호:' $Password
 Write-Host ''
-Write-Host '  3. 우클릭 → JPEG로 빠른 변환 / JPEG로 변환… 이 메인 메뉴에 노출됨.'
+Write-Host '  3. 우클릭 → "Everything2Everything으로 변환" 카스케이드가 메인 메뉴에 직접 노출됨.'
