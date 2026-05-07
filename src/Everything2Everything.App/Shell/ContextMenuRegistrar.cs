@@ -17,12 +17,14 @@ internal static class ContextMenuRegistrar
         (".png",  "PNG (.png)",      "02"),
         (".webp", "WebP (.webp)",    "03"),
         (".pdf",  "PDF (.pdf)",      "04"),
-        (".txt",  "텍스트 (.txt) — OCR",  "05"),
-        (".docx", "Word (.docx) — OCR",  "06"),
-        (".avif", "AVIF (.avif)",    "07"),
-        (".gif",  "GIF (.gif)",      "08"),
-        (".tif",  "TIFF (.tif)",     "09"),
-        (".bmp",  "BMP (.bmp)",      "10"),
+        (".docx", "Word (.docx)",    "05"),
+        (".html", "HTML (.html)",    "06"),
+        (".md",   "Markdown (.md)",  "07"),
+        (".txt",  "텍스트 (.txt)",   "08"),
+        (".avif", "AVIF (.avif)",    "09"),
+        (".gif",  "GIF (.gif)",      "10"),
+        (".tif",  "TIFF (.tif)",     "11"),
+        (".bmp",  "BMP (.bmp)",      "12"),
     };
 
     public static void Register(ConversionEngine engine)

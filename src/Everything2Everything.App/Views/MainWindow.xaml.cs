@@ -812,16 +812,18 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
     private static readonly OutputFormatInfo[] AllFormats =
     {
-        new(".jpg",  "JPEG",        "JPG",  "FsFmtJpg"),
-        new(".png",  "PNG",         "PNG",  "FsFmtPng"),
-        new(".webp", "WebP",        "WEBP", "FsFmtWebp"),
-        new(".avif", "AVIF",        "AVIF", "FsFmtAvif"),
-        new(".bmp",  "BMP",         "BMP",  "FsFmtBmp"),
-        new(".tif",  "TIFF",        "TIF",  "FsFmtTiff"),
-        new(".gif",  "GIF",         "GIF",  "FsFmtGif"),
-        new(".pdf",  "PDF",         "PDF",  "FsFmtPdf"),
-        new(".txt",  "텍스트 (OCR)",  "TXT",  "FsFmtOther"),
-        new(".docx", "Word (OCR)",   "DOCX", "FsFmtDocx"),
+        new(".jpg",  "JPEG",     "JPG",  "FsFmtJpg"),
+        new(".png",  "PNG",      "PNG",  "FsFmtPng"),
+        new(".webp", "WebP",     "WEBP", "FsFmtWebp"),
+        new(".avif", "AVIF",     "AVIF", "FsFmtAvif"),
+        new(".bmp",  "BMP",      "BMP",  "FsFmtBmp"),
+        new(".tif",  "TIFF",     "TIF",  "FsFmtTiff"),
+        new(".gif",  "GIF",      "GIF",  "FsFmtGif"),
+        new(".pdf",  "PDF",      "PDF",  "FsFmtPdf"),
+        new(".docx", "Word",     "DOCX", "FsFmtDocx"),
+        new(".html", "HTML",     "HTML", "FsFmtHtml"),
+        new(".md",   "Markdown", "MD",   "FsFmtOther"),
+        new(".txt",  "텍스트",     "TXT",  "FsFmtOther"),
     };
 
     private bool _suppressFormatChanged;
