@@ -255,12 +255,21 @@
                                 </Grid>
                                 <ProgressBar x:Name="ProcessingProgressBar"
                                              Height="6" Minimum="0" Maximum="100" Value="0"/>
-                                <TextBlock x:Name="ProcessingPercentLabel"
-                                           Margin="0,4,0,0"
-                                           FontFamily="{StaticResource FsFontMono}" FontSize="10"
-                                           Foreground="{StaticResource FsTextSecondary}"
-                                           HorizontalAlignment="Right"
-                                           Text="0%"/>
+                                <Grid Margin="0,4,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="ProcessingPercentLabel"
+                                               FontFamily="{StaticResource FsFontMono}" FontSize="10"
+                                               Foreground="{StaticResource FsTextSecondary}"
+                                               VerticalAlignment="Center"
+                                               Text="0%"/>
+                                    <Button x:Name="CancelProcessingButton" Grid.Column="1"
+                                            Content="취소" Padding="10,2"
+                                            Style="{StaticResource FsSecondaryButtonStyle}"
+                                            Click="OnCancelProcessingClick"/>
+                                </Grid>
                             </StackPanel>
 
                             <Button x:Name="ProcessQueueButton"
@@ -407,6 +416,10 @@
                                                     <TextBlock Text="{Binding MetaLine}"
                                                                Style="{StaticResource FsCaptionStyle}"
                                                                Margin="0,2,0,0"/>
+                                                    <ProgressBar Height="3" Margin="0,4,0,0"
+                                                                 Minimum="0" Maximum="100"
+                                                                 Value="{Binding ProgressValue, Mode=OneWay}"
+                                                                 Visibility="{Binding ProgressVisibility, Mode=OneWay}"/>
                                                 </StackPanel>
                                                 <TextBlock Grid.Column="2" Text="{Binding SizeText}"
                                                            Style="{StaticResource FsMonoStyle}"

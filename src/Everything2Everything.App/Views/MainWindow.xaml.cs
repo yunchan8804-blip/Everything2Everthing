@@ -608,6 +608,24 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     {
         if (ProcessingProgressPanel is null) return;
         ProcessingProgressPanel.Visibility = Visibility.Collapsed;
+        if (CancelProcessingButton is not null)
+        {
+            CancelProcessingButton.IsEnabled = true;
+            CancelProcessingButton.Content = "취소";
+        }
+    }
+
+    private void OnCancelProcessingClick(object sender, RoutedEventArgs e)
+    {
+        if (_cts is null) return;
+        try { _cts.Cancel(); } catch { }
+        if (CancelProcessingButton is not null)
+        {
+            CancelProcessingButton.IsEnabled = false;
+            CancelProcessingButton.Content = "취소 중…";
+        }
+        if (ProcessingFileLabel is not null)
+            ProcessingFileLabel.Text = "취소 중…";
     }
 
     // ============== History ==============
@@ -971,6 +989,8 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 public sealed class QueueItem : INotifyPropertyChanged
 {
     private string _state = "queued";
+    private double _progressValue;
+    private Visibility _progressVisibility = Visibility.Collapsed;
 
     public required string SourcePath { get; init; }
     public required string FileName { get; init; }
@@ -993,11 +1013,38 @@ public sealed class QueueItem : INotifyPropertyChanged
         _ => (Brush)Application.Current.FindResource("FsAccentBlue"),
     };
 
-    public void SetPending() => StateText = "queued";
+    public double ProgressValue
+    {
+        get => _progressValue;
+        private set { _progressValue = value; Raise(nameof(ProgressValue)); }
+    }
+
+    public Visibility ProgressVisibility
+    {
+        get => _progressVisibility;
+        private set { _progressVisibility = value; Raise(nameof(ProgressVisibility)); }
+    }
+
+    public void SetPending()
+    {
+        StateText = "queued";
+        ProgressValue = 0;
+        ProgressVisibility = Visibility.Collapsed;
+        Raise(nameof(StateBrush));
+    }
+
     public void SetState(string s)
     {
         StateText = s;
         Raise(nameof(StateBrush));
+
+        if (s == "queued") { ProgressValue = 0; ProgressVisibility = Visibility.Collapsed; }
+        else if (s == "done") { ProgressValue = 100; ProgressVisibility = Visibility.Visible; }
+        else if (s.EndsWith('%') && double.TryParse(s.TrimEnd('%'), out var pct))
+        {
+            ProgressValue = pct;
+            ProgressVisibility = Visibility.Visible;
+        }
     }
 
     public static QueueItem FromPath(string path)
