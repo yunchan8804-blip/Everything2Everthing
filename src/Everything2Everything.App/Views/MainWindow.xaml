@@ -549,8 +549,8 @@
                                                                     BorderThickness="0"
                                                                     Padding="6"
                                                                     Click="OnOpenFolderClick"
-                                                                    Tag="{Binding SourcePath}"
-                                                                    ToolTip="원본 폴더 열기">
+                                                                    Tag="{Binding RevealPath}"
+                                                                    ToolTip="출력 파일이 있는 폴더 열기">
                                                                 <Path Width="14" Height="14" Stretch="Uniform"
                                                                       Stroke="{StaticResource FsTextTertiary}"
                                                                       StrokeThickness="2"

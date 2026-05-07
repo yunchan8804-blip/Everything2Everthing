@@ -11,11 +11,14 @@ public sealed record HistoryEntry(
     int OutputCount,
     string? MetaLine,
     ConvertStatus Status,
-    string? Message)
+    string? Message,
+    IReadOnlyList<string>? OutputPaths = null)
 {
     public long SavingsBytes => SourceSizeBytes - OutputSizeBytes;
 
     public DateOnly Date => DateOnly.FromDateTime(Timestamp);
+
+    public string? PrimaryOutputPath => OutputPaths is { Count: > 0 } list ? list[0] : null;
 }
 
 public sealed class HistoryStore

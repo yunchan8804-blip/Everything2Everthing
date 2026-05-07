@@ -557,7 +557,8 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
                     OutputCount: result.OutputPaths.Count,
                     MetaLine: item.MetaLine,
                     Status: result.Status,
-                    Message: result.Message));
+                    Message: result.Message,
+                    OutputPaths: result.OutputPaths.ToList()));
 
                 _activeQueue.Remove(item);
             }
@@ -1100,8 +1101,11 @@ public sealed record HistoryRow(
     string SizeText,
     string SavingsText,
     string SourcePath,
+    string? OutputPath = null,
     long SavingsBytes = 0)
 {
+    public string RevealPath => OutputPath ?? SourcePath;
+
     public static HistoryRow From(HistoryEntry e)
     {
         var ext = Path.GetExtension(e.SourcePath).TrimStart('.').ToLowerInvariant();
@@ -1116,6 +1120,7 @@ public sealed record HistoryRow(
             SizeText: MainWindow.HumanizeBytes(e.SourceSizeBytes),
             SavingsText: $"{arrow} {MainWindow.HumanizeBytes(Math.Abs(saved))}",
             SourcePath: e.SourcePath,
+            OutputPath: e.PrimaryOutputPath,
             SavingsBytes: saved);
     }
 }
