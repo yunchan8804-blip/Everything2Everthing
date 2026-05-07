@@ -93,7 +93,7 @@ public partial class App : Application
         {
             var options = ConvertOptions.Quick();
             var reporter = new Progress<ConvertProgress>(p => progress.Report(p));
-            var results = await Engine.ConvertManyAsync(files, ".jpg", options, reporter);
+            var results = await Engine.ConvertManyAsync(files, outputExtension, options, reporter);
 
             foreach (var r in results)
             {

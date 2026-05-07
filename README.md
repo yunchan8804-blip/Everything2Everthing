@@ -70,6 +70,8 @@ dotnet publish src\Everything2Everything.App\Everything2Everything.App.csproj `
 #### 메인 창
 파일을 드래그 & 드롭하거나 Ctrl+O. 사이드바의 **TARGET FORMAT** ComboBox는 **큐의 모든 파일이 변환 가능한 출력의 교집합**만 보여줍니다 (이종 입력을 섞으면 자동 필터링).
 
+**단일 파일로 결합** 체크박스 — 출력이 PDF/TIFF/GIF이고 큐가 2개 이상의 이미지일 때 활성화. 큐의 모든 이미지를 단일 다중 페이지 파일로 결합합니다 (예: 스크린샷 5장 → 1개 PDF).
+
 #### CLI
 
 ```powershell

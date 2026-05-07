@@ -102,6 +102,15 @@
                                 <TextBlock x:Name="OutputFormatHint" Margin="0,6,0,0"
                                            Style="{StaticResource FsCaptionStyle}"
                                            Text="모든 입력에서 변환 가능한 형식이 표시됩니다"/>
+                                <CheckBox x:Name="CombineToSingleCheck"
+                                          Margin="0,12,0,0"
+                                          Content="단일 파일로 결합 (큐 전체 → 한 파일)"
+                                          IsEnabled="False"
+                                          Checked="OnCombineToggleChanged"
+                                          Unchecked="OnCombineToggleChanged"/>
+                                <TextBlock x:Name="CombineHint" Margin="0,4,0,0"
+                                           Style="{StaticResource FsCaptionStyle}"
+                                           Text="PDF/TIFF/GIF 출력에 한해 큐의 이미지들을 한 파일로 결합합니다"/>
                             </StackPanel>
 
                             <!-- Encoding Quality -->

@@ -533,7 +533,10 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         {
             var sources = snapshot.Select(s => s.SourcePath).ToList();
             var outputExt = SelectedOutputExtension ?? ".jpg";
-            var results = await engine.ConvertManyAsync(sources, outputExt, options, reporter, _cts.Token);
+            var batchMode = (CombineToSingleCheck?.IsChecked == true)
+                ? BatchMode.CombineToSingle
+                : BatchMode.Independent;
+            var results = await engine.ConvertManyAsync(sources, outputExt, options, reporter, batchMode, _cts.Token);
 
             foreach (var (item, result) in snapshot.Zip(results))
             {
@@ -839,6 +842,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         UpdateOutputFormatBadge(keepExt);
         UpdateQualityPanelForFormat(keepExt);
         UpdateOutputDestHint(keepExt);
+        UpdateCombineState(keepExt);
 
         if (OutputFormatHint is not null)
         {
@@ -846,6 +850,35 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
                 ? "큐에 파일을 추가하면 변환 가능한 형식으로 자동 필터링됩니다"
                 : $"큐의 모든 파일이 변환 가능한 형식 ({visible.Count}개)";
         }
+    }
+
+    private void UpdateCombineState(string? extension)
+    {
+        if (CombineToSingleCheck is null || CombineHint is null) return;
+
+        var ext = extension ?? string.Empty;
+        var combinableOutput = ConversionEngine.CanCombine(ext);
+        var allInputsCombinable = _activeQueue.Count > 0
+            && _activeQueue.All(q => ConversionEngine.CanCombineInput(q.SourcePath));
+        var enabled = combinableOutput && allInputsCombinable && _activeQueue.Count >= 2;
+
+        CombineToSingleCheck.IsEnabled = enabled;
+        if (!enabled && CombineToSingleCheck.IsChecked == true)
+            CombineToSingleCheck.IsChecked = false;
+
+        CombineHint.Text = (combinableOutput, _activeQueue.Count) switch
+        {
+            (false, _) => "PDF/TIFF/GIF 출력일 때만 단일 파일 결합이 가능합니다",
+            (true, 0) => "PDF/TIFF/GIF 출력에 한해 큐의 이미지들을 한 파일로 결합합니다",
+            (true, 1) => "결합하려면 큐에 2개 이상의 이미지가 필요합니다",
+            (true, _) when !allInputsCombinable => "결합은 이미지 입력만 지원합니다 (PDF/DOCX 등 제외)",
+            _ => $"체크 시 큐의 {_activeQueue.Count}개 이미지를 단일 {ext.TrimStart('.').ToUpperInvariant()}로 결합",
+        };
+    }
+
+    private void OnCombineToggleChanged(object sender, RoutedEventArgs e)
+    {
+        UpdateCombineState(SelectedOutputExtension);
     }
 
     private void OnOutputFormatChanged(object sender, SelectionChangedEventArgs e)
