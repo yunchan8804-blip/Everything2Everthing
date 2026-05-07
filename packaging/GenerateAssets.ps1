@@ -49,8 +49,8 @@ function New-LogoPng {
 }
 
 Write-Host 'Generating placeholder logos…'
-New-LogoPng -Width 50  -Height 50  -Path (Join-Path $assetsDir 'StoreLogo.png')        -Label 'E2J'
-New-LogoPng -Width 44  -Height 44  -Path (Join-Path $assetsDir 'Square44x44Logo.png')  -Label 'E2J'
-New-LogoPng -Width 150 -Height 150 -Path (Join-Path $assetsDir 'Square150x150Logo.png')-Label 'E2J'
-New-LogoPng -Width 310 -Height 150 -Path (Join-Path $assetsDir 'Wide310x150Logo.png')  -Label 'EverythingToJpeg'
+New-LogoPng -Width 50  -Height 50  -Path (Join-Path $assetsDir 'StoreLogo.png')        -Label 'E2E'
+New-LogoPng -Width 44  -Height 44  -Path (Join-Path $assetsDir 'Square44x44Logo.png')  -Label 'E2E'
+New-LogoPng -Width 150 -Height 150 -Path (Join-Path $assetsDir 'Square150x150Logo.png')-Label 'E2E'
+New-LogoPng -Width 310 -Height 150 -Path (Join-Path $assetsDir 'Wide310x150Logo.png')  -Label 'Everything2Everything'
 Write-Host 'Done.'

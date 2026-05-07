@@ -1,4 +1,0 @@
-<Solution>
-  <Project Path="src/EverythingToJpeg.Core/EverythingToJpeg.Core.csproj" />
-  <Project Path="src/EverythingToJpeg.App/EverythingToJpeg.App.csproj" />
-</Solution>

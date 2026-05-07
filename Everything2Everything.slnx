@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/Everything2Everything.Core/Everything2Everything.Core.csproj" />
+  <Project Path="src/Everything2Everything.App/Everything2Everything.App.csproj" />
+</Solution>

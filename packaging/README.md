@@ -1,6 +1,6 @@
-# Phase 2 — MSIX 패키징
+# MSIX 패키징
 
-Win11 메인 우클릭 메뉴에 "JPEG로 빠른 변환" / "JPEG로 변환…"을 띄우는 정공법.
+Win11 메인 우클릭 메뉴에 "Everything2Everything: 빠른 변환 (JPEG)" / "Everything2Everything: 변환…"을 띄우는 정공법. 레지스트리 기반 카스케이드 메뉴는 [Portable EXE 방식](../README.md#a-portable-exe--가장-가벼움)을 참고하세요.
 
 ## 구성
 
@@ -11,18 +11,18 @@ packaging/
 ├── GenerateAssets.ps1             — placeholder PNG 일괄 생성
 ├── CreateDevCert.ps1              — 자체 서명 코드사이닝 인증서 생성 + PFX export
 ├── BuildMsix.ps1                  — .NET publish + C++ DLL 빌드 + makeappx + (선택) signtool
-└── Install-EverythingToJpeg.ps1   — 5대 PC 1회 설치 스크립트
+└── Install-Everything2Everything.ps1   — 5대 PC 1회 설치 스크립트
 ```
 
-C++ Shell DLL은 `src/EverythingToJpeg.Shell/` 에 있고 `BuildMsix.ps1` 안에서 자동 빌드됩니다.
+C++ Shell DLL은 `src/Everything2Everything.Shell/` 에 있고 `BuildMsix.ps1` 안에서 자동 빌드됩니다.
 
 ## 1회: 자체 서명 인증서 만들기
 
 ```powershell
 cd packaging
 .\CreateDevCert.ps1
-# Subject 기본값: CN=EverythingToJpegDev (Package.appxmanifest의 Publisher와 일치)
-# 비밀번호 입력 → EverythingToJpeg-DevCert.pfx 생성
+# Subject 기본값: CN=Everything2EverythingDev (Package.appxmanifest의 Publisher와 일치)
+# 비밀번호 입력 → Everything2Everything-DevCert.pfx 생성
 ```
 
 출력된 Thumbprint를 `BuildMsix.ps1 -CertThumbprint <값>` 으로 사용하거나, PFX 파일을 5대 PC에 복사해서 설치 시 사용합니다.
@@ -32,13 +32,13 @@ cd packaging
 ### 미서명 (Phase 1 그대로 사용 가능, 메인 메뉴 노출은 안 됨)
 ```powershell
 .\BuildMsix.ps1
-# 산출: packaging/dist/EverythingToJpeg-x64.msix
+# 산출: packaging/dist/Everything2Everything-x64.msix
 ```
 
 ### 서명
 ```powershell
 # 방법 1: PFX 사용
-.\BuildMsix.ps1 -Sign -PfxPath .\EverythingToJpeg-DevCert.pfx
+.\BuildMsix.ps1 -Sign -PfxPath .\Everything2Everything-DevCert.pfx
 
 # 방법 2: 인증서 저장소의 Thumbprint
 .\BuildMsix.ps1 -Sign -CertThumbprint AABBCCDD...
@@ -47,9 +47,9 @@ cd packaging
 ## 5대 PC 설치 (관리자 PowerShell)
 
 ```powershell
-.\Install-EverythingToJpeg.ps1 `
-    -PfxPath .\EverythingToJpeg-DevCert.pfx `
-    -MsixPath .\EverythingToJpeg-x64.msix
+.\Install-Everything2Everything.ps1 `
+    -PfxPath .\Everything2Everything-DevCert.pfx `
+    -MsixPath .\Everything2Everything-x64.msix
 ```
 
 스크립트가 자동으로:
@@ -64,7 +64,7 @@ cd packaging
 자체 서명 만들기조차 귀찮을 때:
 ```powershell
 # 개발자 모드 켜기: 설정 → 개인 정보 및 보안 → 개발자용 → 켜기
-Add-AppxPackage -AllowUnsigned -Path .\EverythingToJpeg-x64.msix
+Add-AppxPackage -AllowUnsigned -Path .\Everything2Everything-x64.msix
 ```
 > Win11 24H2부터 `-AllowUnsigned` 지원. 이전 버전은 자체 서명 권장.
 

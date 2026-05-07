@@ -4,8 +4,8 @@
 
 [CmdletBinding()]
 param(
-    [string]$Subject = 'CN=EverythingToJpegDev',
-    [string]$OutputPfx = (Join-Path $PSScriptRoot 'EverythingToJpeg-DevCert.pfx'),
+    [string]$Subject = 'CN=Everything2EverythingDev',
+    [string]$OutputPfx = (Join-Path $PSScriptRoot 'Everything2Everything-DevCert.pfx'),
     [securestring]$Password
 )
 
@@ -28,7 +28,7 @@ $cert = New-SelfSignedCertificate `
     -CertStoreLocation 'Cert:\CurrentUser\My' `
     -HashAlgorithm SHA256 `
     -NotAfter (Get-Date).AddYears(5) `
-    -FriendlyName 'EverythingToJpeg Dev'
+    -FriendlyName 'Everything2Everything Dev'
 
 Write-Host "Thumbprint: $($cert.Thumbprint)"
 Write-Host "Exporting PFX: $OutputPfx"

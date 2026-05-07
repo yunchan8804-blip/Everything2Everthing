@@ -25,8 +25,8 @@ $distDir = Join-Path $packagingDir 'dist'
 $manifestPath = Join-Path $packagingDir 'Package.appxmanifest'
 $assetsSrc = Join-Path $packagingDir 'Assets'
 
-$appProj = Join-Path $repoRoot 'src\EverythingToJpeg.App\EverythingToJpeg.App.csproj'
-$shellProj = Join-Path $repoRoot 'src\EverythingToJpeg.Shell\EverythingToJpeg.Shell.vcxproj'
+$appProj = Join-Path $repoRoot 'src\Everything2Everything.App\Everything2Everything.App.csproj'
+$shellProj = Join-Path $repoRoot 'src\Everything2Everything.Shell\Everything2Everything.Shell.vcxproj'
 
 function Find-WindowsSdkTool {
     param([string]$ToolName)
@@ -91,12 +91,12 @@ if (-not $nuget) {
 }
 
 $packagesDir = Join-Path $repoRoot 'packages'
-& $nugetCmd restore (Join-Path $repoRoot 'src\EverythingToJpeg.Shell\packages.config') -PackagesDirectory $packagesDir | Out-Host
+& $nugetCmd restore (Join-Path $repoRoot 'src\Everything2Everything.Shell\packages.config') -PackagesDirectory $packagesDir | Out-Host
 if ($LASTEXITCODE -ne 0) { throw 'NuGet restore 실패' }
 
 & $msbuild $shellProj /p:Configuration=$Configuration /p:Platform=$Platform /m /v:minimal | Out-Host
 if ($LASTEXITCODE -ne 0) { throw 'Shell build 실패' }
-$shellDll = Join-Path $repoRoot ("src\EverythingToJpeg.Shell\$Platform\$Configuration\EverythingToJpeg.Shell.dll")
+$shellDll = Join-Path $repoRoot ("src\Everything2Everything.Shell\$Platform\$Configuration\Everything2Everything.Shell.dll")
 if (-not (Test-Path $shellDll)) { throw "Shell DLL 산출물 없음: $shellDll" }
 
 # ---- 3) Layout 디렉토리 ----
@@ -118,7 +118,7 @@ Copy-Item -Path $manifestPath -Destination (Join-Path $layoutDir 'AppxManifest.x
 Write-Host ''
 Write-Host '[4/5] makeappx pack'
 if (-not (Test-Path $distDir)) { New-Item -ItemType Directory -Path $distDir | Out-Null }
-$msixPath = Join-Path $distDir ("EverythingToJpeg-$($Platform.ToLower()).msix")
+$msixPath = Join-Path $distDir ("Everything2Everything-$($Platform.ToLower()).msix")
 if (Test-Path $msixPath) { Remove-Item $msixPath -Force }
 & $makeappx pack /d $layoutDir /p $msixPath /o | Out-Host
 if ($LASTEXITCODE -ne 0) { throw 'makeappx pack 실패' }

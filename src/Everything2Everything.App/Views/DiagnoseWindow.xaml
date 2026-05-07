@@ -1,0 +1,32 @@
+<ui:FluentWindow x:Class="Everything2Everything.App.Views.DiagnoseWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 Title="진단"
+                 Width="640" Height="540"
+                 ExtendsContentIntoTitleBar="True"
+                 WindowBackdropType="Mica"
+                 WindowCornerPreference="Round"
+                 WindowStartupLocation="CenterOwner">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <ui:TitleBar Grid.Row="0" Title="진단"/>
+        <ScrollViewer Grid.Row="1" Margin="32,8,32,16" VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="ItemsPanel"/>
+        </ScrollViewer>
+        <Border Grid.Row="2" Padding="32,16"
+                Background="{DynamicResource LayerOnAcrylicFillColorDefaultBrush}"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <ui:Button Content="새로고침" Icon="{ui:SymbolIcon ArrowClockwise24}"
+                           Click="OnRefreshClick" Margin="0,0,8,0"/>
+                <ui:Button Content="닫기" Click="OnCloseClick" Appearance="Primary"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</ui:FluentWindow>

@@ -10,13 +10,13 @@
   IgnorableNamespaces="uap rescap desktop desktop4 desktop5 com">
 
   <Identity
-    Name="EverythingToJpeg.YunChan"
-    Publisher="CN=EverythingToJpegDev"
+    Name="Everything2Everything.YunChan"
+    Publisher="CN=Everything2EverythingDev"
     Version="1.0.0.0"
     ProcessorArchitecture="x64" />
 
   <Properties>
-    <DisplayName>EverythingToJpeg</DisplayName>
+    <DisplayName>Everything2Everything</DisplayName>
     <PublisherDisplayName>YunChan</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -31,12 +31,12 @@
   </Resources>
 
   <Applications>
-    <Application Id="EverythingToJpeg"
-                 Executable="EverythingToJpeg.exe"
+    <Application Id="Everything2Everything"
+                 Executable="Everything2Everything.exe"
                  EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
-        DisplayName="EverythingToJpeg"
-        Description="모든 파일을 JPEG로 변환"
+        DisplayName="Everything2Everything"
+        Description="이미지·PDF·문서·HTML 양방향 변환 매트릭스"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
@@ -47,12 +47,12 @@
         <!-- COM Surrogate Server: hosts the two IExplorerCommand handlers -->
         <com:Extension Category="windows.comServer">
           <com:ComServer>
-            <com:SurrogateServer DisplayName="EverythingToJpeg Shell Extension">
+            <com:SurrogateServer DisplayName="Everything2Everything Shell Extension">
               <com:Class Id="801B2DD3-632C-4731-9510-AEAE09345264"
-                         Path="EverythingToJpeg.Shell.dll"
+                         Path="Everything2Everything.Shell.dll"
                          ThreadingModel="STA" />
               <com:Class Id="CEBA1DB7-9175-4DF6-A362-490DEA49B598"
-                         Path="EverythingToJpeg.Shell.dll"
+                         Path="Everything2Everything.Shell.dll"
                          ThreadingModel="STA" />
             </com:SurrogateServer>
           </com:ComServer>

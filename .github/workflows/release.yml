@@ -64,32 +64,32 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: EverythingToJpeg-x64-msix
-          path: packaging/dist/EverythingToJpeg-x64.msix
+          name: Everything2Everything-x64-msix
+          path: packaging/dist/Everything2Everything-x64.msix
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
-          files: packaging/dist/EverythingToJpeg-x64.msix
+          files: packaging/dist/Everything2Everything-x64.msix
           generate_release_notes: true
           body: |
-            ## EverythingToJpeg
+            ## Everything2Everything
 
             모든 파일을 우클릭 한 번으로 JPEG 로 변환합니다.
 
             ### 설치 방법
-            1. 아래 `EverythingToJpeg-x64.msix` 다운로드.
+            1. 아래 `Everything2Everything-x64.msix` 다운로드.
             2. 관리자 PowerShell:
                ```powershell
                # 자체 서명 인증서를 신뢰 저장소에 등록 (PFX 별도 보유 필요)
                Import-PfxCertificate -CertStoreLocation Cert:\LocalMachine\TrustedPeople `
-                   -FilePath .\EverythingToJpeg-DevCert.pfx `
-                   -Password (ConvertTo-SecureString 'EverythingToJpegDev' -AsPlainText -Force)
+                   -FilePath .\Everything2Everything-DevCert.pfx `
+                   -Password (ConvertTo-SecureString 'Everything2EverythingDev' -AsPlainText -Force)
 
                # MSIX 사이드로드
-               Add-AppxPackage -Path .\EverythingToJpeg-x64.msix -ForceApplicationShutdown
+               Add-AppxPackage -Path .\Everything2Everything-x64.msix -ForceApplicationShutdown
                ```
             3. PNG/HEIC/PDF 등 파일 우클릭 → "JPEG로 빠른 변환" 또는 "JPEG로 변환…"
 

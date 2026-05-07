@@ -30,12 +30,12 @@ packaging/Layout/
 packaging/dist/
 
 # C++ project intermediate
-src/EverythingToJpeg.Shell/x64/
-src/EverythingToJpeg.Shell/Win32/
-src/EverythingToJpeg.Shell/Debug/
-src/EverythingToJpeg.Shell/Release/
-src/EverythingToJpeg.Shell/.vs/
-src/EverythingToJpeg.Shell/Everythi*/
+src/Everything2Everything.Shell/x64/
+src/Everything2Everything.Shell/Win32/
+src/Everything2Everything.Shell/Debug/
+src/Everything2Everything.Shell/Release/
+src/Everything2Everything.Shell/.vs/
+src/Everything2Everything.Shell/Everythi*/
 *.tlog
 *.obj
 *.pch
