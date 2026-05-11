@@ -274,13 +274,13 @@ public:
         *enumCommands = nullptr;
 
         std::vector<ComPtr<IExplorerCommand>> cmds;
-        cmds.reserve(11);
+        cmds.reserve(12);
         cmds.push_back(MakeSub(L"JPEG (.jpg)",          L"to jpg"));
         cmds.push_back(MakeSub(L"PNG (.png)",           L"to png"));
         cmds.push_back(MakeSub(L"WebP (.webp)",         L"to webp"));
         cmds.push_back(MakeSub(L"PDF (.pdf)",           L"to pdf"));
-        cmds.push_back(MakeSub(L"텍스트 (.txt) — OCR", L"to txt"));
-        cmds.push_back(MakeSub(L"Word (.docx) — OCR",  L"to docx"));
+        cmds.push_back(MakeSub(L"Word (.docx)",         L"to docx"));
+        cmds.push_back(MakeSub(L"텍스트 (.txt)",       L"to txt"));
         cmds.push_back(MakeSub(L"AVIF (.avif)",         L"to avif"));
         cmds.push_back(MakeSub(L"GIF (.gif)",           L"to gif"));
         cmds.push_back(MakeSub(L"TIFF (.tif)",          L"to tif"));
