@@ -14,6 +14,7 @@ public static class Everything2EverythingBootstrap
             new Converters.HeicProvider(magick),
             pdf,
             new Converters.DocxProvider(pdf),
+            new Converters.ExcelProvider(pdf),
             new Converters.HtmlProvider(),
             new Converters.HwpxProvider(),
             new Converters.OcrProvider(pdf),

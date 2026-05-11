@@ -38,5 +38,5 @@ Write-Host '[3/3] MSIX 패키지 설치…'
 Add-AppxPackage -Path $MsixPath -ForceApplicationShutdown
 
 Write-Host ''
-Write-Host '✅ 설치 완료. Win11 메인 우클릭 메뉴에 "JPEG로 빠른 변환" / "JPEG로 변환…" 항목이 보일 겁니다.'
+Write-Host '✅ 설치 완료. Win11 메인 우클릭 메뉴에 "Everything2Everything으로 변환" 카스케이드 메뉴가 보일 겁니다.'
 Write-Host '   (탐색기 재시작이 필요할 수 있음: 작업 관리자 → "Windows 탐색기" 다시 시작)'

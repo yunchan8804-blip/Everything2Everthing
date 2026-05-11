@@ -352,7 +352,7 @@ class __declspec(uuid("801B2DD3-632C-4731-9510-AEAE09345264"))
     : public CommandHandlerBase<QuickCommandHandler>
 {
 public:
-    static constexpr const wchar_t* Title() { return L"Everything2Everything: 빠른 변환 (JPEG)"; }
+    static constexpr const wchar_t* Title() { return L"Everything2Everything: 빠른 변환"; }
     static constexpr const wchar_t* Verb() { return L"quick"; }
 };
 

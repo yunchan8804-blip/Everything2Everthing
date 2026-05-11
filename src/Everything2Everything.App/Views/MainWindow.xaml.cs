@@ -93,7 +93,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         {
             Multiselect = true,
             Title = "변환할 파일 추가",
-            Filter = "지원 파일|*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.tif;*.tiff;*.webp;*.avif;*.heic;*.heif;*.psd;*.dng;*.nef;*.cr2;*.cr3;*.arw;*.raf;*.orf;*.rw2;*.srw;*.pef;*.pdf;*.docx;*.doc;*.html;*.htm;*.hwp;*.hwpx|모든 파일|*.*",
+            Filter = "지원 파일|*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.tif;*.tiff;*.webp;*.avif;*.heic;*.heif;*.psd;*.dng;*.nef;*.cr2;*.cr3;*.arw;*.raf;*.orf;*.rw2;*.srw;*.pef;*.pdf;*.docx;*.doc;*.xlsx;*.xls;*.xlsm;*.xlsb;*.csv;*.html;*.htm;*.hwp;*.hwpx|모든 파일|*.*",
         };
         if (dlg.ShowDialog(this) == true)
         {

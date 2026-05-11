@@ -1,6 +1,6 @@
 # MSIX 패키징
 
-Win11 메인 우클릭 메뉴에 "Everything2Everything: 빠른 변환 (JPEG)" / "Everything2Everything: 변환…"을 띄우는 정공법. 레지스트리 기반 카스케이드 메뉴는 [Portable EXE 방식](../README.md#a-portable-exe--가장-가벼움)을 참고하세요.
+Win11 메인 우클릭 메뉴에 "Everything2Everything으로 변환" 카스케이드 메뉴를 띄우는 정공법. 레지스트리 기반 카스케이드 메뉴는 [Portable EXE 방식](../README.md#a-portable-exe--가장-가벼움)을 참고하세요.
 
 ## 구성
 
@@ -57,7 +57,7 @@ cd packaging
 2. PFX를 `LocalMachine\Root` 에도 임포트 (체인 신뢰)
 3. `Add-AppxPackage` 로 MSIX 사이드로드
 
-설치 후 PNG/JPG/HEIC/PDF/DOCX 등을 우클릭하면 **메인 메뉴에 직접** "JPEG로 빠른 변환" / "JPEG로 변환…"이 보입니다.
+설치 후 PNG/JPG/HEIC/PDF/DOCX 등을 우클릭하면 **메인 메뉴에 직접** "Everything2Everything으로 변환" 카스케이드 메뉴가 보입니다.
 
 ## 미서명 사이드로드 (Phase 2 임시 사용)
 

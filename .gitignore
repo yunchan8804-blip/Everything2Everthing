@@ -47,6 +47,11 @@ src/Everything2Everything.Shell/Everythi*/
 # .NET artifacts dir from BuildMsix.ps1
 artifacts/
 
+# Legacy project folders (pre-pivot remnants)
+src/EverythingToJpeg.App/
+src/EverythingToJpeg.Core/
+src/EverythingToJpeg.Shell/
+
 # NuGet packages restore + nuget.exe cache
 packages/
 tools/
