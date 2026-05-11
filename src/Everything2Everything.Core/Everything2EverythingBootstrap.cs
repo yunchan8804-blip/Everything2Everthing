@@ -16,7 +16,9 @@ public static class Everything2EverythingBootstrap
             new Converters.DocxProvider(pdf),
             new Converters.ExcelProvider(pdf),
             new Converters.HtmlProvider(),
-            new Converters.HwpxProvider(),
+            new Converters.HwpxProvider(pdf),
+            new Converters.PdfToDocxProvider(),
+            new Converters.PptProvider(pdf),
             new Converters.OcrProvider(pdf),
         };
         return new ConversionEngine(new ProviderRegistry(providers));

@@ -8,7 +8,7 @@ public sealed class HwpxProvider : IConverterProvider
     private static readonly string[] HwpInputs = { ".hwp", ".hwpx" };
 
     private static readonly string[] HwpOutputs =
-        { ".pdf", ".png", ".jpg", ".jpeg", ".webp", ".avif", ".bmp", ".tif", ".tiff" };
+        { ".pdf", ".docx", ".png", ".jpg", ".jpeg", ".webp", ".avif", ".bmp", ".tif", ".tiff" };
 
     private readonly PdfProvider _pdfProvider;
 
@@ -24,7 +24,7 @@ public sealed class HwpxProvider : IConverterProvider
         DisplayName: "한글 문서 (HWP / HWPX)",
         SupportedConversions: ProviderCapability.PairsFromMatrix(HwpInputs, HwpOutputs),
         Status: ProviderStatus.RequiresExternal,
-        Summary: "한글(HWP/HWPX) 문서를 LibreOffice + H2Orestart로 PDF 변환 후 PDF 또는 페이지별 이미지로 저장합니다.",
+        Summary: "한글(HWP/HWPX) 문서를 LibreOffice + H2Orestart로 PDF/DOCX 변환 또는 페이지별 이미지로 저장합니다.",
         ExternalDependencies: new[]
         {
             new ExternalDependency(
@@ -67,6 +67,15 @@ public sealed class HwpxProvider : IConverterProvider
             return ConvertResult.Fail(sourcePath, "LibreOffice가 필요합니다.");
 
         var outExt = ConversionPair.Normalize(outputExtension);
+
+        // DOCX 출력: LibreOffice로 직접 DOCX 변환
+        if (outExt == ".docx")
+        {
+            return await ConvertToDocxAsync(soffice, sourcePath, outputDirectory, options, progress, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        // PDF 또는 이미지 출력: 기존 PDF 경유 방식
         var tempPdf = Path.Combine(Path.GetTempPath(),
             $"e2e_{Guid.NewGuid():N}_{Path.GetFileNameWithoutExtension(sourcePath)}.pdf");
 
@@ -74,7 +83,7 @@ public sealed class HwpxProvider : IConverterProvider
         {
             progress?.Report(0.05);
 
-            var converted = await ConvertWithLibreOfficeAsync(soffice, sourcePath, tempPdf, cancellationToken)
+            var converted = await ConvertWithLibreOfficeAsync(soffice, sourcePath, "pdf", tempPdf, cancellationToken)
                 .ConfigureAwait(false);
 
             if (!converted)
@@ -104,9 +113,50 @@ public sealed class HwpxProvider : IConverterProvider
         }
     }
 
-    private static async Task<bool> ConvertWithLibreOfficeAsync(string sofficePath, string sourcePath, string targetPdf, CancellationToken ct)
+    private static async Task<ConvertResult> ConvertToDocxAsync(
+        string soffice,
+        string sourcePath,
+        string outputDirectory,
+        ConvertOptions options,
+        IProgress<double>? progress,
+        CancellationToken cancellationToken)
     {
-        var outDir = Path.GetDirectoryName(targetPdf)!;
+        var baseName = Path.GetFileNameWithoutExtension(sourcePath);
+        var finalPath = OutputPathHelper.ResolveOutputPath(outputDirectory, baseName, null, ".docx", options.OnCollision);
+        if (OutputPathHelper.ShouldSkip(finalPath, options.OnCollision))
+            return ConvertResult.Skip(sourcePath, "기존 파일이 있어 건너뜁니다.");
+
+        progress?.Report(0.1);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), $"e2e_hwp2docx_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var tempDocx = Path.Combine(tempDir, baseName + ".docx");
+            var converted = await ConvertWithLibreOfficeAsync(soffice, sourcePath, "docx", tempDocx, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!converted)
+                return ConvertResult.Fail(sourcePath,
+                    "LibreOffice HWP → DOCX 변환에 실패했습니다. H2Orestart 확장이 정상 설치되어 있는지 확인하세요.");
+
+            progress?.Report(0.9);
+
+            File.Copy(tempDocx, finalPath, overwrite: options.OnCollision == NameCollision.Overwrite);
+            progress?.Report(1.0);
+            return ConvertResult.Ok(sourcePath, new[] { finalPath });
+        }
+        finally
+        {
+            try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { }
+        }
+    }
+
+    private static async Task<bool> ConvertWithLibreOfficeAsync(
+        string sofficePath, string sourcePath, string targetFormat, string targetPath, CancellationToken ct)
+    {
+        var outDir = Path.GetDirectoryName(targetPath)!;
         var psi = new ProcessStartInfo
         {
             FileName = sofficePath,
@@ -119,7 +169,7 @@ public sealed class HwpxProvider : IConverterProvider
         psi.ArgumentList.Add("--norestore");
         psi.ArgumentList.Add("--nofirststartwizard");
         psi.ArgumentList.Add("--convert-to");
-        psi.ArgumentList.Add("pdf");
+        psi.ArgumentList.Add(targetFormat);
         psi.ArgumentList.Add("--outdir");
         psi.ArgumentList.Add(outDir);
         psi.ArgumentList.Add(sourcePath);
@@ -139,14 +189,15 @@ public sealed class HwpxProvider : IConverterProvider
 
         if (proc.ExitCode != 0) return false;
 
-        var produced = Path.Combine(outDir, Path.GetFileNameWithoutExtension(sourcePath) + ".pdf");
+        var produced = Path.Combine(outDir,
+            Path.GetFileNameWithoutExtension(sourcePath) + "." + targetFormat);
         if (!File.Exists(produced)) return false;
 
-        if (!string.Equals(produced, targetPdf, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(produced, targetPath, StringComparison.OrdinalIgnoreCase))
         {
-            if (File.Exists(targetPdf)) File.Delete(targetPdf);
-            File.Move(produced, targetPdf);
+            if (File.Exists(targetPath)) File.Delete(targetPath);
+            File.Move(produced, targetPath);
         }
-        return File.Exists(targetPdf);
+        return File.Exists(targetPath);
     }
 }
