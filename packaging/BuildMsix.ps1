@@ -62,6 +62,14 @@ $msbuild = (& $vswhere -latest -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Objec
 if (-not $msbuild) { throw 'MSBuild를 찾지 못했습니다.' }
 Write-Host "msbuild: $msbuild"
 
+# ---- 0) 회귀 게이트: 테스트 실패 시 publish/패키징 중단 ----
+# 적대적 리뷰의 '최후 방어선' — 회귀가 MSIX/서명까지 새는 것을 막는다.
+Write-Host ''
+Write-Host '[0/5] 테스트 게이트 (dotnet test)'
+$testProj = Join-Path $repoRoot 'src\Everything2Everything.Tests\Everything2Everything.Tests.csproj'
+& dotnet test $testProj -c $Configuration | Out-Host
+if ($LASTEXITCODE -ne 0) { throw '테스트 실패 — publish/패키징을 중단합니다. 회귀를 먼저 수정하세요.' }
+
 # ---- 1) .NET App publish ----
 Write-Host ''
 Write-Host '[1/5] .NET App publish'
