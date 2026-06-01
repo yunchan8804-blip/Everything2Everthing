@@ -75,6 +75,14 @@ public partial class QuickProgressWindow : FluentWindow
             DoneIllustration.Visibility = Visibility.Visible;
             Height = 360;
         }
+        else
+        {
+            // 성공·실패 없이 전부 건너뜀(같은 형식·기존 파일 존재 등) — 멈춤처럼 보이지 않게 명확히 안내
+            PercentText.Text = "건너뜀";
+            StatusText.Text = skipped > 0
+                ? $"변환할 내용이 없어 건너뛰었습니다 ({skipped}개). '닫기'를 눌러 종료하세요."
+                : "처리할 항목이 없습니다.";
+        }
     }
 
     private void OnOpenFolderClick(object sender, RoutedEventArgs e)

@@ -27,14 +27,20 @@ public class FfmpegProviderTests
         Assert.NotNull(graph.FindBestPath(".mp4", ".webm")); // 영상 트랜스코딩
         Assert.NotNull(graph.FindBestPath(".wav", ".mp3"));  // 오디오 변환
         Assert.NotNull(graph.FindBestPath(".mp4", ".mp3"));  // 영상→오디오 추출
+        Assert.NotNull(graph.FindBestPath(".mp4", ".mp4"));  // 동일 포맷 재인코딩(압축) self-edge
+        Assert.NotNull(graph.FindBestPath(".mp3", ".mp3"));  // 동일 포맷 오디오 재인코딩 self-edge
     }
 
     [Fact]
-    public void Capability_DeclaresVideoAudioMatrix_NoSelfPairs()
+    public void Capability_DeclaresVideoAudioMatrix_WithReEncodeSelfPairs()
     {
         var caps = new FfmpegProvider().Capability.SupportedConversions;
         Assert.Contains(caps, c => c.InputExtension == ".mp4" && c.OutputExtension == ".mkv");
         Assert.Contains(caps, c => c.InputExtension == ".flac" && c.OutputExtension == ".mp3");
-        Assert.DoesNotContain(caps, c => c.InputExtension == c.OutputExtension); // 자기쌍 없음
+        // 동일 포맷 재인코딩(압축) self-edge: 비디오 컨테이너·오디오는 self-pair를 허용한다.
+        Assert.Contains(caps, c => c.InputExtension == ".mp4" && c.OutputExtension == ".mp4");
+        Assert.Contains(caps, c => c.InputExtension == ".wav" && c.OutputExtension == ".wav");
+        // gif는 self-edge에서 제외 — 이미지로 다뤄지며 ffmpeg 미설치 시 회귀를 막기 위함.
+        Assert.DoesNotContain(caps, c => c.InputExtension == ".gif" && c.OutputExtension == ".gif");
     }
 }

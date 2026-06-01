@@ -36,6 +36,11 @@ public sealed class FfmpegProvider : IConverterProvider
         pairs.AddRange(ProviderCapability.PairsFromMatrix(Audio, Audio, LossClass.Recode));
         pairs.AddRange(ProviderCapability.PairsFromMatrix(Video, Audio, LossClass.Recode)); // 영상 → 오디오 추출
         pairs.AddRange(ProviderCapability.PairsFromMatrix(Video, ImageFromVideo, LossClass.Rasterize)); // 영상 → 대표 프레임 이미지
+        // 동일 포맷 self-edge: 같은 컨테이너로 재인코딩(=압축). mp4→mp4로 6GB 8K를 줄이는 사용 사례.
+        // self-edge는 ProviderRegistry에서 '다른 형식으로 변환' 목록에선 제외되지만, 명시 요청 시 엔진이 실행한다.
+        // gif는 제외 — 이미지로도 다뤄지므로(Magick) ffmpeg 미설치 시 무해한 Skip이 하드 실패로 바뀌는 회귀를 막는다.
+        foreach (var v in Video) if (!string.Equals(v, ".gif", StringComparison.OrdinalIgnoreCase)) pairs.Add(new ConversionPair(v, v, LossClass.Recode));
+        foreach (var a in Audio) pairs.Add(new ConversionPair(a, a, LossClass.Recode));
         return pairs;
     }
 
@@ -83,13 +88,23 @@ public sealed class FfmpegProvider : IConverterProvider
                     : ConvertResult.Fail(sourcePath, "영상에서 프레임 추출에 실패했습니다.");
             }
 
-            // 진행률 best-effort: ffprobe로 길이를 알면 시간 기반 보고
+            // 진행률 best-effort + 코덱 선택용 해상도 파악: ffprobe로 길이·가로해상도 조회
             TimeSpan total = TimeSpan.Zero;
-            try { total = (await FFProbe.AnalyseAsync(sourcePath, ffOptions, cancellationToken).ConfigureAwait(false)).Duration; }
-            catch { /* 길이 미상이면 진행률 생략 */ }
+            int videoWidth = 0;
+            try
+            {
+                var info = await FFProbe.AnalyseAsync(sourcePath, ffOptions, cancellationToken).ConfigureAwait(false);
+                total = info.Duration;
+                videoWidth = info.PrimaryVideoStream?.Width ?? 0;
+            }
+            catch { /* 분석 실패 시 진행률·코덱은 기본값 사용 */ }
 
-            // GPU(NVENC) 가속은 H.264 컨테이너(mp4/mkv/mov)에만 적용 시도하고, 실패하면 CPU로 폴백
-            var tryGpu = options.VideoPreferGpu && (outExt is ".mp4" or ".mkv" or ".mov");
+            // H.264는 4096px 초과(>4K, 예: 8K 7680px)를 인코딩하지 못해 "encoder를 열 수 없음"으로 즉시 실패한다.
+            // → 고해상도 입력은 8K까지 지원하는 HEVC(H.265)로 인코딩한다.
+            var highRes = videoWidth > 4096;
+            var h264Container = outExt is ".mp4" or ".mkv" or ".mov";
+            // GPU(NVENC) 가속은 mp4/mkv/mov 컨테이너에만 적용 시도하고, 실패하면 CPU로 폴백
+            var tryGpu = options.VideoPreferGpu && h264Container;
 
             async Task<bool> RunAsync(bool gpu)
             {
@@ -97,7 +112,9 @@ public sealed class FfmpegProvider : IConverterProvider
                     .FromFileInput(sourcePath)
                     .OutputToFile(outPath, overwrite: true, o =>
                     {
-                        if (gpu) o.WithVideoCodec("h264_nvenc");
+                        if (gpu) o.WithVideoCodec(highRes ? "hevc_nvenc" : "h264_nvenc");
+                        else if (h264Container) o.WithVideoCodec(highRes ? "libx265" : "libx264");
+                        // webm/avi/gif 등 비(非) H.264/HEVC 컨테이너는 컨테이너 기본 코덱(vp9 등)을 사용
                     })
                     .CancellableThrough(cancellationToken);
                 if (total > TimeSpan.Zero)
