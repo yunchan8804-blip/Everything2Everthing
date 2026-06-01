@@ -26,6 +26,8 @@
     <PackageReference Include="PDFsharp" />
     <PackageReference Include="Svg.Skia" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Scrutor" />
   </ItemGroup>
 
   <ItemGroup>

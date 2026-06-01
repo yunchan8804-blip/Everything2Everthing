@@ -26,6 +26,8 @@
     <PackageVersion Include="PDFsharp" Version="6.2.0" />
     <PackageVersion Include="Svg.Skia" Version="5.0.0" />
     <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
+    <PackageVersion Include="Scrutor" Version="4.2.2" />
 
     <!-- App -->
     <PackageVersion Include="WPF-UI" Version="4.3.0" />
