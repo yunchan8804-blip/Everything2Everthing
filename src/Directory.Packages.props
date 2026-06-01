@@ -1,0 +1,39 @@
+<Project>
+
+  <!--
+    Central Package Management (CPM) — 모든 PackageReference 버전의 단일 출처(SSOT).
+    개별 .csproj는 Version 속성 없이 PackageReference만 선언하고, 버전은 여기서 통제한다.
+    (P0: Magick.NET-Q16-AnyCPU를 14.13.1로 통일 — 이전엔 Core 14.13.0 vs Tests 14.13.1 드리프트로
+     테스트와 프로덕션이 다른 네이티브 바이너리로 동작해 골든마스터의 신뢰 기반이 흔들렸음.)
+  -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Core -->
+    <PackageVersion Include="ClosedXML" Version="0.105.0" />
+    <PackageVersion Include="CsvHelper" Version="33.1.0" />
+    <PackageVersion Include="FFMpegCore" Version="5.4.0" />
+    <PackageVersion Include="Magick.NET-Q16-AnyCPU" Version="14.13.1" />
+    <PackageVersion Include="PDFtoImage" Version="5.2.1" />
+    <PackageVersion Include="PhotoSauce.MagicScaler" Version="0.15.0" />
+    <PackageVersion Include="PhotoSauce.NativeCodecs.Libheif" Version="1.19.5-preview1" />
+    <PackageVersion Include="Microsoft.Web.WebView2" Version="1.0.3912.50" />
+    <PackageVersion Include="DocumentFormat.OpenXml" Version="3.5.1" />
+    <PackageVersion Include="Markdig" Version="0.37.0" />
+    <PackageVersion Include="ReverseMarkdown" Version="4.6.0" />
+    <PackageVersion Include="PDFsharp" Version="6.2.0" />
+    <PackageVersion Include="Svg.Skia" Version="5.0.0" />
+    <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.8" />
+
+    <!-- App -->
+    <PackageVersion Include="WPF-UI" Version="4.3.0" />
+
+    <!-- Tests -->
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageVersion Include="xunit" Version="2.9.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+</Project>
