@@ -1,0 +1,252 @@
+[
+  {
+    "angle": "변환 그래프 코어 우선 — \"모든 변환은 엣지(edge)이고, 엔진은 라우터(router)다.\" Provider를 손으로 체이닝하는 대신, 모든 변환을 그래프의 단방향 엣지로 등록하고 멀티홉 경로 탐색(Dijkstra)이 N×M·다방향을 자동으로 합성하게 만든다. UI/AI/미디어/PDF/HWP는 전부 이 그래프 위에 '엣지를 더하는 것'으로 환원된다.",
+    "vision": "Everything2Everything의 북극성은 \"원자적 변환(atomic conversion)의 조합으로 임의의 A→Z를 자동 합성하는 변환 그래프 OS\"다.\n\n현재 코드의 가장 강력한 증거는 DocumentProvider.RouteAsync(DocumentProvider.cs:92-205)다. 이건 사람이 손으로 그린 Dijkstra다 — `md→docx`를 `md→html→docx`로, `docx→md`를 `docx→html→md`로 중첩 switch에 박아넣었다. 형식이 N개로 늘면 이 손그림 그래프는 O(N²)로 폭발하고, 새 형식 하나가 모든 분기를 건드린다. 비전의 핵심은 이 손그림을 '삭제'하고 엔진이 그래프 탐색으로 같은 경로를 '계산'하게 만드는 것이다.\n\n원칙은 세 가지다.\n(1) 모든 Provider는 '단일 홉 원자 변환'만 선언한다 (md→html, html→docx, png→pdf). 멀티홉은 절대 Provider 안에 손으로 짜지 않는다.\n(2) ProviderRegistry는 (input,output) 딕셔너리 룩업에서 → '방향 그래프(노드=확장자, 엣지=Provider×ConversionPair×손실가중치)'로 승격된다. 앱 시작 시 1회 그래프 빌드, Dijkstra 1회로 최적 경로를 푼다(NCSA Polyglot 모델, 외부 의존성 없는 자체 구현 80~120줄).\n(3) 손실은 가중치다. lossless=0, 컨테이너변환=0.05, lossy재인코딩=0.4, 래스터화=0.8. `-log(보존율)+홉페널티`로 손실 경로를 자연스럽게 회피하고, UI는 손실 경로에 '⚠ 손실' 배지를 붙인다.\n\n이 그래프가 코어가 되면 모든 신기능이 '엣지 추가'로 환원된다. FFmpeg = 미디어 엣지 수백 개, PDF 압축 = pdf→pdf 엣지(동일포맷도 엣지로 허용), HWP→DOCX = 이미 있는 LibreOffice 엣지, AI 요약/번역/캡션 = '신규 엣지(로컬 변환이 없는 페어)'. 그래프가 풍부해질수록 OutputsForInput은 1-hop 직접 출력(현 ProviderRegistry.cs:52-58)에서 → '도달 가능한 모든 포맷(transitive closure)'으로 폭발적으로 확장된다. 이것이 진짜 N×M·다방향의 의미다 — 매트릭스를 손으로 채우는 게 아니라, 작은 엣지들의 조합으로 매트릭스가 '발현'된다.",
+    "keyMoves": [
+      "ProviderRegistry를 그래프로 승격: _byPair 단일 룩업(ProviderRegistry.cs:6,43) 옆에 ConversionGraph(인접 리스트 Dictionary<string,List<Edge>>)를 빌드하고, 자체 Dijkstra FindBestPath(in,out,options)를 추가. 외부 라이브러리 없이 80~120줄, 단일 EXE/AOT 친화.",
+      "ConversionPair에 LossClass(Lossless/Container/Recode/Rasterize) 필드 추가 → 엣지 가중치의 단일 출처(SSOT). 충돌 시 _byPair.TryAdd의 '조용한 첫 등록자 우선'(ProviderRegistry.cs:22)을 비용/우선순위 기반 명시 선택 + 진단 경고로 교체.",
+      "ConversionEngine.ConvertOneAsync(ConversionEngine.cs:91)를 그래프 위임으로 전환: 직접 엣지가 없거나 더 싼 멀티홉이 있으면 ExecuteChainAsync가 경로의 각 홉을 순차 실행(중간 산출물은 DocumentProvider의 workDir 패턴을 공용 헬퍼로 승격해 재사용). 진행률은 홉 수로 분할 매핑.",
+      "DocumentProvider.RouteAsync의 손그림 멀티홉(:92-205)을 삭제 → DocumentProvider는 md→html, html→docx 같은 원자 엣지만 선언. md→docx는 엔진이 자동 합성. 이것이 그래프 코어의 첫 검증(dogfooding).",
+      "IConverterProvider 시그니처(IConverterProvider.cs:9-15)를 ConvertRequest/ConvertContext 객체로 일반화 — 다중 입력(N→1 결합), 비파일 결과(추출 텍스트·AI 응답·미디어 메타데이터), 멀티홉 중간 컨텍스트, 풍부한 진행률을 표현. ConvertResult(ConvertResult.cs:10)에 비파일 산출물 필드 추가.",
+      "CombineAsync의 ImageMagick 직접 의존(ConversionEngine.cs:2,164-257)을 IMultiInputProvider(N→1 엣지)로 분리 → 엔진의 라이브러리 결합 제거. 결합 가능 형식의 정적 HashSet(ConversionEngine.cs:14-23)을 Provider 능력 선언으로 통합.",
+      "ExternalProcessRunner 단일 추상화로 LibreOffice 호출 3중 복제(DocxProvider/HwpxProvider/DocumentProvider) 통합 + 타임아웃·stderr 수집·Kill. 이후 모든 외부 엣지(FFmpeg/Ghostscript/qpdf/Codex CLI)가 이 러너 하나를 공유.",
+      "ConvertOptions(ConvertOptions.cs:17-58)의 갓 오브젝트를 그래프 옵션(AllowMultiHop/MaxHops/AvoidLossy) + 형식별 옵션 백(IReadOnlyDictionary 또는 Provider 선언형 스키마)으로 분해 → 미디어 코덱·AI 프롬프트·PDF 압축 레벨을 담을 자리 확보.",
+      "AI는 '특수 엣지'일 뿐: IAiConverterProvider가 아니라 LlmProvider도 동일한 그래프 엣지로 편입(요약/번역/캡션은 로컬 변환이 없는 신규 페어). Codex non-interactive(codex exec --json)와 API 키(Microsoft.Extensions.AI IChatClient + DPAPI 키저장) 둘 다 동일 엣지의 백엔드 선택지로."
+    ],
+    "roadmap": [
+      {
+        "phase": "Phase 0",
+        "title": "그래프 코어 골격 — 손그림 Dijkstra를 진짜 Dijkstra로",
+        "goal": "ProviderRegistry를 변환 그래프로 승격하고, 멀티홉 경로 탐색을 엔진에 내장한다. 기능 추가 0, 순수 기반 재설계. DocumentProvider.RouteAsync 삭제로 그래프를 dogfooding 검증.",
+        "deliverables": [
+          "ConversionGraph 클래스: ProviderRegistry 생성자 루프(ProviderRegistry.cs:16-30)에서 인접 리스트(노드=확장자, Edge={Provider,ConversionPair,Weight}) 빌드",
+          "자체 Dijkstra FindBestPath(inExt,outExt,options) — 외부 의존성 0, 80~120줄, 최대 홉 수(기본 3) + 손실 블랙리스트 안전장치",
+          "ConversionPair에 LossClass 필드 추가 + 정적 가중치 테이블(lossless=0/container=0.05/recode=0.4/rasterize=0.8)",
+          "ConversionEngine.ConvertOneAsync를 그래프 위임으로 전환 + ExecuteChainAsync(홉 순차 실행, 공용 workDir 헬퍼, 진행률 분할)",
+          "DocumentProvider.RouteAsync(:92-205) 삭제 → 원자 엣지만 선언. md→docx 등 멀티홉이 엔진 합성으로 동일 동작함을 검증",
+          "_byPair.TryAdd 충돌(ProviderRegistry.cs:22)을 비용 기반 선택 + 진단 경고로 교체",
+          "xUnit 테스트 프로젝트 신설: 그래프 경로 탐색·손실 가중치·DocumentProvider 회귀를 순수 함수로 검증(현재 테스트 0개)"
+        ]
+      },
+      {
+        "phase": "Phase 1",
+        "title": "인터페이스 일반화 — 엣지가 무엇이든 표현 가능하게",
+        "goal": "IConverterProvider/ConvertResult/ConvertOptions를 일반화해 다중입력·비파일결과·형식별옵션을 표현. 미디어·AI·PDF 엣지가 들어올 '그릇'을 코어에 먼저 판다.",
+        "deliverables": [
+          "IConverterProvider 시그니처를 ConvertRequest/ConvertContext 객체로 일반화(IConverterProvider.cs:9-15) — 다중 입력, 미디어 메타데이터 프로빙, 멀티홉 컨텍스트",
+          "ConvertResult에 비파일 산출물 필드(추출 텍스트·메타데이터·중간 산출물) 추가(ConvertResult.cs:10)",
+          "ConvertOptions 분해: 그래프 옵션(AllowMultiHop/MaxHops/AvoidLossy) + 형식별 옵션 백(IReadOnlyDictionary) → 갓 오브젝트(ConvertOptions.cs:17-58) 해소",
+          "CombineAsync를 IMultiInputProvider(N→1 엣지)로 분리 → 엔진의 ImageMagick 직접 의존(ConversionEngine.cs:2) 제거, 결합 형식 정적 HashSet을 Provider 능력으로 통합",
+          "ExternalProcessRunner 단일 추상화(타임아웃+stderr수집+Kill) → LibreOffice 호출 3중 복제 통합",
+          "UI/CLI 도달성 노출: OutputsForInput을 transitive closure로 확장(ProviderRegistry.cs:52) → '이 파일로 만들 수 있는 모든 포맷'에 손실 배지 표시"
+        ]
+      },
+      {
+        "phase": "Phase 2",
+        "title": "엣지 폭발 1 — PDF·HWP 양방향 + 한글 문서",
+        "goal": "그래프에 PDF 조작 엣지와 한글 문서 양방향 엣지를 추가. 사용자 핵심 요구(PDF 압축, HWP→DOCX/PDF/HTML)를 그래프 합성으로 충족.",
+        "deliverables": [
+          "PdfToolProvider 신설: pdf→pdf 동일포맷 엣지 허용(압축/병합/분할/회전). 압축 3단계(PDFsharp 구조최적화 / PDFium+ImageMagick 재인코딩 / Ghostscript 외부폴백). 동일포맷 Skip(ConversionEngine.cs:88) 우회",
+          "PDF 역변환 엣지: DocumentProvider 입력에 .pdf 추가 → pdf→{docx,html,txt}(soffice), pdf→txt 무외부 폴백(PdfPig), pdf→md(pdf→html→md 자동 합성)",
+          "HWP/HWPX 출력 매트릭스 확장: HwpxProvider Hant Outputs에 .docx/.html/.txt/.odt 추가(soffice --convert-to 파라미터화), .hwp 입력에 --infilter 명시",
+          "ConvertOptions에 PdfCompress 옵션 그룹 추가, 한글 폰트(함초롬) 누락 감지 경고",
+          "역방향 HWP(→hwpx)는 hwpxlib 베스트에포트 엣지로 ComingSoon 등록(라이선스 격리: 외부 프로세스 분리 호출)"
+        ]
+      },
+      {
+        "phase": "Phase 3",
+        "title": "엣지 폭발 2 — 미디어·아카이브·범용 문서",
+        "goal": "FFmpeg 미디어 엣지 수백 개를 그래프에 주입. 능력 기반(capability predicate) 표현으로 N×M 조합 폭발을 회피하면서 '진짜 모든 것'에 근접.",
+        "deliverables": [
+          "FfmpegProvider: FFMpegCore(MIT) + LGPL 바이너리(RequiresExternal+자동 다운로드). 영상/오디오 N×M, HW 인코더 폴백, NotifyOnProgress→IProgress 직결, ExternalProcessRunner 재사용",
+          "능력 기반 엣지 표현: ffmpeg처럼 50×50=2500쌍이 비현실적인 백엔드는 PairsFromMatrix 대신 capability predicate로 그래프에 lazy 편입",
+          "ArchiveProvider(SharpCompress, 순수관리) + DataProvider(Parquet.Net/ClosedXML/CsvHelper) + 벡터(Svg.Skia) — EXE 번들 가능 순수 .NET 우선",
+          "PandocProvider(외부 CLI) — md/rst/latex/ipynb/epub 등 마크업 거대 매트릭스를 그래프에 합류, LibreOffice와 겹치는 페어는 비용 기반 우선순위로 라우팅",
+          "PreviewService를 IPreviewRenderer로 추상화(PreviewService.cs:23) + FFmpeg 프레임 추출 + 프리뷰 캐시"
+        ]
+      },
+      {
+        "phase": "Phase 4",
+        "title": "AI 엣지 + 헤드리스 자동화 + 플러그인",
+        "goal": "AI를 '그래프의 특수 엣지'로 편입(핵심 엔진이 아닌 부가 엣지). 헤드리스 CLI와 manifest 기반 외부 도구 어댑터로 확장을 코어 재컴파일 없이.",
+        "deliverables": [
+          "LlmProvider: Codex non-interactive(codex exec --skip-git-repo-check --json --output-schema) + API 키(Microsoft.Extensions.AI IChatClient, OpenAI/Anthropic 공식 SDK) 둘 다 백엔드 선택지. 요약/번역/캡션/메타데이터를 '로컬 변환 없는 신규 엣지'로 그래프 편입",
+          "ISettingsStore(DPAPI 암호화) 신설 → AI API 키·외부도구 경로·기본 옵션 영속화(현재 영속 상태는 history.jsonl 단 하나)",
+          "헤드리스 CLI 분리: CliRouter에 --json/--output-dir/--quality/--recursive 플래그(CliRouter.cs:21) + stdout JSON 결과 + exit code → AI/스크립트가 파싱 가능",
+          "manifest 기반 ExternalToolProvider 어댑터(CliWrap) — 새 외부 도구를 JSON manifest만으로 엣지 추가, 코어 재컴파일 0. 진짜 동적 .NET 플러그인은 collectible ALC로 후속",
+          "배치 병렬화(Parallel.ForEachAsync, ConversionEngine.cs:57) + ImageMagick ResourceLimits(decompression bomb 방어) + NuGet 취약점 경고 재활성화"
+        ]
+      }
+    ],
+    "biggestRisk": "그래프 코어 재설계가 '엔진은 깔끔해졌는데 사용자에게 보이는 변화가 0'인 상태로 Phase 0~1을 길게 끄는 '보이지 않는 리팩터링의 함정'이 가장 큰 위험이다. 그래프 엔진은 그 자체로는 데모할 게 없다 — DocumentProvider.RouteAsync를 삭제해도 사용자는 똑같은 md→docx를 볼 뿐이다. 완화책: (1) Phase 0를 '순수 기반'이 아니라 '즉시 가치'와 묶는다 — 그래프가 켜지는 순간 OutputsForInput이 transitive closure로 확장되어 '만들 수 있는 포맷 목록'이 눈에 띄게 늘어나는 것을 Phase 0 산출물에 포함시켜 가시적 성과를 만든다. (2) DocumentProvider.RouteAsync 삭제를 회귀 테스트로 강제 검증해 '그래프가 손그림과 동일 동작함'을 객관적으로 증명(테스트 0개인 현 상태가 이 검증의 선결 조건). (3) 멀티홉 손실 누적의 신뢰성 위험 — 잘못된 가중치는 lossy 경로를 최적으로 오판한다. 초기엔 '멀티홉은 직접 엣지가 없을 때만 발동' + MaxHops=3 + 손실 블랙리스트로 보수적으로 게이트하고, 동적 손실 측정(Versus식)은 처음부터 넣지 않는다. 2차 위험은 인터페이스 일반화(Phase 1)가 8개 기존 Provider를 전부 건드려 한 번에 깨질 수 있다는 점 — ConvertRequest 일반화는 기존 시그니처를 어댑터로 감싸 점진 마이그레이션하고, 무중단을 회귀 테스트로 보장한다."
+  },
+  {
+    "angle": "플러그인 생태계 우선 (Plugin-Ecosystem-First): 코어를 변환 호스트(host)로 축소하고, 모든 변환 능력을 선언적 manifest + 어댑터 Provider로 외부화한다. \"코드를 늘려 포맷을 늘리는\" 모델에서 \"manifest를 늘려 포맷을 늘리는\" 모델로 전환.",
+    "vision": "Everything2Everything을 단일 모놀리식 변환기가 아니라 \"변환 능력의 OS\"로 재정의한다. 코어는 더 이상 변환을 '아는' 주체가 아니라, 변환 능력을 선언받아 조합·라우팅·실행하는 얇은 호스트가 된다. 세상의 모든 변환 도구(FFmpeg/Ghostscript/Pandoc/LibreOffice/Calibre/qpdf/LLM)는 코드가 아닌 선언적 manifest(JSON)로 등록되며, 코어는 이 능력들을 방향 그래프로 합성해 manifest 작성자가 한 번도 명시하지 않은 멀티홉 경로(HWP→PDF→DOCX, PNG→PDF 압축→DOCX)까지 자동으로 발견한다. 결과적으로 새 포맷·새 도구 추가가 코어 재컴파일 없이 manifest 파일 하나로 끝나고, 커버리지가 manifest 수에 비례해 폭발적으로 증가한다. AI(Codex/LLM)조차 '특별한 기능'이 아니라 manifest로 선언된 또 하나의 어댑터일 뿐이며, 키가 없으면 그래프에서 자동으로 비활성 노드가 된다. 이것이 진정한 N×M×멀티홉 — 사람이 손으로 짠 switch가 아니라, 능력 선언의 자동 합성으로 달성하는 '변환 프로그램의 극한'이다.",
+    "keyMoves": [
+      "코어 분리 + 어댑터 베이스 추출: IConverterProvider를 Everything2Everything.Abstractions 별도 어셈블리로 분리(타입 동일성 보장)하고, 7개 in-box Provider의 외부 프로세스 호출 로직(현재 DocumentProvider.SofficeConvertAsync:238-281이 3개 Provider에 복붙됨)을 단일 ExternalToolProvider 추상 베이스 + ProcessRunner(CliWrap 기반, 타임아웃·stderr 수집·Kill 통합)로 통합. 이 베이스가 manifest 어댑터의 실행 엔진이 된다.",
+      "선언적 Manifest + 동적 등록 파이프라인: tools/*.manifest.json 스키마를 기존 ProviderCapability/ConversionPair/ExternalDependency 모양 그대로 직렬화한 형태로 정의. manifest는 (tool id, 실행파일 탐지 규칙, 입력×출력 매트릭스, argument 템플릿 {input}/{output}/{outdir}/{format}, 성공 판정, LossClass)를 선언. ManifestLoader가 런타임에 읽어 ExternalToolProvider 인스턴스로 합성. ProviderRegistry를 '닫힌 생성자'에서 Register/RegisterRange/Rebuild가 가능한 '증분 등록' 구조로 개조(현재 생성자 17-30행 인덱싱 로직을 private Index(provider)로 추출).",
+      "ProviderRegistry → ConversionGraph 승격 + 멀티홉 경로 탐색: 모든 Provider의 Capability.SupportedConversions를 순회해 방향 그래프(노드=확장자, 엣지=Provider+LossClass 가중치) 구축. 외부 의존성 없는 자체 Dijkstra(~100줄)로 최저손실 경로 탐색. ConversionEngine.ConvertOneAsync(91행)에서 직접 엣지가 없으면 그래프 탐색으로 폴백, 경로의 각 홉을 ExecuteChainAsync로 순차 실행(중간 산출물은 DocumentProvider의 workDir 패턴 재사용). DocumentProvider의 손으로 짠 RouteAsync switch는 '단일 홉 원자 변환'만 선언하도록 분해 → md→docx 같은 경로는 엔진이 자동 합성.",
+      "레지스트리 충돌 모델 교체: _byPair.TryAdd(22행)의 '조용한 first-wins'를 ProviderCapability.Priority 필드 + 명시적 다중 Provider 공존 모델로 교체. 같은 (input,output)에 빠른변환/고품질/AI 등 복수 전략을 등록하고 우선순위·진단으로 선택. 이로써 manifest 어댑터가 in-box Provider를 덮어쓰는 사고를 방지하고 변환 전략 다중화 가능.",
+      "ConvertRequest/ConvertResult 일반화 + 옵션 백 분해: IConverterProvider 시그니처를 단일 sourcePath/outputExtension(IConverterProvider.cs:9-15)에서 ConvertRequest(다중 입력·미디어 메타·옵션 백)/ConvertContext로 일반화. ConvertResult(현재 OutputPaths만, ConvertResult.cs:10)에 추출 텍스트·AI 응답·메타데이터 필드 추가. ConvertOptions 갓 오브젝트(11개 sub-record)를 manifest별 IReadOnlyDictionary 옵션 백으로 분해해 Video/Audio/Ai 옵션을 sub-record 증식 없이 수용.",
+      "AI는 또 하나의 manifest 어댑터: LlmProvider를 Microsoft.Extensions.AI(IChatClient) 추상화 위에 구축. 기본 경로는 API 키(OpenAI/Anthropic 공식 SDK), opt-in 보조 경로는 Codex CLI(codex exec --json --output-schema, PATH 감지 시만 활성). 키는 DPAPI(ProtectedData)로 암호화 저장하는 ISettingsStore 신설. CheckAvailabilityAsync가 키/CLI 부재 시 NotReady→그래프에서 자동 비활성 노드 처리. AI는 로컬 변환이 없는 신규 페어(요약/번역/캡션/메타데이터)에만 노출, UI에 'AI' 배지."
+    ],
+    "roadmap": [
+      {
+        "phase": "P0",
+        "title": "기반 해체 — 어댑터 베이스 + 증분 레지스트리 + 외부프로세스 통합",
+        "goal": "플러그인 아키텍처가 얹힐 '얇은 호스트' 토대를 만든다. 사용자 체감 변화는 없지만 이후 모든 단계의 전제조건. 동시에 가장 위험한 부채(타임아웃 없는 soffice, stderr 미수집, 3중 복붙)를 제거한다.",
+        "deliverables": [
+          "Everything2Everything.Abstractions 어셈블리 분리 (IConverterProvider/ProviderCapability/ConversionPair/ConvertResult 이전, 플러그인이 <Private>false>로 참조해 타입 동일성 보장)",
+          "ProcessRunner 추상화 (CliWrap 기반: 타임아웃 + stderr 수집 + 취소 시 Kill(true) 통합). DocumentProvider.SofficeConvertAsync(238-281)·HwpxProvider·DocxProvider의 복붙 제거",
+          "ExternalToolProvider 추상 베이스 추출 (manifest 어댑터와 in-box 외부도구 Provider의 공통 실행 엔진)",
+          "ProviderRegistry 증분 등록 개조: 생성자 인덱싱(17-30행)을 private Index(provider)로 추출 + public Register/RegisterRange/Rebuild 추가",
+          "Everything2Everything.Core.Tests (xUnit) 신설 + OutputPathHelper·ProviderRegistry·PairsFromMatrix 순수함수 회귀 테스트 (현재 테스트 0개)",
+          "ISettingsStore 도입 (DPAPI 암호화 JSON) — AI 키·도구 경로 영속화 토대"
+        ]
+      },
+      {
+        "phase": "P1",
+        "title": "선언적 Manifest 생태계 — 동적 등록으로 커버리지 폭발",
+        "goal": "내 관점의 핵심. 새 외부 도구를 코드 없이 manifest 한 장으로 등록하는 파이프라인을 완성하고, 이를 통해 FFmpeg(미디어)·qpdf/Ghostscript(PDF 압축)·Pandoc(학술문서)·Calibre(전자책)를 즉시 추가해 커버리지를 폭발시킨다.",
+        "deliverables": [
+          "tools/*.manifest.json 스키마 정의 (tool id, 탐지 규칙, 입력×출력 매트릭스, argument 템플릿, 성공판정, LossClass, ExternalDependency)",
+          "ManifestLoader + ExternalToolDetector 일반화 (TryFindFfmpeg/Pandoc/Qpdf/Ghostscript/CalibreEbookConvert를 manifest의 toolDetect 규칙으로 데이터화)",
+          "FFmpeg manifest (FFMpegCore + BtbN lgpl-shared 빌드, RequiresExternal + 최초사용 시 자동조달): 영상 mp4/mkv/webm/mov + 오디오 mp3/aac/opus/flac/wav N×M, NotifyOnProgress→IProgress 연결",
+          "PDF 압축/유틸 manifest: qpdf(Apache, 구조최적화) + PDFsharp(in-box, 병합/분할) + Ghostscript(사용자 설치 감지, 고급압축) 2계층. 'pdf→pdf 동일포맷'을 옵션으로 구분하는 PdfToolProvider",
+          "Pandoc + Calibre manifest (md/rst/latex/epub/mobi 등 마크업·전자책 매트릭스)",
+          "ConvertOptions 옵션 백 분해 (manifest별 IReadOnlyDictionary로 코덱/비트레이트/압축레벨 수용, sub-record 증식 차단)"
+        ]
+      },
+      {
+        "phase": "P2",
+        "title": "그래프 합성 — 진짜 멀티홉 N×M",
+        "goal": "manifest로 폭증한 노드들을 자동 합성해, 누구도 명시하지 않은 경로(HWP→PDF→DOCX, PNG→PDF→압축)를 엔진이 스스로 발견하게 한다. 양방향·다방향 극대화의 근본 해결.",
+        "deliverables": [
+          "ConversionGraph 신설 (Capability 순회로 방향 그래프 빌드, 노드=확장자/엣지=Provider+LossClass)",
+          "자체 Dijkstra 경로 탐색 (~100줄, 외부 의존성 0, 비용=−log(품질보존율)+홉페널티+실행비용). ConvertOptions에 AllowMultiHop/MaxHops/AvoidLossy 추가",
+          "ConversionEngine.ConvertOneAsync(91행) 멀티홉 폴백 + ExecuteChainAsync (중간 산출물 workDir 패턴 재사용, 진행률 홉 분할)",
+          "DocumentProvider.RouteAsync(92-205) 분해: 손으로 짠 switch 그래프 제거 → md→html/html→docx 같은 '단일 홉 원자 변환'만 선언, 멀티홉은 그래프가 자동 합성",
+          "레지스트리 충돌 모델 교체 (ProviderCapability.Priority + 다중 Provider 공존 + 충돌 진단, TryAdd 조용한 first-wins 폐기)",
+          "OutputsForInput을 transitive closure로 확장 — 'HWP 출력 가능 전체 포맷' UI 표시 + 손실 경로 경고 배지",
+          "배치 제한 병렬화 (Parallel.ForEachAsync, 현재 순차 for-loop:57-70 대체)"
+        ]
+      },
+      {
+        "phase": "P3",
+        "title": "AI 어댑터 + 한글/역변환 강화",
+        "goal": "AI를 manifest 생태계의 일급 시민으로 편입하고(특별 취급 없음), 한글 문서 양방향과 PDF 역변환의 실용 품질을 끌어올린다.",
+        "deliverables": [
+          "LlmProvider (Microsoft.Extensions.AI/IChatClient): OpenAI/Anthropic 공식 SDK 경로 + Codex CLI opt-in 경로(codex exec --json --output-schema)",
+          "ConvertOptions.Llm 옵션 백 + DPAPI 키 저장(ISettingsStore 활용) + 환경변수 fallback. CheckAvailability 게이트로 키 부재 시 그래프 자동 비활성",
+          "AI 변환 매트릭스: 요약/번역/포맷정규화/OCR교정(OcrProvider 출력 2단계 파이프)/이미지캡션/메타데이터(Structured Outputs). 로컬 변환 없는 신규 페어에만 노출 + 'AI' 배지",
+          "HWP→DOCX/HTML/TXT/ODT 정방향 확장 (LibreOffice 단일 엔진, HwpOutputs 배열에 .docx/.html/.txt/.odt 추가 + .hwp 입력 시 --infilter='Hwp2002_File')",
+          "PDF→DOCX/HTML/TXT 역변환 (DocumentProvider Inputs에 .pdf 추가 + soffice 경로, PdfPig 무외부 폴백)",
+          "함초롬/맑은고딕 폰트 누락 감지 경고 + JRE 미설치 안내 (HWP 레이아웃 깨짐 예방)"
+        ]
+      },
+      {
+        "phase": "P4",
+        "title": "헤드리스 CLI + ConvertRequest 일반화 + 배포",
+        "goal": "manifest 생태계를 자동화·스크립팅·AI 파이프라인에서 쓸 수 있게 개방하고, 외부 바이너리 번들 배포를 확립한다.",
+        "deliverables": [
+          "ConvertRequest/ConvertContext 일반화 (다중 입력 N→1, 미디어 메타 프로빙, 비파일 결과). ConvertResult에 ExtractedText/AiResponse/Metadata 필드",
+          "헤드리스 CLI 모드 분리 (stdout JSON + exit code + --quality/--output-dir/--json/--recursive 플래그). 현재 CLI는 WPF 창만 띄우고 stdout 무반환",
+          "워치폴더 모드 (FileSystemWatcher + 디바운스 + 파일잠금 재시도) — 핫폴더→큐 자동적재",
+          "BuildMsix.ps1 외부 바이너리 번들 파이프라인 (FFmpeg lgpl-shared 동봉 + 라이선스 고지, MSIX 용량/internetClient capability)",
+          "CI 강화 (NuGet 캐시 + self-contained portable EXE 산출 + 테스트 게이트)",
+          "UI MVVM 분해 + 선언형 옵션 스키마 기반 동적 옵션 UI 생성 (manifest가 옵션 스키마도 선언 → XAML 하드코딩 제거)"
+        ]
+      }
+    ],
+    "biggestRisk": "manifest 추상화의 '표현력 천장'과 멀티홉 신뢰성이 동시에 무너지는 것. (1) 선언적 argument 템플릿({input}/{output}/{format})은 단순 CLI 도구에는 완벽하지만, FFmpeg의 코덱별 HW가속 폴백(nvenc 실패→AV1)이나 조건부 인자처럼 '로직이 필요한' 변환은 manifest로 표현 불가능 — 결국 manifest 어댑터에 escape hatch(코드 후크)를 열어줘야 하고, 그 순간 '코드 없는 확장'이라는 핵심 약속이 부분적으로 깨진다. 경계 설계(어디까지 manifest, 어디부터 코드)를 P1에서 명확히 긋지 못하면 manifest가 또 다른 갓 오브젝트가 된다. (2) 멀티홉 그래프 합성은 강력하지만 품질 손실이 누적·은폐된다 — HWP→PDF(래스터화)→DOCX는 '편집가능 DOCX'를 약속하지만 실제로는 이미지 덩어리를 반환할 수 있다. LossClass 가중치가 부정확하면 사용자가 인지하지 못한 채 최악 경로를 탄다. 완화책: manifest는 '90% 도구(단순 CLI)'만 커버하고 복잡 로직 도구(FFmpeg/AI)는 명시적으로 in-box 코드 Provider로 유지하는 하이브리드를 P1부터 원칙으로 못박을 것, 그리고 멀티홉은 '직접 엣지가 없을 때만' 발동 + 손실 경로 UI 경고 배지 + MaxHops 제한 + 금지 전이 블랙리스트로 가드레일을 세 겹으로 두는 것."
+  },
+  {
+    "angle": "AI·미디어 기능 우선 — 사용자가 명시한 신규 가치(Codex/API AI 통합, 영상/오디오/PDF 압축, HWP 한글 변환)를 최단 경로로 출시하고, 그래프/레지스트리 리팩터링은 '그 기능을 켜기 위한 최소 인프라'로만 취급한다. 인프라 완성도가 아니라 사용자 체감 차별화가 북극성이다.",
+    "vision": "Everything2Everything을 '무엇이든 → 무엇이든, 그리고 변환하면서 더 좋아지는' 도구로 만든다. 핵심 차별화는 두 가지다. (1) 변환이 단순 포맷 치환이 아니라 'AI 부가가치 레이어'를 거친다 — 영상을 mp4로 바꾸면서 자동으로 자막을 뽑고, PDF를 압축하면서 OCR 오탈자를 LLM이 교정하고, HWP를 DOCX로 풀면서 요약·번역을 곁들인다. AI는 변환의 핵심 엔진이 아니라 '후처리 부가가치 단계'로 배치해, API 키가 없어도 모든 기존 변환은 100% 동작하고 AI 페어에만 '✨ AI' 배지가 붙는다. (2) 미디어를 1급 시민으로 — FFmpeg(영상/오디오 코덱·압축), Ghostscript/PDFsharp(PDF 압축), LibreOffice+H2Orestart(HWP→DOCX/PDF/HTML)를 외부 도구 분리-호출 모델로 합법적으로 통합해 '이미지 변환기'에서 '미디어·문서·AI 통합 변환기'로 카테고리를 점프시킨다. 멀티홉 그래프는 이 모든 걸 '손으로 짠 switch' 없이 자동 합성하는 배관일 뿐, 사용자에게는 '이 파일로 만들 수 있는 모든 포맷'이라는 풍부한 출력 목록과 '손실 변환' 경고 배지로만 드러난다. 즉 N×M 매트릭스 극대화 + AI 부가가치 = 경쟁 변환기가 흉내 못 내는 해자.",
+    "keyMoves": [
+      "ConvertContext/ConvertRequest 도입으로 IConverterProvider 시그니처 일반화 — 단일 sourcePath/단일 outputExtension/IProgress<double> 고정(IConverterProvider.cs:9-15)을 다중 입력·비파일 결과(추출 텍스트·AI 응답·미디어 메타데이터)·다단계 진행률을 담는 컨텍스트 객체로 교체. AI·미디어·압축 Provider가 요구하는 모든 표현을 인터페이스 레벨에서 한 번에 연다.",
+      "ConvertOptions 갓-오브젝트(ConvertOptions.cs)를 형식별 옵션 백으로 분해하고 Ai/Media/PdfCompress 옵션 그룹 신설 — 영상 코덱·CRF·fps, 오디오 비트레이트, AI 모델·프롬프트·온도·백엔드(openai|anthropic|codex-cli|auto), PDF 압축 레벨(Light/Strong/Max)을 담을 자리를 만들고 DPAPI 암호화 설정 영속화 계층(ISettingsStore)을 신설해 API 키·도구 경로를 안전 저장.",
+      "ProviderRegistry를 얇은 ConversionGraph로 승격 — _byPair 단일홉(ProviderRegistry.cs:6,43) 위에 인접 리스트 그래프를 얹고 외부 의존성 없는 자체 Dijkstra(80~120줄, 비용=손실가중+홉페널티)로 멀티홉 경로를 자동 합성. DocumentProvider.RouteAsync(DocumentProvider.cs:92-205)의 손으로 짠 md→html→docx switch를 '원자 변환 선언 + 엔진 자동 합성'으로 대체해 형식 추가 시 O(N²) 수동 증식을 제거.",
+      "공통 ExternalProcessRunner + 외부 도구 어댑터 추상화 신설 — 3곳에 복붙된 LibreOffice 호출(DocumentProvider/DocxProvider/HwpxProvider)을 타임아웃·stderr 수집·Kill 통합 단일 러너로 합치고, FFmpeg·Ghostscript·qpdf·codex CLI를 manifest 기반으로 동일 패턴 재사용. 신규 외부 도구 추가가 보일러플레이트 복붙 없이 끝나게.",
+      "신규 1급 Provider 4종 추가 — LlmProvider(요약·번역·캡션·OCR교정·메타데이터, MEAI IChatClient 추상화 + Codex CLI opt-in), FfmpegProvider(영상/오디오 N×M 코덱·압축, RequiresExternal + LGPL 빌드 자동조달), PdfToolProvider(PDF→PDF 압축/병합/분할, PDFsharp in-process + gs 고급압축 폴백), 그리고 DocumentProvider 출력 매트릭스 확장으로 HWP→DOCX/HTML/TXT/PDF 완성.",
+      "배치 병렬화 + 헤드리스 CLI — 순차 for-loop(ConversionEngine.cs:57-70)를 Parallel.ForEachAsync로 교체(AI 왕복·영상 트랜스코딩의 치명적 병목 해소)하고, stdout JSON + exit code + 옵션 플래그(--quality/--prompt/--codec/--json)를 받는 headless 모드를 분리해 AI 스크립팅·배치 자동화를 가능케.",
+      "ImageMagick ResourceLimits 전역 설정 + decompression bomb 방어 + NuGet 취약점 경고(NU190x) 재활성화 — AI/미디어로 공격면이 커지는 만큼 외부 미디어 파싱 라이브러리(WebView2/OpenXML/Magick/FFmpeg)의 위험을 횡단적으로 차단."
+    ],
+    "roadmap": [
+      {
+        "phase": "Phase 0",
+        "title": "AI·미디어를 담을 그릇 만들기 (Enablement, 1~1.5주)",
+        "goal": "신규 기능을 끼워넣기 전, 인터페이스·옵션·설정·프로세스 실행이라는 4개 병목을 최소한으로 일반화한다. 이 단계 자체는 사용자에게 안 보이지만, 이걸 건너뛰면 AI/미디어 Provider가 또 하드코딩 switch로 변질된다.",
+        "deliverables": [
+          "IConverterProvider를 ConvertContext(다중 입력·CancellationToken·다단계 IProgress) + ConvertRequest로 일반화하고, 기존 7개 Provider를 어댑터로 무중단 마이그레이션 (IConverterProvider.cs:9-15)",
+          "ConvertResult에 비파일 결과 필드 추가 — ExtractedText, AiResponse, Metadata(Dictionary), IntermediateArtifacts (ConvertResult.cs:10)",
+          "ConvertOptions 분해 + 신규 옵션 그룹 Ai/Media/PdfCompress 골격 추가 (ConvertOptions.cs)",
+          "ISettingsStore 신설 — DPAPI(ProtectedData) 암호화 JSON으로 API 키·LibreOffice/FFmpeg/gs 경로·기본 출력 형식 영속화 (현재 history.jsonl 외 영속 상태 전무)",
+          "공통 ExternalProcessRunner 추상화 — 타임아웃·stderr 수집·Kill 통합, DocumentProvider.SofficeConvertAsync(238-281) 등 3중 복제를 흡수"
+        ]
+      },
+      {
+        "phase": "Phase 1",
+        "title": "헤드라인 기능 1탄: PDF 압축 + HWP 한글 변환 (가장 빠른 체감 가치, 1.5~2주)",
+        "goal": "외부 의존성이 이미 검증된(LibreOffice) 영역부터 친다. PDF 압축은 사용자가 명시한 핵심 목표이고, HWP→DOCX/PDF/HTML은 기존 코드 확장만으로 절반이 완성된다 — 최소 노력 대비 최대 차별화.",
+        "deliverables": [
+          "PdfToolProvider 신설 — .pdf→.pdf 압축(Light=PDFsharp/qpdf 구조최적화, Strong=PDFium 렌더+Magick 재인코딩, Max=Ghostscript /screen 외부폴백) + 병합/분할. PdfProvider의 렌더 로직·ApplyEncoding 재사용",
+          "DocumentProvider 출력 매트릭스에 .pdf 추가 + HWP/HWPX → DOCX/HTML/TXT/PDF 완성 (soffice --convert-to 파라미터화, .hwp에 --infilter=\"Hwp2002_File\" 조건부 지정)",
+          "PDF → DOCX/HTML/TXT 역변환 — DocumentProvider Inputs에 .pdf 추가(soffice가 Draw로 열어 변환) + PdfPig 무외부 txt 폴백",
+          "Ghostscript/qpdf를 ExternalToolDetector로 감지(미설치 시 NotReady) — AGPL 전염 회피, LibreOffice 패턴 그대로",
+          "ImageMagick ResourceLimits 전역 설정 + NU190x 경고 재활성화 (보안 횡단)"
+        ]
+      },
+      {
+        "phase": "Phase 2",
+        "title": "헤드라인 기능 2탄: 미디어 레이어 (영상·오디오 코덱·압축, 2~2.5주)",
+        "goal": "FFmpeg로 카테고리를 '미디어 변환기'로 점프시킨다. 이게 경쟁 이미지 변환기와의 가장 가시적인 차별화이자 사용자가 명시한 영상/오디오/압축 요구의 본체.",
+        "deliverables": [
+          "FfmpegProvider 신설 — FFMpegCore(MIT) + 영상(mp4/mkv/webm/mov/avi/gif)·오디오(mp3/aac/m4a/opus/flac/wav) N×M 매트릭스, HW 인코더(nvenc/qsv/amf) 우선 + LGPL 빌드 SW 폴백",
+          "바이너리 조달 — ExternalToolDetector.TryFindFfmpeg + %LOCALAPPDATA% 자동 다운로드(BtbN lgpl-shared, 라이선스 안전), GlobalFFOptions 경로 고정",
+          "진행률·취소 — FFprobe duration 기반 NotifyOnProgress를 다단계 IProgress에 연결, CancellableThrough(ct)로 취소 직결",
+          "PreviewService에 영상 프레임 추출(FFmpeg) case 추가 + IPreviewRenderer 추상화 + 프리뷰 캐시 (현재 mp4 입력 시 MagickImage 예외)",
+          "배치 병렬화 — ConvertManyAsync 순차 for-loop를 Parallel.ForEachAsync로 교체 (영상 트랜스코딩 병목 해소, ConvertOptions에 MaxDegreeOfParallelism)"
+        ]
+      },
+      {
+        "phase": "Phase 3",
+        "title": "헤드라인 기능 3탄: AI 부가가치 레이어 (Codex OAuth + API, 2~2.5주)",
+        "goal": "변환에 'AI가 더 좋게 만든다'는 해자를 얹는다. 기본은 API 키 + 공식 SDK, Codex CLI는 구독자용 opt-in 보조 경로. 키가 없으면 AI 페어만 비활성, 기존 변환은 무영향.",
+        "deliverables": [
+          "LlmProvider 신설 — MEAI IChatClient 추상화로 OpenAI/Anthropic 연결 + Codex CLI 감지 시 opt-in 백엔드(codex exec --json --output-schema)",
+          "AI 변환 매트릭스 — 요약(pdf/docx/txt→txt/md), 번역(→대상언어), OCR교정(OcrProvider 출력 2단계 파이프라인), 이미지 캡션(png/jpg→txt 비전), 메타데이터 생성(→json Structured Output)",
+          "키 관리 — ISettingsStore DPAPI 암호화 저장 + OPENAI_API_KEY/ANTHROPIC_API_KEY 환경변수 폴백, CheckAvailabilityAsync가 키/codex --version 게이트",
+          "UI — AI 출력 페어에 '✨ AI' 배지(종량과금·네트워크 명시) + 설정에서 백엔드/모델/키 입력, 등록 순서로 'AI는 로컬 변환 없는 신규 페어에만 노출'",
+          "헤드리스 CLI 확장 — --prompt/--codec/--quality/--json 플래그로 AI·미디어 스크립팅 가능"
+        ]
+      },
+      {
+        "phase": "Phase 4",
+        "title": "멀티홉 그래프로 매트릭스 자동 극대화 (1.5~2주)",
+        "goal": "앞 단계에서 쌓인 모든 원자 변환을 그래프가 자동 합성해 '진짜 N×M·다방향'을 완성한다. AI/미디어가 먼저 들어와 있어야 그래프의 가치가 폭발한다 (예: hwp→pdf→png, video→mp3→txt(AI전사)).",
+        "deliverables": [
+          "ConversionGraph 신설 — Provider Capability 순회로 인접 리스트 빌드 + 자체 Dijkstra(비용=손실가중+홉페널티), 직접 엣지 우선·최대 홉 3·손실 블랙리스트 안전장치",
+          "ConvertOptions에 AllowMultiHop/MaxHops/AvoidLossy 추가 + ConvertOneAsync가 직접 엣지 없을 때 FindBestPath→ExecuteChainAsync 위임 (중간산출물 workDir 패턴 재사용)",
+          "DocumentProvider.RouteAsync(92-205) 손코딩 멀티홉 제거 — 원자 변환만 선언, md→docx는 엔진이 md→html→docx 자동 합성",
+          "UI — OutputsForInput을 그래프 reachability(transitive closure)로 확장해 '이 파일로 만들 수 있는 모든 포맷' 노출 + 손실 경로 '손실 변환' 경고 배지",
+          "ProviderRegistry 충돌을 명시적 우선순위/진단으로 전환 (_byPair.TryAdd 조용한 first-wins 제거, ProviderRegistry.cs:22)"
+        ]
+      },
+      {
+        "phase": "Phase 5",
+        "title": "확장성·신뢰성 굳히기 (지속)",
+        "goal": "기능이 다 들어온 뒤 회귀 방지·확장 지점·배포를 다진다. 차별화는 끝났으니 여기서부터는 '깨지지 않게' 유지하는 단계.",
+        "deliverables": [
+          "테스트 프로젝트 신설(xUnit) — 그래프 경로탐색·OutputPathHelper 충돌·결합 로직·JSONL round-trip 등 순수 함수 우선 (현재 테스트 0개)",
+          "manifest 기반 외부 도구 어댑터 + source generator 자동 등록 — Bootstrap 하드코딩 배열(9-21) 제거, 새 CLI 도구를 코드 빌드 없이 추가",
+          "CombineAsync를 IMultiInputProvider로 분리 — ConversionEngine의 ImageMagick 직접 의존(164-257) 제거, PDF병합·영상concat으로 결합 확장",
+          "CI 강화 — NuGet 캐시 + self-contained portable 산출물 + 외부 바이너리 번들링 파이프라인(FFmpeg LGPL 고지) + 테스트 게이트",
+          "아카이브(SharpCompress)·데이터(Parquet/ClosedXML/CsvHelper)·벡터(Svg.Skia) 등 순수 .NET 카테고리 추가로 빈 카테고리 보강"
+        ]
+      }
+    ],
+    "biggestRisk": "AI·미디어 기능을 최단 경로로 밀다 보면 'Phase 0 인프라 일반화'를 건너뛰고 LlmProvider/FfmpegProvider를 또 하드코딩으로 끼워넣으려는 유혹이 가장 크다 — 그러면 DocumentProvider.RouteAsync처럼 새 switch 지옥이 카테고리마다 생겨 6개월 뒤 멀티홉 그래프(Phase 4)를 얹을 수 없게 된다. 두 번째 리스크는 라이선스: FFmpeg(GPL 빌드 번들 금지, LGPL 분리호출만)·Ghostscript/MuPDF(AGPL, 사용자 설치본 감지만)·H2Orestart/Calibre(GPL, 외부 프로세스 분리)를 본체에 정적 링크하면 상업 배포가 즉시 오염된다. 모든 무거운 외부 도구는 반드시 '별도 프로세스 분리 호출 + 사용자 설치 감지 또는 LGPL 빌드 자동조달'로만 통합해야 하며, 이 경계를 코드 리뷰 게이트로 강제해야 한다. 세 번째는 AI의 비결정성·종량과금·네트워크 의존이 '변환은 로컬에서 예측가능하게 동작한다'는 사용자 신뢰를 깨뜨릴 수 있다는 점 — 그래서 AI는 절대 기본 경로를 점유하지 않고 opt-in '✨ AI' 배지 페어로만 노출하며, 키 없으면 조용히 비활성되도록 등록 순서·게이트를 설계의 불변식으로 박아야 한다."
+  }
+]

@@ -1,0 +1,40 @@
+{
+  "rankings": [
+    {
+      "angle": "변환 그래프 코어 우선 (idx 0) — 모든 변환은 엣지, 엔진은 라우터. Dijkstra 멀티홉 자동 합성이 북극성.",
+      "score": 84,
+      "strengths": "세 안 중 가장 정확하게 '진짜 아키텍처 부채'를 짚었다. DocumentProvider.RouteAsync(92-205)의 손그림 Dijkstra와 OutputsForInput(52-58)의 1-hop 한계를 정확히 인용했고, 이 손그림을 '삭제하고 엔진이 계산하게 한다'는 도그푸딩 검증(회귀 테스트로 동일 동작 증명)은 기술적으로 가장 견고하다. transitive closure로 OutputsForInput이 폭발한다는 통찰은 N×M·다방향의 본질을 정확히 포착한 것이고, 손실을 -log(보존율)+홉페널티 가중치로 SSOT화한 설계는 정교하다. 외부 의존성 없는 80~120줄 자체 Dijkstra는 .NET 9 단일 EXE/AOT 제약과 완벽히 양립한다. AI를 IAiProvider 특수 인터페이스가 아니라 '로컬 변환이 없는 신규 엣지'로 환원한 것은 세 안 중 가장 우아하다. biggestRisk('보이지 않는 리팩터링의 함정')를 스스로 정직하게 진단하고 완화책(Phase 0를 가시적 성과와 묶기)까지 제시한 자기인식이 뛰어나다.",
+      "weaknesses": "치명적 약점은 단계적 가치 전달이다. 사용자가 명시한 신규 가치(AI, 미디어, PDF 압축, HWP)가 로드맵 3~5단계로 밀린다. 그래프 코어가 완성돼도 사용자는 똑같은 md→docx만 본다 — 본인도 인정한 '데모할 게 없는' 상태다. transitive closure 확장을 가시 성과로 내세우지만, md→docx 같은 경로는 이미 RouteAsync에 손으로 박혀 동작 중이므로 '새로 생기는 도달 가능 포맷'이 실제로 사용자에게 체감될 만큼 많지 않다(현 Provider 구성상 신규 합성 경로가 제한적). 또한 인터페이스 일반화(Phase 1)를 그래프 코어 직후에 두어 8개 Provider를 조기에 건드리는데, 이는 AI/미디어라는 '왜 일반화가 필요한가'의 동기가 코드에 들어오기 전이라 추상화가 추측에 기반할 위험이 있다.",
+      "weaknessesNote": ""
+    },
+    {
+      "angle": "플러그인 생태계 우선 (idx 1) — 코어를 얇은 호스트로 축소, 변환 능력을 선언적 manifest JSON으로 외부화.",
+      "score": 71,
+      "strengths": "'manifest를 늘려 포맷을 늘린다'는 비전은 장기 확장성의 천장이 가장 높다. LibreOffice 호출 복제(실측: DocumentProvider/DocxProvider/HwpxProvider 3곳, 거의 동일한 ConvertWithLibreOfficeAsync)를 ExternalToolProvider 추상 베이스로 통합하고 그것을 manifest 어댑터의 실행 엔진으로 재사용하는 설계는 영리하다. Abstractions를 별도 어셈블리로 분리해 타입 동일성을 보장한다는 점, 충돌 모델을 Priority 기반 다중 Provider 공존으로 교체하는 점은 견고하다. biggestRisk에서 '표현력 천장'(FFmpeg HW가속 폴백은 manifest로 불가)을 스스로 진단하고 하이브리드(90% 단순 도구만 manifest, 복잡 로직은 in-box) 경계를 P1 원칙으로 못박은 것은 성숙한 자기방어다.",
+      "weaknesses": "프로젝트 현 단계에 대한 과잉 엔지니어링이 가장 크다. Provider가 8개뿐이고 테스트 0개인 단일 개발자 프로젝트에서 manifest DSL·동적 로더·별도 어셈블리 분리는 ROI가 가장 낮다. 본인이 인정하듯 FFmpeg/AI 같은 '진짜로 추가하고 싶은' 무거운 도구는 결국 in-box 코드로 남아 manifest 밖에 있으므로, manifest가 실제로 커버하는 건 이미 LibreOffice 하나로 다 되는 '단순 CLI 90%'뿐이다 — 즉 가장 매력적인 신규 가치(AI/미디어)는 manifest 혜택을 거의 못 받는다. 단계적 가치 전달이 idx 0보다도 늦다: Phase 1 전체가 '기반 해체'로, 사용자가 보이는 변화 0인 구간이 가장 길다. '코드 없는 확장'이라는 핵심 약속이 escape hatch로 부분적으로 깨진다고 본인이 인정한 시점에서, 이 안의 차별화 명분이 상당 부분 증발한다.",
+      "weaknessesNote": ""
+    },
+    {
+      "angle": "AI·미디어 기능 우선 (idx 2) — 사용자 명시 신규 가치를 최단 경로로 출시, 그래프는 '기능을 켜는 최소 인프라'로만 취급.",
+      "score": 89,
+      "strengths": "단계적 가치 전달과 사용자 요구 충족도에서 압도적이다. PDF 압축 + HWP 한글 변환을 Phase 1(가장 빠른 체감)로 배치한 판단은 정확하다 — HWP는 이미 LibreOffice+H2Orestart 배관이 깔려 있어(HwpxProvider 실측) DOCX/HTML/TXT 출력 매트릭스 확장만으로 즉시 신규 가치가 나온다. '인프라가 아니라 사용자 체감 차별화가 북극성'이라는 프레이밍은 단일 개발자·GUI 검증 워크플로(메모리상 사용자 패턴)와 가장 잘 맞는다. AI를 '핵심 엔진이 아니라 후처리 부가가치 레이어'로, 키 없으면 모든 변환 100% 동작 + ✨AI 배지로만 노출하는 불변식은 idx 0/1의 'AI=엣지'보다 사용자 신뢰 측면에서 한 수 위다. 라이선스 분석(FFmpeg GPL 정적링크 금지/LGPL 분리호출, Ghostscript/MuPDF AGPL 감지만, H2Orestart GPL 외부프로세스)이 세 안 중 가장 구체적이고 실행가능하며 .NET 9 단일 EXE 번들 제약을 정면으로 다룬다. 배치 병렬화(순차 for-loop 57-70 실측 → Parallel.ForEachAsync)는 AI 왕복·트랜스코딩 병목을 정확히 짚었다. 결정적으로, idx 0의 핵심 자산(멀티홉 그래프, 자체 Dijkstra, ExternalProcessRunner 통합, ConvertRequest 일반화, 손실 배지)을 전부 흡수하되 Phase 0와 Phase 4에 적절히 배치해 '기능으로 그래프를 정당화'한다.",
+      "weaknesses": "biggestRisk가 정확히 이 안의 아킬레스건이다 — '최단 경로' 압박이 LlmProvider/FfmpegProvider를 또 하드코딩 switch로 끼워넣어 카테고리마다 RouteAsync 지옥을 재생산할 유혹. 본인이 이를 명시하고 'Phase 0 인터페이스 일반화를 불변식으로 박는다'고 방어하지만, 로드맵상 그래프 자동 합성이 Phase 4(맨 끝)라서 Phase 1~3 동안 멀티홉 없이 기능이 쌓이면 나중에 그래프를 얹을 때 이미 작성된 기능 Provider들이 그래프 친화적이지 않게 굳어질 구조적 위험이 idx 0보다 크다. 또한 신규 1급 Provider 4종을 동시에 여는 야심은 단일 개발자 기준 Phase별 범위가 다소 낙관적이다(주 단위 추정이 공격적). 아키텍처 순수성 면에서는 idx 0에 명백히 뒤진다.",
+      "weaknessesNote": ""
+    }
+  ],
+  "bestIdeasToGraft": [
+    "[idx 0의 핵심] DocumentProvider.RouteAsync(92-205) 손그림 멀티홉을 '삭제'하고 엔진이 Dijkstra로 동일 경로를 계산하게 만드는 도그푸딩 — 이것을 회귀 테스트로 '그래프=손그림 동일 동작' 객관 증명. 테스트 0개인 현 상태에서 이 변환의 첫 안전망이 된다. 어떤 마스터플랜이 채택되든 이 검증 루프는 필수.",
+    "[idx 0의 핵심] 손실을 -log(보존율)+홉페널티 단일 가중치로 ConversionPair.LossClass(Lossless=0/Container=0.05/Recode=0.4/Rasterize=0.8) 필드에 SSOT화. 이것이 멀티홉 경로 선택과 UI '⚠손실' 배지의 단일 출처. idx 2의 '손실 변환 경고 배지'도 이 가중치를 그대로 소비.",
+    "[idx 0의 핵심] AI를 IAiProvider 특수 인터페이스가 아니라 '로컬 변환이 없는 신규 엣지(요약/번역/캡션)'로 그래프에 환원 — idx 2의 '후처리 부가가치 레이어'와 결합하면, AI는 그래프상 엣지이면서 동시에 키 없으면 자동 비활성 노드 + ✨AI 배지로 노출되는 이중 안전장치를 얻는다.",
+    "[idx 2의 핵심] AI 불변식: 키가 없어도 모든 기존 변환 100% 동작, AI는 절대 기본 경로를 점유하지 않고 ✨AI 배지 페어로만 opt-in, 키 부재 시 등록 순서·게이트로 조용히 비활성. '변환은 로컬에서 예측가능' 신뢰를 깨지 않는 설계 불변식.",
+    "[idx 2의 핵심] 라이선스 경계를 코드 리뷰 게이트로 강제: FFmpeg는 GPL 정적링크 금지·LGPL 분리호출만, Ghostscript/MuPDF는 AGPL이라 사용자 설치본 감지만, H2Orestart/Calibre는 GPL이라 외부 프로세스 분리. 모든 무거운 외부 도구 = '별도 프로세스 분리 호출 + 사용자 설치 감지 또는 LGPL 빌드 자동조달'. .NET 9 단일 EXE 상업 배포 오염 방지의 핵심.",
+    "[idx 2의 핵심] 단계 순서: PDF 압축 + HWP 출력 매트릭스 확장을 최우선 출시(이미 HwpxProvider의 LibreOffice+H2Orestart 배관 존재 → DOCX/HTML/TXT 출력만 추가하면 즉시 신규 가치). 초기 체감 가치를 그래프 리팩터링보다 먼저.",
+    "[idx 2의 핵심] 배치 병렬화: ConversionEngine 순차 for-loop(57-70)를 Parallel.ForEachAsync(동시성 제한 포함)로 교체. AI 네트워크 왕복·영상 트랜스코딩의 치명적 병목 해소. 더불어 ImageMagick ResourceLimits 전역 설정 + decompression bomb 방어로 미디어 공격면 차단.",
+    "[idx 1의 핵심] 레지스트리 충돌 모델 교체: _byPair.TryAdd(22)의 조용한 first-wins를 ProviderCapability.Priority + 다중 Provider 공존으로 교체 + 충돌 시 진단 경고. 같은 (input,output)에 빠른변환/고품질/AI 등 복수 전략 등록 가능. idx 0/2 모두 이 교체가 전제 조건.",
+    "[idx 1의 부분 채택] manifest는 '풀 생태계 비전'이 아니라 'ExternalProcessRunner 위의 선언적 인자 템플릿({input}/{output}/{outdir}/{format})'으로만 제한 채택 — qpdf/Ghostscript 같은 단순 CLI 압축 도구를 코드 없이 추가하는 용도. 단, 복잡 로직(FFmpeg HW가속 폴백/AI)은 in-box 코드 Provider 원칙을 P1부터 못박아 manifest 갓오브젝트화 방지.",
+    "[3안 공통] ExternalProcessRunner 단일 추상화로 LibreOffice 3중 복제(DocumentProvider:238-281 / DocxProvider:113-157 / HwpxProvider:107-151) 통합 — 타임아웃·stderr 수집·Kill 일원화. 이후 모든 외부 엣지(FFmpeg/Ghostscript/qpdf/Codex CLI)가 이 러너 하나 공유. 세 안이 만장일치로 지목한 가장 안전하고 즉시 실행가능한 첫 리팩터링.",
+    "[3안 공통] IConverterProvider 시그니처(9-15)를 ConvertRequest/ConvertContext로 일반화 + ConvertResult(10)에 비파일 산출물 필드(추출 텍스트·AI 응답·미디어 메타데이터) 추가. 단, 기존 8개 Provider는 어댑터로 감싸 점진 마이그레이션 + 회귀 테스트로 무중단 보장(idx 0의 마이그레이션 전략 채택).",
+    "[3안 공통] ConvertOptions 갓 오브젝트(14+ sub-record)를 그래프 옵션(AllowMultiHop/MaxHops/AvoidLossy) + 형식별 옵션 백(IReadOnlyDictionary 또는 Provider 선언형 스키마)으로 분해 → Video/Audio/Ai/PdfCompress를 sub-record 증식 없이 수용. DPAPI(ProtectedData) 기반 ISettingsStore 신설로 API 키·도구 경로 안전 저장."
+  ],
+  "recommendation": "승자는 idx 2(AI·미디어 기능 우선, 89점)를 '실행 골격'으로, idx 0(그래프 코어, 84점)을 '아키텍처 영혼'으로 삼아 종합한다. 단독 채택이 아니라 두 안의 합성이 정답이다.\\n\\n핵심 통찰: 세 안의 기술적 부품(자체 Dijkstra 멀티홉, ExternalProcessRunner 통합, ConvertRequest/ConvertResult 일반화, LossClass 가중치, Priority 충돌 모델, AI=엣지, DPAPI 키저장)은 사실상 동일하다. 진짜 차이는 '무엇을 북극성으로 삼아 순서를 짜느냐' 하나뿐이다. 이 프로젝트는 단일 개발자가 직접 push하고 GUI로 검증하며 큰 결정을 빠르게 승인하는 워크플로(프로젝트 메모리)이고, 사용자가 명시적으로 요구한 것은 AI/미디어/HWP/PDF압축이라는 '기능'이다. 따라서 '보이지 않는 리팩터링의 함정'(idx 0 본인이 인정한 최대 리스크)에 빠지는 그래프-우선 순서는 이 맥락에서 부적합하다.\\n\\n그러나 idx 2의 최대 리스크('최단 경로 압박으로 LlmProvider/FfmpegProvider를 또 하드코딩 switch로 끼워넣어 RouteAsync 지옥 재생산')는 실재하고, idx 0의 그래프 코어가 바로 이 리스크의 백신이다. 그래서 둘을 봉합하는 마스터플랜은 다음 순서다:\\n\\nPhase 0 (기반, 그러나 즉시 가치와 묶기 — idx 0의 자기 완화책 채택): ExternalProcessRunner 통합(3중 복제 제거) + Priority 충돌 모델 + ConvertRequest/ConvertResult 일반화(어댑터로 무중단). 동시에 DocumentProvider.RouteAsync를 원자 엣지로 분해하고 자체 Dijkstra를 넣어 '손그림=그래프 동일 동작'을 회귀 테스트로 증명(테스트 0개 탈출의 첫걸음). 이 단계의 가시 성과는 transitive closure로 늘어나는 '만들 수 있는 포맷 목록'.\\n\\nPhase 1 (즉시 체감 — idx 2 순서): HWP 출력 매트릭스 확장(이미 깔린 LibreOffice+H2Orestart 배관 재사용 → DOCX/HTML/TXT) + PDF 압축. 이때 신규 기능은 반드시 '그래프 엣지'로만 추가한다는 것을 불변식으로 박아 idx 2의 하드코딩 유혹을 Phase 0 그래프가 구조적으로 차단.\\n\\nPhase 2~3 (미디어 + AI 부가가치 레이어 — idx 2): FFmpeg/Ghostscript/qpdf를 idx 2의 라이선스 게이트(분리 프로세스·LGPL/AGPL 경계) 하에 엣지로 추가. AI는 idx 0의 '엣지' + idx 2의 '✨AI 배지·키 없으면 비활성·기본 경로 불점유' 이중 불변식으로 통합. 배치 병렬화는 이 시점에 필수.\\n\\nidx 1(플러그인 생태계, 71점)은 베이스로는 과잉 엔지니어링이라 탈락하지만, 두 아이디어는 흡수한다: (1) Priority 기반 충돌 모델(이미 Phase 0에 편입), (2) manifest를 '풀 DSL'이 아니라 'ExternalProcessRunner 위 선언적 인자 템플릿'으로 축소해 qpdf/gs 같은 단순 CLI를 코드 없이 추가하는 좁은 용도로만 채택. 복잡 로직(FFmpeg HW가속·AI)은 in-box 코드 원칙을 P1부터 못박아 manifest 갓오브젝트화를 방지한다(idx 1 본인의 하이브리드 경계 그대로).\\n\\n한 줄 요약: idx 2의 '기능이 견인하는 로드맵'에 idx 0의 '그래프가 받치는 코어'를 Phase 0에 심어, 사용자 체감 가치를 빠르게 내면서도 RouteAsync 지옥의 재발을 그래프로 원천 차단한다."
+}

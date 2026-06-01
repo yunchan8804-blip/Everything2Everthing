@@ -1,0 +1,15 @@
+{
+  "project": "Everything2Everything",
+  "title": "Everything2Everything — 변환 그래프 OS 마스터플랜",
+  "subtitle": "전체 소스 심층 분석 · 방법론 인터넷 리서치 · 아키텍처 종합 (Single Source of Truth)",
+  "generatedDate": "2026-06-01",
+  "method": "Workflow 멀티에이전트 오케스트레이션 (5 코드분석 + 7 인터넷리서치 → 3 독립 아키텍트 → 심사 랭킹 → 마스터플랜 종합)",
+  "usage": {
+    "agents": 17,
+    "subagentTokens": 1426291,
+    "toolUses": 367,
+    "durationMs": 907053
+  },
+  "repo": "https://github.com/yunchan8804-blip/Everything2Everthing.git",
+  "winningSynthesis": "idx2(AI·미디어 우선, 89점) 실행 골격 + idx0(그래프 코어, 84점) 아키텍처 영혼"
+}

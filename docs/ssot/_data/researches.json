@@ -1,0 +1,698 @@
+[
+  {
+    "key": "conversion-graph",
+    "topic": "그래프 기반 멀티홉 변환 경로 탐색 아키텍처 (Everything2Everything 적용)",
+    "keyFindings": [
+      "**Pandoc = 단일 AST 허브-앤-스포크**: 모든 포맷을 하나의 중립 AST(Pandoc AST)로 파싱(reader)하고 거기서 각 포맷으로 직렬화(writer)한다. M개 reader + N개 writer만 구현하면 M×N 변환을 자동 커버하고, 새 포맷은 reader/writer 1개 추가로 끝. 단 이 모델은 '한 도메인 안에서 의미가 보존되는 공통 표현'이 존재할 때(텍스트/마크업)만 성립한다. 이미지/오디오/문서를 하나의 AST로 묶는 건 불가능 — Everything2Everything처럼 도메인이 이질적이면 단일 허브가 아니라 '여러 허브를 가진 변환 그래프'가 정답이다.",
+      "**NCSA Polyglot / Conversion Software Registry(CSR)가 이 프로젝트의 정확한 청사진**: 노드=파일 포맷(확장자), 엣지=특정 소프트웨어를 통한 (입력→출력) 변환, 가중치=변환 시 '정보 보존량(information retained)'. 입력→출력 최단 경로를 탐색해 멀티홉 체인을 자동 생성한다. 손실 정량화는 별도 프레임워크 Versus(file-to-file 비교)로 측정해 엣지 가중치로 환산 → '정보 손실이 가장 적은 경로'를 고른다. 즉 노드=포맷 / 엣지=Provider / 가중치=손실 모델은 학계에서 이미 검증된 best practice다.",
+      "**가중치 모델링 best practice = 비용을 곱셈이 아니라 덧셈으로 만들기**: Dijkstra/A*는 경로비용이 엣지비용의 '합'일 때 동작한다. 손실은 본래 곱셈적(0.9 × 0.8...)이므로 `weight = -log(품질보존율)` 형태로 변환하면 합산 최단경로가 곧 '최대 품질보존 경로'가 된다. 여기에 lossy 엣지에 큰 페널티, lossless(컨테이너 재포장·무손실 코덱)에 0에 가까운 비용, 외부 도구 실행/렌더링 속도 비용을 가중합으로 섞는다. 홉 수 자체에도 작은 상수 페널티를 줘 '불필요하게 긴 체인'을 억제한다.",
+      "**손실 경로 회피 핵심 규칙들**: (1) 같은 lossy 인코딩을 두 번 거치지 않게 한다(JPEG→PNG→JPEG 같은 generation loss는 누적·비가역). (2) lossy→lossless 변환은 데이터를 복원하지 못하므로(이미 버려진 정보) 가중치에 반영. (3) 래스터화는 '단방향 손실 절벽' — 벡터/텍스트(PDF·SVG·DOCX)를 PNG로 한 번 떨구면 텍스트·벡터 정보가 영구 소실되므로, 래스터를 중간 허브로 쓰는 경로는 '꼭 필요할 때만(예: OCR, 썸네일)' 허용하고 가중치를 매우 높게 준다.",
+      "**중간 포맷(허브) 선택 전략**: 문서 도메인은 HTML/Markdown 또는 OOXML(DOCX)을 허브로(현재 DocumentProvider가 이미 HTML을 사실상 허브로 사용 중). 인쇄·레이아웃 보존이 중요하면 PDF가 허브(이미 PDFium 보유). 이미지 도메인은 무손실 중간 포맷(PNG/TIFF, 또는 ImageMagick 내부의 MIFF)을 허브로 써 generation loss를 막는다. 즉 '하나의 글로벌 허브'가 아니라 '도메인별 허브 + 도메인 간 경계는 의도적 손실 게이트(PDF, PNG)'로 설계하는 게 핵심.",
+      "**ImageMagick delegate = 이미 멀티홉 엔진**: decode/encode만 지정된 delegate를 자동으로 이어붙여 중간 포맷 체인을 만든다(예: BPG→PNG(중간)→내부표현→출력). %i(입력)/%o(출력)/%u(고유 임시파일) 토큰으로 중간 임시파일을 관리. 같은 변환에 delegate 여러 개면 선언 순서대로 시도하다 성공하는 것을 채택(우선순위=순서 + 가용성 fallback). Everything2Everything의 MagickProvider는 이 체인을 라이브러리 내부에서 이미 활용 중이므로, 이미지 노드 사이는 사실상 단일 '슈퍼노드'로 묶어도 된다.",
+      "**FFmpeg filtergraph = DAG 기반, format negotiation**: 노드=필터, pad=타입 있는 입출력 포트, 엣지=프레임 흐름. source/sink 개념, 사이클·다중 링크 허용. 핵심 시사점은 '인접 노드 간 포맷 협상(format negotiation)' — 변환 그래프에서도 각 Provider가 받을 수 있는/내보낼 수 있는 포맷 집합을 선언하고 엔진이 그 교집합으로 연결을 결정하는 구조가 견고하다.",
+      "**현재 코드 상태**: ProviderRegistry는 `(Input,Output)→Provider` 단일 홉 딕셔너리(`_byPair`)만 갖고, 멀티홉 경로 탐색이 전혀 없다. 멀티홉은 DocumentProvider.RouteAsync 안에 `md→html→docx`, `docx→html→md` 식으로 하드코딩되어 Provider 내부에 묻혀 있다. 이 하드코딩 분기들이 바로 '그래프로 끌어올려야 할' 멀티홉 로직이다."
+    ],
+    "recommendedApproach": "단일 글로벌 AST 허브(Pandoc식)는 도메인이 이질적인 이 프로젝트에 부적합하다. 대신 **NCSA Polyglot 모델(노드=포맷, 엣지=Provider, 가중치=손실)을 ProviderRegistry 위에 얇은 그래프 레이어로 얹는 것**을 권장한다.\n\n**1) 그래프 빌드 (앱 시작 시 1회)**: 모든 Provider의 Capability.SupportedConversions를 순회해 방향 그래프를 만든다. 노드=정규화된 확장자, 엣지=해당 Provider+ConversionPair. 노드 수가 수십 개, 엣지 수가 수백 개 수준이므로 그래프는 매우 작다.\n\n**2) 경로 탐색**: Dijkstra(또는 A*) 1회로 충분. 비용은 엣지 가중합 = `α·(-log 품질보존율) + β·홉상수 + γ·실행비용`. lossy 게이트(래스터화, lossy 재인코딩)에 큰 가중치를 줘 손실 경로를 자연스럽게 회피한다. 직접 엣지(단일 홉)는 항상 비용이 낮아 기존 동작과 호환된다.\n\n**3) 라이브러리 선택**: 그래프가 작고 알고리즘이 표준적이므로 **외부 의존성 없이 자체 Dijkstra 약 80~120줄로 구현하는 것을 1순위로 권장**한다. 단일 포터블 EXE/MSIX 배포에 유리하고(트리밍·AOT 충돌 없음), MS-PL 같은 라이선스 검토도 불필요하다. 직접 구현이 부담되면 QuikGraph(MS-PL, net5~net10 호환)를 쓰되 2022년 이후 릴리스가 없는 점을 감안한다.\n\n**4) 손실 정량화(선택적 고도화)**: 초기에는 포맷 쌍별 정적 가중치 테이블(lossless=0.0, 컨테이너변환=0.05, lossy재인코딩=0.4, 래스터화=0.8 등)로 시작하고, 추후 Versus처럼 실제 결과물을 비교해 가중치를 보정하는 단계로 확장한다. 처음부터 동적 측정을 넣을 필요는 없다.\n\n**5) 안전장치**: 멀티홉은 '직접 엣지가 없을 때만' 발동하게 하고, 최대 홉 수(예: 3)와 '명시적으로 금지된 손실 전이' 블랙리스트를 둔다. 중간 산출물은 임시 폴더에 만들고 마지막에 정리(DocumentProvider의 workDir 패턴 그대로 재사용).",
+    "libraries": [
+      {
+        "name": "자체 Dijkstra 구현 (직접 작성)",
+        "purpose": "ProviderRegistry 위에 포맷 그래프 + 가중치 최단경로 탐색을 직접 구현 (PriorityQueue<TElement,TPriority>는 .NET 9 BCL에 내장)",
+        "license": "N/A (프로젝트 코드)",
+        "maturity": "production (표준 알고리즘, 그래프 규모가 작아 검증 부담 낮음)",
+        "notes": "1순위 권장. 외부 의존성 0 → 단일 포터블 EXE/MSIX, 트리밍/AOT, 라이선스 검토 모두 무부담. 노드 수십·엣지 수백 규모라 성능 이슈 없음. .NET 9의 System.Collections.Generic.PriorityQueue로 O(E log V) Dijkstra를 간단히 작성 가능."
+      },
+      {
+        "name": "QuikGraph",
+        "purpose": "방향 그래프 자료구조 + Dijkstra/A*/k-shortest path/BFS 등 알고리즘 제공",
+        "license": "MS-PL (Microsoft Public License, 상업적 사용 가능)",
+        "maturity": "active이나 정체 (최신 2.5.0이 2022-07 릴리스, 이후 신규 릴리스 없음 / 다운로드 1300만+)",
+        "notes": "NuGet target에 net5.0~net10.0 포함되어 .NET 9에서 동작. 자체 구현이 부담될 때 2순위. k-shortest path가 내장이라 '대안 경로 N개 제시' 같은 고급 UX에 유리. 다만 유지보수 정체와 추가 의존성(트리밍 설정)을 감수해야 함."
+      },
+      {
+        "name": "Kemsekov.GraphSharp",
+        "purpose": "Dijkstra·그래프 컬러링·컴포넌트 등 알고리즘, QuikGraph 어댑터 제공",
+        "license": "확인 필요 (NuGet/리포 라이선스 확인 권장)",
+        "maturity": "active (3.1.x 최근 업데이트, QuikGraph보다 활발)",
+        "notes": "QuikGraph보다 유지보수가 활발하고 QuikGraph 그래프 어댑터를 제공. 다만 이 정도 규모 문제에는 기능 과잉. 라이선스를 반드시 확인한 뒤에만 채택."
+      },
+      {
+        "name": "Dijkstra.NET",
+        "purpose": "우선순위 큐 기반 Dijkstra(O(E log V)) 단일 목적 라이브러리",
+        "license": "MIT (리포 확인 권장)",
+        "maturity": "beta/소규모 (단순·경량, 업데이트 빈도 낮음)",
+        "notes": "오직 Dijkstra만 필요하고 외부 패키지를 굳이 쓰겠다면 가장 가벼운 선택. 기능이 적어 가중치 모델 커스터마이즈는 직접 해야 함."
+      },
+      {
+        "name": "Pandoc (외부 CLI, 참조 아키텍처)",
+        "purpose": "문서 도메인 단일 AST 허브 변환 엔진. 라이브러리가 아니라 '허브-앤-스포크' 설계 참조 + 선택적 외부 도구",
+        "license": "GPL-2.0+ (CLI를 번들 없이 외부 호출하면 프로젝트 라이선스에 영향 없음)",
+        "maturity": "production (업계 표준, 활발)",
+        "notes": "DocumentProvider의 LibreOffice/Markdig/ReverseMarkdown 조합 대신 Pandoc CLI를 옵션 백엔드로 두면 텍스트 도메인 변환 품질·범위가 크게 향상. 단 GPL이라 EXE에 정적 번들은 피하고, 사용자 설치 도구로 감지·호출하는 패턴(현재 LibreOffice 감지 패턴과 동일)을 권장."
+      }
+    ],
+    "integrationNotes": "현재 ProviderRegistry는 `_byPair`(단일 홉)와 `_outputsByInput`만 갖고 있고, 멀티홉은 DocumentProvider.RouteAsync에 하드코딩돼 있다. 다음 단계로 그래프 레이어를 얇게 얹는 것을 권장한다.\n\n**1) ConversionGraph (신규, ProviderRegistry 내부 또는 옆에)**: 생성자에서 모든 Provider의 Capability.SupportedConversions를 순회해 `Dictionary<string, List<Edge>>`(노드=확장자, Edge={Provider, ConversionPair, Weight})로 인접 리스트를 만든다. ProviderRegistry 생성자 루프(현재 17~30행)에 그래프 빌드 한 단계만 추가하면 된다.\n\n**2) 가중치 부여**: ProviderCapability에 정적 손실 등급을 노출하는 게 깔끔하다. 예) `ConversionPair`에 선택적 `LossClass`(Lossless/Container/Recode/Rasterize) 필드를 추가하거나, Provider가 `double EstimateCost(ConversionPair)`를 구현(IConverterProvider 확장). 가중치는 `-log(보존율)+홉페널티` 합산. 기존 Provider는 기본값(직접 변환=저비용)으로 두면 무중단 마이그레이션 가능.\n\n**3) ConvertOptions 확장**: `bool AllowMultiHop`(기본 true), `int MaxHops`(기본 3), `bool AvoidLossy`(true면 래스터화·lossy 재인코딩 엣지를 큰 페널티/제외) 옵션을 추가. 현재 ConvertOptions 패턴(섹션별 옵션 객체)에 자연스럽게 들어간다.\n\n**4) ConversionEngine.ConvertOneAsync 수정**: 현재 91행 `_registry.TryGet`이 직접 매핑만 본다. 여기서 직접 엣지가 없으면(또는 더 저비용 멀티홉이 있으면) `ConversionGraph.FindBestPath(inExt, outExt, options)`로 경로를 구해, 경로의 각 홉을 순차 실행하는 `ExecuteChainAsync`로 위임한다. 중간 산출물은 DocumentProvider가 이미 쓰는 `workDir = Temp/e2e_..._{Guid}` 패턴을 공용 헬퍼로 올려 재사용하고, 각 홉은 기존 `provider.ConvertAsync`를 그대로 호출(인터페이스 변경 불필요). 진행률은 홉 수로 분할해 IProgress<double>에 매핑.\n\n**5) DocumentProvider 단순화(점진적)**: 그래프 레이어가 안정화되면 RouteAsync의 `md→html→docx` 같은 하드코딩 멀티홉 분기를 제거하고, DocumentProvider는 '단일 홉 원자 변환'(md→html, html→docx 등)만 선언하게 만든다. 그러면 md→docx는 엔진의 그래프 탐색이 자동으로 md→html→docx로 합성한다. 이게 Pandoc식 '작은 변환의 조합' 철학을 레지스트리 수준에서 실현하는 것.\n\n**6) UI/탐색 표시**: OutputsForInput가 지금은 직접 출력만 반환한다. 멀티홉을 켜면 도달 가능한 모든 출력(그래프 reachability)으로 확장할 수 있어, '이 파일로 만들 수 있는 모든 포맷' 목록이 훨씬 풍부해진다. 단, 손실 경로로만 도달하는 출력은 UI에서 경고 배지(예: '손실 변환')로 구분해 사용자에게 알리는 걸 권장(Versus 철학의 경량판).",
+    "risks": [
+      "멀티홉은 중간 산출물마다 손실이 누적될 수 있다(특히 lossy 또는 래스터화 경유). 가중치 모델이 부실하면 '동작은 하지만 품질이 나쁜' 경로를 선택할 위험 → 손실 등급 테이블과 lossy 게이트 페널티를 신중히 설정해야 한다.",
+      "초기 가중치는 추정값(정적 테이블)이라 실제 결과와 어긋날 수 있다. Versus식 실측 보정 없이 운영하면 일부 쌍에서 비최적 경로가 나올 수 있다 → 우선 보수적으로(직접 엣지 우선, 멀티홉은 fallback) 운영 권장.",
+      "QuikGraph는 2022년 이후 릴리스가 없어(정체) .NET 신버전·트리밍/AOT에서 미세 이슈 가능성. 단일 포터블 EXE/MSIX·트리밍을 쓴다면 자체 구현이 더 안전하다.",
+      "Pandoc을 백엔드로 넣을 경우 GPL-2.0이므로 EXE에 정적 번들 금지. 외부 설치 도구로 감지·호출하는 방식만 허용(LibreOffice 감지 패턴 준수). 잘못 번들하면 라이선스 위반.",
+      "멀티홉 체인 실행은 중간 임시파일 I/O가 늘어 성능·디스크 사용이 증가하고, 한 홉 실패 시 부분 산출물 정리/에러 메시지 매핑이 복잡해진다(어느 홉에서 실패했는지 사용자에게 전달 필요).",
+      "도메인 경계(예: DOCX→PNG)에서 그래프가 의도치 않게 '텍스트→래스터' 같은 손실 경로를 자동 선택할 수 있다. 도메인 간 전이는 명시적 화이트리스트/블랙리스트로 통제하지 않으면 예상 밖 결과가 나온다."
+    ],
+    "sources": [
+      "https://pandoc.org/MANUAL.html",
+      "https://pandoc.org/using-the-pandoc-api.html",
+      "https://deepwiki.com/jgm/pandoc",
+      "https://ssa.ncsa.illinois.edu/isda/software/polyglot/",
+      "https://www.archives.gov/files/applied-research/ncsa/5-toward-a-universal-quantifiable-and-scalable-file-format-converter.pdf",
+      "https://www.archives.gov/files/applied-research/papers/conversion-software-registry.pdf",
+      "https://ssa.ncsa.illinois.edu/isda/software/archived/conversion-software-registry-csr/",
+      "https://imagemagick.org/source/delegates.xml",
+      "https://usage.imagemagick.org/files/",
+      "https://deepwiki.com/FFmpeg/FFmpeg/8.1-filter-architecture",
+      "https://ffmpeg.org/ffmpeg-filters.html",
+      "https://github.com/KeRNeLith/QuikGraph",
+      "https://www.nuget.org/packages/QuikGraph",
+      "https://www.nuget.org/packages/Kemsekov.GraphSharp/",
+      "https://github.com/matiii/Dijkstra.NET",
+      "https://theimagecdn.com/docs/lossy-vs-lossless-compression",
+      "https://en.wikipedia.org/wiki/Lossy_compression"
+    ]
+  },
+  {
+    "key": "codex-ai",
+    "topic": "Codex non-interactive OAuth + API를 .NET 9/WPF 데스크톱 파일 변환기(Everything2Everything)에 통합",
+    "keyFindings": [
+      "[가장 중요] ChatGPT 구독 OAuth 토큰은 Codex 백엔드 전용이다. auth.json에 저장된 access/refresh 토큰은 codex CLI가 자체 백엔드를 호출할 때만 유효하며, 이 토큰을 꺼내 api.openai.com(공식 OpenAI API)에 직접 Bearer로 붙여도 동작하지 않는다. 따라서 '구독으로 API를 공짜로 쓰는' 경로는 오직 codex CLI 프로세스를 외부 실행하는 방법뿐이고, SDK를 직접 호출하려면 반드시 별도의 종량제 API 키(CODEX_API_KEY 또는 OPENAI_API_KEY)가 필요하다. 이 둘은 과금 모델이 완전히 분리된 별개 경로다.",
+      "Codex CLI 인증은 3가지: (1) 브라우저 ChatGPT OAuth(`codex login`) — 구독 사용, (2) 디바이스 코드 플로우(`codex login --device-auth`, 2026년 3월 추가, 헤드리스/원격용 베타) — URL+코드를 다른 기기에서 입력, (3) API 키(`CODEX_API_KEY`/`OPENAI_API_KEY` 환경변수) — CI/CD·프로그래매틱 권장. 토큰은 기본 `~/.codex/auth.json`(Windows는 `%USERPROFILE%\\.codex\\auth.json`)에 평문 JSON으로 저장되며, config의 `cli_auth_credentials_store`를 file/keyring/auto로 바꿀 수 있다.",
+      "비대화형 실행은 `codex exec \"<프롬프트>\"`. 주요 플래그: `--json`(stdout이 JSONL 이벤트 스트림), `--output-schema <schema.json>`(응답을 JSON Schema로 강제 — 메타데이터/구조화 추출에 핵심), `-o/--output-last-message <path>`(최종 메시지를 파일로), `--model <name>`, `--cd <dir>`(작업 디렉터리), `--skip-git-repo-check`(git 저장소 아닌 폴더 허용 — 변환 앱에 필수), `--sandbox read-only|workspace-write|danger-full-access`, `--ephemeral`(세션 미저장). 프롬프트 안에 파일/이미지 경로를 직접 적으면 Codex가 읽어들인다.",
+      "헤드리스 부트스트랩: 브라우저 있는 PC에서 `codex login` 후 생성된 auth.json을 헤드리스 머신으로 복사하거나, `printenv CODEX_ACCESS_TOKEN | codex login --with-access-token`로 토큰 주입 가능. CI에서는 auth.json을 매 실행 덮어쓰면 refresh된 토큰이 stale해지는 race가 있어 'if [ ! -f ] 가드'와 concurrency 직렬화가 권장된다 — 데스크톱 앱이 동시 변환 다건을 돌릴 때 동일 문제 발생 가능(아래 risks 참조).",
+      "공식 OpenAI .NET SDK는 NuGet `OpenAI`(v2.10.0, 2026-04-04), MIT 라이선스, netstandard2.0 타깃이라 .NET 9에서 문제없이 동작. Chat Completions·비전(이미지 입력)·Structured Outputs(JSON Schema, gpt-4o 계열 이상) 모두 지원, 활발히 유지보수 중. Azure 전용 확장은 `Azure.AI.OpenAI`(공식 OpenAI 패키지 위에 얹힘). `OpenAI-DotNet`(8.x), `tryAGI.OpenAI`(4.x)는 커뮤니티 대안.",
+      "Anthropic Claude는 2026년부터 공식 .NET SDK가 NuGet `Anthropic` 패키지(v12.23.0, 2026-05-21, netstandard2.0)로 제공 — anthropics/anthropic-sdk-csharp. 이름이 비슷한 `Anthropic.SDK`(tghamm, 5.x)와 `tryAGI.Anthropic`은 비공식이다. 공식 패키지를 쓰는 것이 권장.",
+      "Microsoft.Extensions.AI(MEAI) 1.0이 2026-04-03 정식 출시(stable, MIT). `IChatClient` 단일 추상화로 OpenAI/Anthropic/Ollama/Bedrock/Gemini를 한 인터페이스로 다루며, 멀티모달(텍스트+이미지) 메시지를 지원. 프로바이더 교체가 한 줄 변경이라 이 프로젝트의 Provider/Registry 'OpenAI냐 Claude냐를 사용자가 선택' 요구에 정확히 들어맞는다."
+    ],
+    "recommendedApproach": "단일 포터블 EXE / MSIX 배포라는 제약이 결정적이다. codex CLI는 별도 설치가 필요한 외부 Node 기반 바이너리이고, 포터블 EXE에 번들하기 어렵고(수백 MB), OAuth 토큰을 API로 재사용할 수 없으므로 '비용 절감' 명분도 사라진다. 따라서 기본 경로는 SDK 직접 호출로 가는 것이 맞다.\n\n권장 아키텍처(2층):\n1) 추상화 층 — Microsoft.Extensions.AI의 `IChatClient`를 내부 LLM 게이트웨이로 채택. OpenAI는 공식 `OpenAI`(MIT) + MEAI OpenAI 커넥터, Claude는 공식 `Anthropic` 패키지(MEAI Anthropic 커넥터)로 연결. 사용자는 설정에서 'OpenAI / Claude / (옵션)Codex CLI'를 고르고 API 키만 입력하면 된다. 키는 Windows DPAPI(ProtectedData)로 암호화해 로컬 저장 — 포터블 EXE에서도 사용자별 암호화 가능.\n\n2) 선택적 Codex CLI 백엔드 — ChatGPT Pro/Plus 구독을 이미 보유한 파워유저를 위해, codex가 PATH에 감지될 때만 활성화되는 보조 백엔드로 둔다. `CheckAvailabilityAsync`에서 `codex --version` 프로브 → 실패 시 RequiresExternal로 다운로드 안내. 실행은 `codex exec --skip-git-repo-check --json --output-schema schema.json -o out.json --cd <tempdir> \"<프롬프트 + 파일경로>\"` 형태로 Process 호출, JSONL 마지막 메시지 파싱.\n\n즉 '기본은 API 키 + 공식 SDK(MEAI 추상화), Codex CLI는 구독자용 opt-in 보조 경로'의 하이브리드가 이 프로젝트에 최적이다. LLM 자체는 변환의 '핵심 엔진'이 아니라 '후처리/부가가치 단계'(요약·번역·포맷 정규화·OCR 교정·이미지 캡션·메타데이터)로 배치해, 키가 없어도 기존 변환은 100% 동작하고 LLM 기능만 비활성(ComingSoon/RequiresExternal 스타일)되게 한다.",
+    "libraries": [
+      {
+        "name": "OpenAI (공식 .NET SDK)",
+        "purpose": "OpenAI API 직접 호출 — Chat Completions, 비전(이미지 입력), Structured Outputs(JSON Schema). 문서 요약/번역/메타데이터 생성/이미지 캡션의 기본 엔진",
+        "license": "MIT",
+        "maturity": "production (v2.10.0, 2026-04-04, 활발히 유지보수, netstandard2.0이라 .NET 9 호환)"
+      },
+      {
+        "name": "Anthropic (공식 Claude .NET SDK)",
+        "purpose": "Claude API 직접 호출 — OpenAI 대안. 긴 문서 요약/번역에 강점, 비전 지원",
+        "license": "MIT (anthropics/anthropic-sdk-csharp)",
+        "maturity": "production (v12.23.0, 2026-05-21, 공식). 주의: 비공식 'Anthropic.SDK'(tghamm)·'tryAGI.Anthropic'과 혼동 금지"
+      },
+      {
+        "name": "Microsoft.Extensions.AI / .Abstractions",
+        "purpose": "IChatClient 단일 추상화로 OpenAI·Claude·Ollama를 동일 인터페이스로 — Provider/Registry의 LLM 백엔드 선택 계층",
+        "license": "MIT",
+        "maturity": "production (1.0 정식, 2026-04-03, 멀티모달 지원). 본 프로젝트 추상화와 가장 정합"
+      },
+      {
+        "name": "OpenAI Codex CLI",
+        "purpose": "외부 프로세스(codex exec)로 ChatGPT 구독 OAuth를 재사용해 LLM 호출 — 구독 보유자 opt-in 보조 경로",
+        "license": "Apache-2.0 (openai/codex 리포)",
+        "maturity": "active (2026년 활발, GPT-5.5 에이전틱). 단 별도 설치 필요·OAuth 토큰 API 재사용 불가·포터블 번들 부적합"
+      },
+      {
+        "name": "Azure.AI.OpenAI",
+        "purpose": "Azure OpenAI Service를 쓸 경우의 확장(공식 OpenAI 패키지 위에 얹힘). 일반 OpenAI만 쓸 거면 불필요",
+        "license": "MIT",
+        "maturity": "production (v2.1.0). 본 프로젝트엔 선택적"
+      },
+      {
+        "name": "tryAGI.OpenAI / OpenAI-DotNet",
+        "purpose": "OpenAI 비공식 커뮤니티 SDK 대안",
+        "license": "MIT",
+        "maturity": "active (각각 v4.2.0 / v8.8.x). 공식 OpenAI 패키지가 있으므로 우선순위 낮음"
+      }
+    ],
+    "integrationNotes": "현 추상화(IConverterProvider / ProviderCapability / ProviderRegistry / ConvertOptions)에 자연스럽게 끼워넣는 방법:\n\n1) 신규 `LlmProvider : IConverterProvider` 추가 (OcrProvider와 동일한 패턴). SupportedConversions를 LLM 후처리 매트릭스로 정의:\n   - 요약: .pdf/.docx/.txt/.md → .txt/.md (summary)\n   - 번역: .txt/.docx/.md → .txt/.docx (대상 언어는 옵션)\n   - 포맷 정규화: .txt → .md, .csv → .md(표)\n   - OCR 교정: OcrProvider 출력(.txt)을 받아 LLM이 오탈자/줄바꿈 정리 (파이프라인 2단계)\n   - 이미지 캡션/대체텍스트: .png/.jpg → .txt (비전)\n   - 메타데이터 생성: 임의 입력 → .json (제목/태그/요약, Structured Outputs)\n   OcrProvider가 PdfProvider를 생성자 주입으로 재사용하듯, LlmProvider도 텍스트 추출이 필요하면 DocumentProvider/PdfProvider/OcrProvider를 주입받아 '추출→LLM' 2단계로 구성한다.\n\n2) `ConvertOptions`에 `LlmOptions Llm { get; set; } = new();` 추가. 필드 예: Backend(\\\"openai\\\"|\\\"anthropic\\\"|\\\"codex-cli\\\"|\\\"auto\\\"), Model, ApiKey(또는 키 저장소 참조), Task(Summarize/Translate/Normalize/Caption/Metadata), TargetLanguage, MaxTokens, Temperature. 기존 OcrOptions와 동일한 스타일이라 직렬화·UI 바인딩 일관성 유지.\n\n3) `CheckAvailabilityAsync`가 게이트 역할:\n   - SDK 경로: API 키(설정 또는 OPENAI_API_KEY/ANTHROPIC_API_KEY 환경변수) 존재 확인 → 없으면 ProviderAvailability.NotReady(\\\"API 키 미설정\\\", MissingDependencies). ExternalDependency로 키 발급 URL 안내.\n   - Codex 경로: `codex --version` 프로세스 프로브 + auth.json 존재 확인 → 없으면 ProviderStatus.RequiresExternal로 다운로드/로그인 안내.\n   기존 OcrProvider가 OCR 언어팩 유무로 NotReady를 반환하는 패턴을 그대로 따른다.\n\n4) `ConvertAsync` 구현: IProgress<double> / CancellationToken 시그니처 그대로 유지. SDK 경로는 IChatClient.GetResponseAsync(스트리밍 시 진행률 갱신), Codex 경로는 Process.Start로 `codex exec --json --output-schema ... -o out.json` 실행 후 표준출력 JSONL 파싱. 출력 파일은 기존 OutputPathHelper.ResolveOutputPath + OnCollision 규칙을 재사용. 실패 시 ConvertResult.Fail, 건너뛰기 ConvertResult.Skip로 통일.\n\n5) ProviderRegistry는 수정 불필요 — 생성자에서 providers 목록에 LlmProvider 인스턴스만 추가하면 _byPair 매트릭스에 자동 편입된다. 단 LLM은 비결정적·유료·네트워크 의존이므로, 동일 (input,output) 페어를 로컬 변환 Provider가 이미 점유한 경우 TryAdd가 먼저 등록된 쪽을 유지하는 현 동작 덕분에 'LLM은 로컬 변환이 없는 신규 페어(요약/번역 등)에만 노출'되도록 등록 순서를 조정하면 된다. UI에서는 LLM 출력 페어에 '✨ AI' 배지를 붙여 종량 과금/네트워크 사용을 사용자에게 명시할 것.\n\n6) 키 보안: 포터블 EXE에서도 System.Security.Cryptography.ProtectedData(DPAPI, CurrentUser)로 키를 암호화해 %APPDATA% 또는 앱 폴더에 저장. 환경변수 OPENAI_API_KEY/ANTHROPIC_API_KEY도 fallback으로 읽어 CI/파워유저 친화.",
+    "risks": [
+      "[핵심 오해 차단] ChatGPT 구독 OAuth 토큰을 OpenAI API에 직접 재사용하려는 설계는 불가능하다. auth.json의 access_token은 codex 백엔드 전용. 'API 직접 호출'을 원하면 반드시 종량제 API 키가 필요하고, '구독 재사용'을 원하면 codex CLI 프로세스 호출 외 방법이 없다. 이 둘을 혼동하면 아키텍처가 무너진다.",
+      "Codex CLI를 단일 포터블 EXE에 번들하기는 비현실적(외부 Node 런타임·수백 MB·자동 업데이트). 사용자가 별도 설치+로그인해야 하므로 일반 사용자 대상 기본 경로로는 부적합. 구독 파워유저용 opt-in으로만 다뤄야 한다.",
+      "auth.json refresh 토큰 race: 다건 동시 변환에서 codex 프로세스를 병렬 실행하면 토큰 갱신 충돌로 stale 토큰이 덮어써질 수 있다. Codex 경로는 SemaphoreSlim(1)로 직렬화하거나 --ephemeral 사용 권장.",
+      "비용·레이트리밋·네트워크 의존: LLM 변환은 종량 과금이라 대량 배치 변환 시 비용 폭증·429 가능. 변환 큐 row마다 토큰/예상비용 표시, 사용자 확인 게이트, 재시도·백오프 필요. 오프라인에서는 LLM 페어가 NotReady가 되어야 하며 기존 로컬 변환은 영향받지 않게 격리.",
+      "프라이버시: 사용자의 로컬 문서/이미지가 OpenAI/Anthropic 서버로 전송된다. 명시적 동의 UI·설정 토글 필수, 기본 OFF 권장. 기업/민감 데이터 사용자를 위해 로컬 모델(Ollama via IChatClient) 경로를 미래 옵션으로 열어두면 좋다.",
+      "비결정성·환각: 요약/번역/메타데이터는 결과가 매번 다를 수 있어 '재현 가능한 파일 변환'이라는 앱 정체성과 충돌. LLM 출력 페어는 UI에서 'AI/실험적'으로 분명히 구분하고 결과 미리보기·재생성 버튼을 제공할 것.",
+      "라이선스 주의: 공식 'Anthropic' 패키지와 비공식 'Anthropic.SDK'(tghamm)를 혼동하면 안 됨. 둘 다 동작하나 공식 패키지가 장기 지원에 유리. codex 리포는 Apache-2.0(상업 사용 가능)이지만 CLI는 OpenAI 계정·약관에 종속.",
+      "공식 SDK·MEAI 모두 netstandard2.0 타깃이라 .NET 9 호환은 문제없으나, MEAI 1.0의 일부 커넥터 API가 빠르게 진화 중이라 버전 핀 고정(예: 10.x 라인)과 회귀 테스트 권장."
+    ],
+    "sources": [
+      "https://developers.openai.com/codex/auth",
+      "https://developers.openai.com/codex/noninteractive",
+      "https://developers.openai.com/codex/cli/reference",
+      "https://codex.danielvaughan.com/2026/04/01/codex-cli-authentication-flows-credential-management/",
+      "https://github.com/openai/codex/issues/3820",
+      "https://github.com/openai/openai-dotnet",
+      "https://www.nuget.org/packages/OpenAI",
+      "https://www.nuget.org/packages/Anthropic",
+      "https://github.com/anthropics/anthropic-sdk-csharp",
+      "https://platform.claude.com/docs/en/api/sdks/csharp",
+      "https://learn.microsoft.com/en-us/dotnet/ai/microsoft-extensions-ai",
+      "https://www.nuget.org/packages/Microsoft.Extensions.AI.Abstractions/",
+      "https://www.nuget.org/packages/Azure.AI.OpenAI/",
+      "https://developers.openai.com/codex/models",
+      "https://tosea.ai/blog/openai-codex-complete-guide-2026"
+    ]
+  },
+  {
+    "key": "ffmpeg",
+    "topic": "FFmpeg .NET 통합 (영상/오디오/코덱 변환) — Everything2Everything 적용 리서치",
+    "keyFindings": [
+      "라이브러리 선택은 명확하다: FFMpegCore가 정답이다. v5.4.0 (2025-10-27 릴리스, 누적 600만 다운로드, 일 3K, MIT 라이선스, .NET Standard 2.0+ → .NET 9 호환). 라이브러리 자체가 MIT이므로 상업적 사용에 제약이 전혀 없다.",
+      "Xabe.FFmpeg는 라이브러리 코드 자체가 CC BY-NC-SA 3.0 (비상업) 라이선스다. 상업적 사용은 별도 유료 상업 라이선스 구매가 필요하다. 인용: 'You may use Software under Attribution-NonCommercial-ShareAlike 3.0 Unported (CC BY-NC-SA 3.0) license for non commercial projects.' → 상업 사용 선호 방침상 탈락.",
+      "핵심 라이선스 함정은 라이브러리가 아니라 FFmpeg 바이너리 자체다. FFmpeg는 기본 LGPL 2.1+이지만 --enable-gpl(libx264/libx265 H.264/H.265 인코더 포함) 또는 --enable-nonfree(libfdk-aac) 빌드는 GPL/비배포 라이선스로 바뀐다. 폐쇄소스 상업 EXE에 가장 흔한 gyan.dev 빌드(GPLv3)나 BtbN gpl 빌드를 번들하면 안 된다.",
+      "결정적 발견: 폐쇄소스 상업 배포에는 BtbN의 'lgpl-shared' 빌드를 써야 한다. LGPL 준수 조건은 (1) --enable-gpl/--enable-nonfree 없이 빌드, (2) 동적 링크(여기선 별도 ffmpeg.exe 프로세스 호출이 가장 안전한 동적 분리), (3) FFmpeg 소스 코드 제공 의무(또는 다운로드 링크), (4) 다운로드 페이지/앱 내 FFmpeg 사용 고지(attribution)다. 이미 LibreOffice를 외부 도구로 호출하는 본 프로젝트 구조와 정확히 일치한다.",
+      "NVENC(h264_nvenc/hevc_nvenc)는 LGPL 빌드에서 --enable-nonfree 없이 사용 가능하다. NVIDIA의 FFmpeg/NVENC 인터페이스 작성자(Philip Lachsinger)가 직접 'turning it on did not stop your ffmpeg build from being lgpl compliant (it does not require the non-free flag)'라고 확인. 헤더는 MIT, 런타임은 GPU 드라이버의 system library exception 적용. → LGPL-shared 빌드 + NVENC HW 가속이 상업 배포에 합법적으로 양립한다.",
+      "코덱 라이선스 매트릭스(상업 배포 관점): H.264/H.265 인코딩은 libx264/libx265=GPL(폐쇄소스 불가) 대신 하드웨어 인코더(h264_nvenc/hevc_nvenc, h264_qsv/hevc_qsv, h264_amf)를 쓰면 LGPL 유지. AV1=libaom/libsvtav1(BSD-like, royalty-free), VP9=libvpx(BSD-like), Opus=libopus(BSD), FLAC(Xiph BSD), AAC=FFmpeg 네이티브 aac 인코더(LGPL, libfdk-aac는 nonfree라 회피). 즉 LGPL-shared 빌드만으로 AV1/VP9/Opus/FLAC/AAC/MP3는 모두 커버되고, H.264/H.265는 HW 인코더로 우회.",
+      "FFMpegCore는 본 프로젝트의 IConverterProvider 패턴에 매끄럽게 들어간다. 진행률은 NotifyOnProgress(Action<double> onPercentageProgress, TimeSpan totalTimeSpan) → IProgress<double>로 직결, 취소는 CancellableThrough(CancellationToken token, int timeout=0) → 기존 ct 직결, HW 가속은 WithHardwareAcceleration(HardwareAccelerationDevice) (enum: Auto/D3D11VA/DXVA2/QSV/CUVID/CUDA/VDPAU/VAAPI/LibMFX)로 지원.",
+      "바이너리 크기 현실: FFmpeg essentials 정적 빌드 ffmpeg.exe는 압축 32MB / 압축해제 ~103MB. 단일 포터블 EXE에 내장하면 100MB가 더해진다. .NET single-file publish는 ffmpeg.exe를 임베드해 자가추출(IncludeNativeLibrariesForSelfExtract)할 수 있으나 시작 시 temp 추출 비용이 크다. 더 나은 전략은 런타임 다운로드(FFMpegDownloader.DownloadFFMpegSuite())다."
+    ],
+    "recommendedApproach": "FFMpegCore 5.4.0(MIT) + FFprobe를 채택하고, FFmpeg 바이너리는 EXE에 번들하지 말고 'RequiresExternal + 최초 사용 시 LGPL-shared 빌드 자동 다운로드' 방식을 권장한다. 근거: (1) 라이선스 — BtbN lgpl-shared 빌드(GPL/nonfree 없음)는 폐쇄소스 상업 EXE에 합법적이며, ffmpeg.exe를 별도 프로세스로 호출(=동적 분리)하면 본 앱 바이너리는 FFmpeg와 분리되어 LGPL 전염 없음. gyan.dev나 BtbN gpl 빌드(GPLv3, libx264/x265 포함)는 절대 번들 금지. (2) 배포 크기 — FFmpeg ~100MB를 단일 EXE에 박으면 다운로드/시작이 무거워지므로, 이미 LibreOffice를 외부 의존성으로 두는 본 프로젝트 철학대로 FFmpeg도 외부 도구로 취급. 구체적으로 FfmpegProvider를 ProviderStatus.RequiresExternal로 등록하고, CheckAvailabilityAsync에서 (a) 시스템 PATH의 ffmpeg.exe, (b) 앱 데이터 폴더(%LOCALAPPDATA%\\\\Everything2Everything\\\\ffmpeg)에 받아둔 바이너리, (c) FFMpegCore의 FFMpegDownloader로 최초 1회 자동 다운로드 순으로 탐지/조달. GlobalFFOptions.Configure(new FFOptions{ BinaryFolder = <앱데이터 ffmpeg 경로> })로 경로를 고정. (3) 코덱 전략 — H.264/H.265는 HW 인코더(h264_nvenc/qsv/amf, 미지원 시 mpeg4/우회) 우선, AV1/VP9/Opus/FLAC/AAC(네이티브)/MP3는 LGPL 빌드로 직접 처리. (4) 진행률은 FFprobe로 duration을 먼저 구해 NotifyOnProgress(Action<double>, TimeSpan)을 IProgress<double>에 연결, 취소는 CancellableThrough(CancellationToken)에 기존 ct 연결. MSIX 배포 시에는 자동 다운로드가 샌드박스/네트워크 정책에 걸릴 수 있으니, MSIX 변형에서는 lgpl-shared DLL/EXE를 앱 패키지에 동봉(여전히 LGPL 준수: 동적 호출 + 소스 제공 링크 + 고지)하는 분기 권장.",
+    "libraries": [
+      {
+        "name": "FFMpegCore",
+        "purpose": "FFmpeg/FFprobe CLI를 감싸는 .NET fluent wrapper. 트랜스코딩, 압축, 포맷 변환, 미디어 분석, 진행률/취소/HW가속 지원. 영상·오디오 Provider의 핵심 엔진.",
+        "license": "MIT (라이브러리 코드 — 상업 사용 자유. FFmpeg 바이너리 라이선스는 별개)",
+        "maturity": "production — v5.4.0(2025-10-27), 누적 600만 다운로드/일 3K, 활발한 유지보수. NuGet rosenbjergsoftworks",
+        "notes": "GlobalFFOptions.Configure로 BinaryFolder 지정. FFMpegDownloader.DownloadFFMpegSuite()로 ffbinaries API에서 런타임 다운로드. NotifyOnProgress / CancellableThrough / WithHardwareAcceleration 제공. 본 프로젝트 채택 권장."
+      },
+      {
+        "name": "Xabe.FFmpeg",
+        "purpose": "FFmpeg .NET wrapper (대안 후보). 비슷한 트랜스코딩/변환 API.",
+        "license": "CC BY-NC-SA 3.0 (비상업 전용). 상업 사용은 유료 상업 라이선스 필수",
+        "maturity": "active — 유지되나 라이선스 모델이 상업 프로젝트에 부적합",
+        "notes": "코드 자체가 비상업 라이선스라 상업 EXE에는 탈락. 상업 라이선스 비용은 공개 안 됨(별도 문의)."
+      },
+      {
+        "name": "직접 Process 호출 (System.Diagnostics.Process로 ffmpeg.exe 실행)",
+        "purpose": "의존성 0, ffmpeg CLI를 직접 ProcessStartInfo로 실행하고 stderr를 파싱해 진행률 추출.",
+        "license": "N/A (본인 코드, ffmpeg 바이너리만 라이선스 대상)",
+        "maturity": "production — 가장 단순/투명하지만 인자 빌드·진행률 파싱(time=/duration 정규식)·에러 처리를 직접 구현해야 함",
+        "notes": "본 프로젝트는 이미 DocumentProvider에서 soffice를 ProcessStartInfo+WaitForExitAsync(ct)로 호출하는 패턴이 정립됨. FFMpegCore가 부담스러우면 이 패턴 재사용 가능하나, 진행률/HW가속 추상화를 직접 짜야 해 FFMpegCore 대비 이득 적음."
+      },
+      {
+        "name": "FFmpeg 바이너리 (BtbN lgpl-shared 빌드)",
+        "purpose": "실제 트랜스코딩을 수행하는 네이티브 엔진. GPL/nonfree 미포함 LGPL 빌드.",
+        "license": "LGPL 2.1+ (--enable-gpl, --enable-nonfree 없음). 폐쇄소스 상업 배포 가능 — 단 동적 분리 호출 + 소스 제공 + 고지 필요",
+        "maturity": "production — BtbN/FFmpeg-Builds, 7.1.x 정기 릴리스(2025). winget: BtbN.FFmpeg.LGPL.Shared.7.1",
+        "notes": "상업 배포에 권장하는 바이너리. NVENC/QSV/AMF HW 인코더 + AV1/VP9/Opus/FLAC/AAC(네이티브) 포함. H.264/H.265 SW(libx264/x265=GPL)는 빠짐 → HW 인코더로 우회."
+      },
+      {
+        "name": "FFmpeg 바이너리 (gyan.dev essentials/full)",
+        "purpose": "가장 널리 쓰이는 Windows 정적 빌드. libx264/x265 H.264/H.265 SW 인코딩 포함.",
+        "license": "GPLv3 (essentials/full 모두 --enable-gpl). 폐쇄소스 상업 EXE에 번들 금지",
+        "maturity": "production — 사실상 표준, 정기 갱신",
+        "notes": "개발/테스트엔 편하나 GPL이라 상업 배포 바이너리로 부적합. ffmpeg.exe ~103MB(압축해제). 라이선스 때문에 BtbN lgpl-shared로 교체 필요."
+      }
+    ],
+    "integrationNotes": "새 FfmpegProvider : IConverterProvider를 src/Everything2Everything.Core/Converters/에 추가하고 ProviderRegistry에 등록한다(기존 7개 Provider와 동일). 구체 설계:\\n\\n1) Capability: Status=ProviderStatus.RequiresExternal, ExternalDependencies에 new ExternalDependency(Name:\\\"FFmpeg\\\", Description:\\\"영상/오디오 트랜스코딩 엔진(LGPL 빌드)\\\", DownloadUrl:\\\"https://github.com/BtbN/FFmpeg-Builds/releases\\\"). SupportedConversions는 ProviderCapability.PairsFromMatrix로 영상(mp4/mkv/webm/mov/avi/gif)·오디오(mp3/aac/m4a/opus/ogg/flac/wav) 입출력 N×M 구성. 단 코덱 호환 안 되는 쌍(예: → flac은 오디오 전용)은 매트릭스 후 필터링하거나 PairsFromMatrix 대신 명시적 ConversionPair 리스트로 정밀 제어 권장.\\n\\n2) 바이너리 탐지: ExternalToolDetector에 TryFindFfmpeg(out string ffmpegPath) 추가 — (a) %LOCALAPPDATA%\\\\Everything2Everything\\\\ffmpeg\\\\ffmpeg.exe, (b) 시스템 PATH(where ffmpeg), 순으로 탐지. CheckAvailabilityAsync에서 못 찾으면 NotReady 반환하되, 선택적으로 FFMpegDownloader.DownloadFFMpegSuite(new FFOptions{ BinaryFolder=<앱데이터경로> })로 자동 조달 후 GlobalFFOptions.Configure로 경로 고정. (FFMpegDownloader 기본 소스는 ffbinaries=gyan GPL 빌드일 수 있으니, 상업 배포에선 BtbN lgpl-shared zip을 직접 받는 커스텀 다운로더를 쓰거나 동봉 권장 — 라이선스 검증 필수.)\\n\\n3) ConvertAsync 본문(FFMpegCore 사용):\\n   var media = await FFProbe.AnalyseAsync(sourcePath, cancellationToken: ct);  // duration 확보\\n   await FFMpegArguments\\n     .FromFileInput(sourcePath)\\n     .OutputToFile(outputPath, overwrite:true, opt => opt\\n        .WithHardwareAcceleration(HardwareAccelerationDevice.Auto)   // NVENC/QSV 자동\\n        .WithVideoCodec(\\\"h264_nvenc\\\")  // 또는 av1/libaom, vp9, opus 등 outExt별 분기\\n        .WithAudioCodec(\\\"aac\\\"))\\n     .NotifyOnProgress(p => progress?.Report(p/100.0), media.Duration)  // IProgress<double> 직결\\n     .CancellableThrough(ct)                                            // 기존 ct 직결\\n     .ProcessAsynchronously();\\n   진행률 NotifyOnProgress(Action<double>, TimeSpan)의 0~100을 /100.0해 기존 IProgress<double> 계약(0~1)에 맞춘다. 예외는 기존 Provider처럼 try/catch로 ConvertResult.Fail, OperationCanceledException은 rethrow.\\n\\n4) HW 가속 폴백: CheckAvailabilityAsync 또는 첫 변환 시 ffmpeg -encoders로 h264_nvenc/h264_qsv/h264_amf 가용성을 탐지해 ConvertOptions에 저장하고, 없으면 SW 인코더로 폴백하되 H.264/H.265 SW는 GPL이라 LGPL 빌드엔 없음 → 폴백을 AV1/VP9(libaom/libvpx, LGPL) 또는 mpeg4로 잡거나 사용자에게 HW 미지원 안내. ConvertOptions에 코덱/품질(CRF) 옵션 필드 추가 고려.\\n\\n5) 라이선스 고지: 본 프로젝트 어딘가(About/설정)에 'This software uses libraries from the FFmpeg project under the LGPLv2.1' 문구 + FFmpeg 소스 다운로드 링크 추가(LGPL 의무). ExternalDependency.DownloadUrl을 통해 UI에서 안내 가능.\\n\\n6) csproj: Everything2Everything.Core.csproj ItemGroup에 <PackageReference Include=\\\"FFMpegCore\\\" Version=\\\"5.4.0\\\" /> 추가. 자동 다운로더를 쓸 경우 FFMpegCore에 내장된 FFMpegDownloader 사용(별도 패키지 불필요). 단일 EXE에 번들 시 ffmpeg.exe를 None/Content로 추가하고 single-file에서 SelfExtract 메타데이터로 제외/비압축 처리(시작 성능).",
+    "risks": [
+      "라이선스 사고 위험(최대): 개발 편의로 gyan.dev(GPLv3) 빌드를 받아 그대로 상업 EXE에 번들하면 GPL 위반. FFMpegDownloader.DownloadFFMpegSuite() 기본 소스(ffbinaries)가 GPL 빌드를 받아올 수 있어, 자동 다운로더를 쓰더라도 받아오는 빌드의 라이선스를 반드시 검증/고정해야 한다. 상업 배포는 BtbN lgpl-shared로 명시 고정 권장.",
+      "LGPL 고지/소스제공 의무 누락: LGPL은 동적 호출이어도 (1) FFmpeg 사용 고지, (2) FFmpeg 소스 코드 입수 경로 제공이 필요. About 화면/배포 페이지에 문구·링크가 없으면 위반.",
+      "H.264/H.265 SW 인코딩 공백: LGPL 빌드엔 libx264/x265가 없어 HW 인코더(NVENC/QSV/AMF)가 없는 머신(예: 구형/가상 환경)에서는 H.264/H.265 출력이 불가. 폴백 코덱(AV1/VP9) 또는 명확한 사용자 안내 필요. 무신경하면 '변환 실패'로 보임.",
+      "코덱별 특허/로열티 별도 위험: 라이선스(코드 배포)와 특허(코덱 사용)는 별개. H.264/H.265/AAC는 MPEG-LA/Access Advance 등 특허 풀 대상으로, FFmpeg.org도 'commercial use carries higher risk'라고 경고. AV1/VP9/Opus/FLAC(royalty-free)을 기본/권장 출력으로 두면 위험 최소화.",
+      "배포 크기/UX: ffmpeg.exe ~100MB. 단일 EXE 내장 시 다운로드/시작 지연, 자동 다운로드 시 최초 변환 전 네트워크 의존 + 실패 처리(오프라인/방화벽) 필요. MSIX 샌드박스에선 임의 경로 다운로드/실행이 막힐 수 있어 동봉 전략으로 분기해야 함.",
+      "자동 다운로드 보안: 외부 URL에서 실행 파일을 받아 실행하므로 HTTPS·체크섬(해시) 검증 없이 받으면 공급망 공격 표면. 다운로드 후 SHA256 검증 권장.",
+      "프로세스 호출 안정성: ffmpeg는 stderr로 진행률을 흘리고 비정상 종료 시 좀비 프로세스/임시파일이 남을 수 있음. 기존 DocumentProvider처럼 ct 취소 시 proc.Kill(true)와 temp 정리(finally)를 FFMpegCore의 CancellableThrough가 처리하는지 확인하고, 미흡하면 보강 필요."
+    ],
+    "sources": [
+      "https://github.com/rosenbjerg/FFMpegCore",
+      "https://github.com/rosenbjerg/FFMpegCore/blob/main/LICENSE",
+      "https://www.nuget.org/packages/FFMpegCore",
+      "https://github.com/rosenbjerg/FFMpegCore/blob/main/FFMpegCore/FFMpeg/FFMpegArgumentProcessor.cs",
+      "https://github.com/rosenbjerg/FFMpegCore/issues/277",
+      "https://github.com/rosenbjerg/FFMpegCore/issues/279",
+      "https://ffmpeg.xabe.net/license.html",
+      "https://ffmpeg.xabe.net/index.html",
+      "https://github.com/tomaszzmuda/Xabe.FFmpeg",
+      "https://www.ffmpeg.org/legal.html",
+      "https://ffmpeg.org/general.html",
+      "https://trac.ffmpeg.org/wiki/Encode/AV1",
+      "https://trac.ffmpeg.org/wiki/HWAccelIntro",
+      "https://forums.developer.nvidia.com/t/lgpl-ffmpeg-and-nvenc-in-a-closed-source-commercial-application/51169",
+      "https://www.gyan.dev/ffmpeg/builds/",
+      "https://github.com/BtbN/FFmpeg-Builds",
+      "https://github.com/BtbN/FFmpeg-Builds/releases",
+      "https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview",
+      "https://github.com/dotnet/designs/blob/main/accepted/2020/single-file/design.md"
+    ]
+  },
+  {
+    "key": "pdf-compress",
+    "topic": "PDF 압축 및 PDF↔문서 양방향 변환 (Everything2Everything .NET 9 / WPF 통합 관점)",
+    "keyFindings": [
+      "압축 엔진 라이선스가 핵심 갈림길이다. Ghostscript(-dPDFSETTINGS /screen·/ebook·/printer·/prepress)는 압축 품질이 가장 우수하지만 AGPL v3 듀얼 라이선스다. 포터블 EXE에 gs 바이너리를 동봉/배포하면 AGPL 전염 의무(소스 공개)가 발생하므로, 상업적 사용을 원하면 Artifex 상업 라이선스 구매가 필요하다. MuPDF/mutool clean도 동일하게 AGPL이라 같은 문제가 있다.",
+      "qpdf(Apache 2.0, 최신 12.4.0 / 2026-04, 매우 활발)가 라이선스 안전성 측면에서 1순위 무료 옵션이다. object stream 압축(--object-streams=generate), 스트림 재압축, linearize(웹 최적화), 암호화/복호화/비밀번호 변경, 페이지 분할·병합을 모두 CLI로 제공한다. 단, qpdf는 이미지 다운샘플링(리샘플링)은 하지 않는다 — 구조 최적화/무손실 위주라 압축률이 Ghostscript보다 낮다.",
+      "최대 압축률(이미지 다운샘플링)은 라이선스 안전한 무료 도구만으로는 약하다. qpdf로 구조 최적화 + 프로젝트가 이미 보유한 ImageMagick/PDFium으로 이미지 페이지를 재인코딩하는 하이브리드가 AGPL을 피하면서 실용적 압축을 내는 최선의 무료 경로다.",
+      "PDF→DOCX 레이아웃 보존은 순수 .NET 라이브러리로는 사실상 불가능하다. PdfPig(Apache 2.0, v0.1.14 / 2026-03, 활발)는 텍스트·글자 위치(page.Letters)·단어(GetWords)·이미지 추출까지 가능하지만 DOCX 재구성(레이아웃 엔진)은 설계 범위 밖이다. Docnet.Core(MIT, PDFium 래퍼)도 렌더/텍스트 추출 전용이다.",
+      "PDF→DOCX/편집가능 변환의 현실적 최선은 이미 통합된 LibreOffice headless(soffice --convert-to docx)다. 무료(MPL/LGPL)이고 단락·표를 어느 정도 복원하지만, 스캔/복잡 레이아웃 PDF는 충실도가 낮다. 고충실도 상업 변환이 필요하면 Nutrient(PSPDFKit)/IronPDF 등 유료 SDK가 있으나 라이선스 비용이 든다.",
+      "PDF→텍스트/HTML은 순수 .NET로 충분하다. PdfPig(텍스트, 무료)와 PDFium(Docnet) 또는 mutool로 텍스트/구조 추출이 가능하다. PDF→HTML 레이아웃 보존은 LibreOffice 또는 pdf2htmlEX(외부)이 현실적이다.",
+      "PDF/A 변환은 Ghostscript(-dPDFA, AGPL) 또는 LibreOffice PDF export(SelectPdfVersion=1 → PDF/A-1)로 가능하며, 검증은 veraPDF(반사실적 표준 검증기, 무료)로 한다. 라이선스 안전을 원하면 LibreOffice 경로 + veraPDF 검증 조합이 적합하다.",
+      "암호화/복호화/병합/분할은 qpdf(Apache 2.0) 단독으로 전부 커버 가능하며 가장 가벼운 단일 실행 파일이다. 순수 .NET 대안으로 PDFsharp 6.2.x(MIT, AES-128/256, 병합·분할·암호화 지원, .NET 9 호환)가 외부 의존성 없이 In-Process로 동작해 포터블 EXE에 가장 잘 맞는다."
+    ],
+    "recommendedApproach": "이 프로젝트(단일 포터블 EXE / 상업적 사용 가능 라이선스 우선)에는 'AGPL 회피 + 가능한 한 in-process .NET' 원칙을 권장한다.\n\n1) PDF 압축: 1차로 PDFsharp(MIT) 또는 qpdf(Apache 2.0)로 구조 최적화(object stream 압축, linearize, 중복 객체 제거)를 in-process/경량 CLI로 수행한다. 이미지 다운샘플링이 필요한 '강한 압축' 모드는 이미 보유한 PDFium(Docnet/PDFtoImage)로 페이지를 렌더 후 ImageMagick로 JPEG/품질 조절 재인코딩하여 새 PDF를 만드는 하이브리드를 별도 옵션으로 제공한다(텍스트 선택성은 잃지만 라이선스 안전). Ghostscript는 '고급 압축' 옵션으로만 노출하되, 번들하지 말고 사용자가 별도 설치한 gs를 ExternalDependency로 감지해 쓰는 방식(LibreOffice/H2Orestart와 동일 패턴)으로 AGPL 배포 의무를 회피한다.\n\n2) PDF→DOCX/HTML(역변환): 기존 DocumentProvider의 LibreOffice 경로를 그대로 확장해 입력 매트릭스에 .pdf를 추가한다(soffice --convert-to docx/html/txt). 순수 .NET PdfPig는 'PDF→txt' 같은 빠른 무외부 경로와 텍스트 추출 폴백으로 사용한다.\n\n3) PDF/A·암호화·병합·분할: PDFsharp(MIT, in-process)를 기본 엔진으로, qpdf(Apache 2.0)를 무거운 작업(linearize/복잡 암호)의 외부 폴백으로 둔다. PDF/A 검증은 선택적 veraPDF 연동.\n\n전체적으로 '무료 기본(PDFsharp/qpdf/PDFium/LibreOffice) + 선택적 고급(Ghostscript/유료 SDK, 사용자 설치 감지)' 2계층 전략이 라이선스·포터블성·품질의 균형점이다.",
+    "libraries": [
+      {
+        "name": "qpdf (CLI + libqpdf)",
+        "purpose": "PDF 구조 최적화/object stream 압축, linearize(웹 최적화), 암호화·복호화·비밀번호 변경, 페이지 분할·병합. 이미지 다운샘플링은 안 함(무손실/구조 위주).",
+        "license": "Apache License 2.0 (v7+ 재라이선스)",
+        "maturity": "production / 매우 활발 (v12.4.0, 2026-04; v12.3.2, 2026-01). Windows MSVC 32/64bit 빌드 제공",
+        "notes": "상업적 사용 완전 안전. 단일 정적 빌드 EXE로 번들 가능. .NET에서는 Process 호출 또는 libqpdf P/Invoke. 압축률은 이미지 미리샘플링이 없어 Ghostscript보다 낮음."
+      },
+      {
+        "name": "Ghostscript (gswin64c) + Ghostscript.NET 래퍼",
+        "purpose": "-dPDFSETTINGS(/screen·/ebook·/printer·/prepress) 프리셋 + -dDownsampleColorImages/-dColorImageResolution 등 이미지 다운샘플링으로 최고 압축률. -dPDFA로 PDF/A 변환.",
+        "license": "AGPL v3 (또는 Artifex 상업 라이선스). Ghostscript.NET 래퍼는 MIT지만 네이티브 gs는 AGPL",
+        "maturity": "production / 활발 (10.x). Ghostscript.NET 래퍼 NuGet은 1.3.3로 다소 정체",
+        "notes": "주의: 포터블 EXE에 gs 동봉·배포 시 AGPL 전염. 상업 배포하려면 Artifex 상업 라이선스 필요. '사용자가 별도 설치한 gs를 감지'하는 ExternalDependency 패턴으로 쓰면 배포 의무 회피 가능."
+      },
+      {
+        "name": "MuPDF / mutool (clean)",
+        "purpose": "mutool clean으로 폰트/이미지 스트림 압축·garbage collect. 렌더링/멀티포맷(EPUB/XPS) 강점.",
+        "license": "AGPL v3 (또는 Artifex 상업 라이선스)",
+        "maturity": "production / 활발 (1.27.x)",
+        "notes": "Ghostscript와 동일한 AGPL 이슈. 상업 포터블 배포에는 부적합(상업 라이선스 없으면). 굳이 채택 이유 없음 — qpdf로 대체 권장."
+      },
+      {
+        "name": "PdfPig (UglyToad.PdfPig)",
+        "purpose": "순수 .NET PDF 읽기/텍스트·글자 위치(Letters)·단어(GetWords/NearestNeighbour)·이미지(GetImages) 추출, 기본 PDF 생성·병합. PDF→txt/구조 분석에 적합.",
+        "license": "Apache License 2.0",
+        "maturity": "production / 활발 (v0.1.14, 2026-03; PDFBox 포팅). netstandard2.0",
+        "notes": "외부 의존성 없는 in-process. 단, PDF→DOCX 레이아웃 재구성은 설계 범위 밖. 텍스트 추출·OCR 전처리·검색 폴백 용도."
+      },
+      {
+        "name": "Docnet.Core",
+        "purpose": "PDFium(Apache 2.0) .NET Standard 래퍼. 페이지 렌더(비트맵), 텍스트/메타데이터 추출.",
+        "license": "MIT (네이티브 PDFium은 Apache 2.0)",
+        "maturity": "active / 안정 (유지보수 보통)",
+        "notes": "이미 프로젝트가 PDFium(PDFtoImage)를 쓰므로 중복 가능. 이미지 다운샘플링 기반 압축의 렌더 단계에 활용 가능."
+      },
+      {
+        "name": "PDFsharp 6.x",
+        "purpose": "순수 .NET PDF 생성·수정·병합·분할, AES-128/256 암호화·복호화, PDF/A·PDF/UA 일부 지원.",
+        "license": "MIT (상업적 자유, 저작권 고지 유지 시)",
+        "maturity": "production / 활발 (6.2.4, .NET 9/10 호환)",
+        "notes": "외부 바이너리 0개 → 포터블 EXE에 최적. 병합·분할·암호화의 기본 in-process 엔진으로 1순위. 단 이미지 재압축/다운샘플링 기능은 약함."
+      },
+      {
+        "name": "DocumentFormat.OpenXml + OpenXmlPowerTools(Clippit)",
+        "purpose": "DOCX in-process 생성/편집. PdfPig 추출 텍스트로 간단한 DOCX 조립 시 사용.",
+        "license": "MIT (둘 다)",
+        "maturity": "production / 활발 (OpenXml 3.5.1; PowerTools 4.5.x / Clippit 2026 유지)",
+        "notes": "고충실도 PDF→DOCX 변환 엔진은 아님. 텍스트만 담는 단순 DOCX 폴백 생성에 한정 사용."
+      },
+      {
+        "name": "LibreOffice (soffice headless)",
+        "purpose": "PDF→DOCX/HTML/TXT 역변환, PDF/A export, 문서 상호변환. 이미 통합됨.",
+        "license": "MPL 2.0 / LGPL 3.0 (상업 사용 가능)",
+        "maturity": "production / 매우 활발",
+        "notes": "PDF→편집가능 변환의 현실적 무료 최선. 복잡/스캔 레이아웃은 충실도 한계. 기존 DocumentProvider 패턴 그대로 .pdf 입력 추가."
+      },
+      {
+        "name": "veraPDF",
+        "purpose": "PDF/A·PDF/UA 적합성 검증(생성 아님). 변환 후 검증 단계.",
+        "license": "이중(GPLv3+ / MPLv2+), 둘 다 무료 사용 가능",
+        "maturity": "production / 활발 (PDF Association·OPF 유지, ISO 참조 검증기)",
+        "notes": "Java 기반 CLI. PDF/A 출력 보증이 필요할 때만 선택적 ExternalDependency로 연동."
+      },
+      {
+        "name": "IronPDF / Nutrient(PSPDFKit) .NET SDK",
+        "purpose": "고충실도 PDF→Word/Excel/PPT 변환, HTML↔PDF, 압축 등 올인원 상업 SDK.",
+        "license": "상업(유료, 무료 아님)",
+        "maturity": "production / 활발",
+        "notes": "레이아웃 보존 PDF→DOCX가 사업적으로 꼭 필요할 때의 유료 대안. 라이선스 비용·런타임 크기 고려. 기본 무료 전략과 별도 옵션."
+      }
+    ],
+    "integrationNotes": "기존 추상화에 자연스럽게 끼워넣을 수 있다. 핵심은 IConverterProvider / ProviderCapability / ProviderRegistry(N×M 매트릭스)와 ExternalDependency 감지 패턴이 이미 LibreOffice·H2Orestart에서 검증되어 있다는 점이다.\n\n1) PDF 역변환(DOCX/HTML/TXT): 가장 저비용 통합. DocumentProvider.cs의 Inputs 배열에 \\\".pdf\\\"를 추가하고 RouteAsync에 PDF 분기를 넣으면 된다. .pdf→{docx,html,txt}는 그대로 SofficeConvertAsync 재사용(soffice는 PDF 입력을 Draw로 열어 변환). .pdf→txt 무외부 폴백은 PdfPig로 page.Text를 모아 쓰는 별도 경로를 추가하면 LibreOffice 없이도 동작. .pdf→md는 기존 패턴대로 pdf→html(soffice)→ReverseMarkdown 체인으로 처리. RoadmapNote/ExternalDependencies는 기존 LibreOffice 의존성 항목 그대로 재사용.\n\n2) PDF 압축/유틸리티(압축·암호화·병합·분할·PDF/A): 같은 \\\".pdf\\\"→\\\".pdf\\\" 변환은 현 ProviderRegistry가 (input==output)을 ConversionEngine 단계에서 걸러낼 가능성이 높으므로, '동일 확장자 변환'을 옵션 파라미터로 구분하는 새 PdfToolProvider(예: Id \\\"pdf-tools\\\")를 신설하는 편이 깔끔하다. ConvertOptions에 PdfCompress(레벨: Light=PDFsharp/qpdf 구조 최적화, Strong=PDFium 렌더+ImageMagick 재인코딩, Max=Ghostscript /screen) 같은 옵션 그룹을 추가한다(기존 Jpeg/Webp/Avif/Tiff/PdfRender 옵션 그룹과 동일한 record 스타일). 압축 강도에 따라 내부적으로 (a) PDFsharp in-process, (b) PDFium+ImageMagick 하이브리드(PdfProvider의 렌더 로직과 ApplyEncoding 재사용 가능), (c) gs CLI 폴백으로 디스패치.\n\n3) 라이선스/배포 경계: PDFsharp·PdfPig·qpdf는 번들 가능(MIT/Apache). Ghostscript·MuPDF·veraPDF·LibreOffice는 절대 EXE에 정적 링크/동봉하지 말고, CheckAvailabilityAsync에서 ExternalToolDetector로 사용자 설치본을 감지해 ProviderAvailability.NotReady(미설치 시) 또는 Ready로 분기한다(현 DocumentProvider.CheckAvailabilityAsync와 동일 패턴). 이렇게 하면 고급 압축/PDF-A는 '사용자가 직접 설치한 도구로만' 동작하여 AGPL 배포 전염을 구조적으로 회피한다. ExternalDependency.DownloadUrl에 gs/veraPDF 다운로드 링크를 넣어 안내.\n\n4) qpdf 통합 방식: SofficeConvertAsync와 동일한 ProcessStartInfo/ArgumentList 패턴으로 QpdfRunner 헬퍼를 하나 만들어 압축(--object-streams=generate --compress-streams=y --recompress-flate), 암호화(--encrypt), 복호화(--decrypt), 분할(--split-pages), 병합(--pages)을 공통 호출. libqpdf P/Invoke는 복잡도가 높아 CLI 호출이 통합 비용 대비 합리적.",
+    "risks": [
+      "Ghostscript/MuPDF AGPL 전염: 단일 포터블 EXE에 gs/mutool 바이너리를 동봉해 배포하면 전체 애플리케이션 소스 공개 의무가 생길 수 있다. 상업 배포 시 반드시 '사용자 설치본 감지' 방식으로만 쓰거나 Artifex 상업 라이선스를 구매해야 한다.",
+      "PDF→DOCX 충실도 한계: LibreOffice·PdfPig 등 무료 경로는 표·다단·스캔 PDF에서 레이아웃이 깨지기 쉽다. 사용자 기대치를 UI에 명확히 표기(텍스트 위주 복원)하지 않으면 품질 클레임 위험.",
+      "이미지 다운샘플링 압축의 부작용: PDFium 렌더+ImageMagick 재인코딩 방식은 강한 압축률을 내지만 텍스트 선택성/벡터를 잃고 전 페이지가 래스터화된다. 검색 가능한 PDF가 깨지므로 '강한/최대' 모드는 별도 옵션으로 분리하고 경고 필요.",
+      "qpdf 압축률 기대치: qpdf는 이미지 다운샘플링을 안 해 '구조 최적화'만으로는 사용자가 기대하는 수십% 감소가 안 나올 수 있다. 압축 레벨별 실제 효과를 벤치마크로 검증 후 UI 문구를 맞춰야 함.",
+      "외부 도구 버전·경로 다양성: LibreOffice/gs/veraPDF의 설치 경로·버전 차이로 인자 비호환(예: soffice 7.3 이상에서만 PDF export 파라미터화)이 발생할 수 있어 ExternalToolDetector의 버전 체크/오류 처리 강화 필요.",
+      "PDF/A 보증: -dPDFA나 soffice export가 '시도'는 하지만 실제 적합성은 보장 못 한다. veraPDF 검증을 붙이지 않으면 'PDF/A 변환' 라벨이 사실과 다를 수 있는 법적/신뢰 리스크."
+    ],
+    "sources": [
+      "https://ghostscript.com/licensing/",
+      "https://ghostscript.readthedocs.io/en/latest/VectorDevices.html",
+      "https://ghostscript.com/blog/optimizing-pdfs.html",
+      "https://www.nuget.org/packages/Ghostscript.NET",
+      "https://github.com/qpdf/qpdf",
+      "https://qpdf.readthedocs.io/en/stable/cli.html",
+      "https://en.wikipedia.org/wiki/MuPDF",
+      "https://mupdf.readthedocs.io/en/latest/tools/mutool-clean.html",
+      "https://artifex.com/blog/choosing-between-ghostscript-and-mupdf",
+      "https://github.com/UglyToad/PdfPig",
+      "https://uglytoad.github.io/PdfPig/",
+      "https://github.com/GowenGit/docnet",
+      "https://docs.pdfsharp.net/PDFsharp/Topics/PDF-Features/Encryption.html",
+      "https://www.nuget.org/packages/PDFSharp",
+      "https://github.com/ststeiger/PdfSharpCore",
+      "https://www.nuget.org/packages/documentformat.openxml",
+      "https://sergey-tihon.github.io/Clippit/",
+      "https://github.com/matteosecli/pdf2archive",
+      "https://verapdf.org/",
+      "https://www.nutrient.io/blog/convert-pdf-to-word/",
+      "https://www.pikepdf.org/",
+      "https://pikepdf.readthedocs.io/"
+    ]
+  },
+  {
+    "key": "hwp",
+    "topic": "HWP/HWPX ↔ DOCX/PDF/HTML 양방향 변환 — Everything2Everything (.NET 9 / WPF) 통합 리서치",
+    "keyFindings": [
+      "**정방향(HWP/HWPX → PDF/이미지)은 이미 동작 중이며 최선의 경로다.** 프로젝트는 HwpxProvider.cs에서 LibreOffice headless(`soffice --convert-to pdf`) + H2Orestart 확장으로 PDF 변환 후 PdfProvider로 위임한다. H2Orestart는 2026년에도 활발히 유지보수 중(v0.7.12, 2026-05-10 릴리스). 이 구조는 옳다.",
+      "**H2Orestart는 GPLv3 + Java 의존이다.** 라이선스가 GPLv3(LGPL 아님)이므로 EXE에 정적/동적 번들하면 전염성(copyleft) 문제가 생긴다. 단, 현재처럼 별도 .oxt 확장으로 사용자가 LibreOffice에 설치 → 별도 프로세스(soffice.exe)를 외부 호출하는 방식이면 E2E 본체 코드와 라이선스가 분리되어 상업 배포에 안전하다. 추가로 H2Orestart는 내부적으로 JRE/JDK가 필요하다(LibreOffice의 Java 통합 활성화 필수). LibreOffice 빌드에 따라 별도 JRE 설치/설정이 필요할 수 있어 '단일 포터블 EXE' 자족성에 마이너스 요인.",
+      "**H2Orestart는 import(읽기) 전용이다 — 저장은 ODT로만 가능, HWP/HWPX 쓰기 불가.** 따라서 LibreOffice 경로로는 역방향(DOCX→HWP) 출력이 불가능하다. LibreOffice에 HWP export 필터가 없다.",
+      "**역방향 HWP/HWPX '쓰기'는 hwplib(HWP) / hwpxlib(HWPX)만이 현실적 오픈소스 해법이다.** 둘 다 neolord0 작성, Apache-2.0(상업 친화적), 2026년까지 활발(hwplib v1.1.5+ 2026-02-04, hwpxlib v1.0.8 2025-11-14). hwplib은 BlankFileMaker/HWPWriter로 빈 HWP 생성·텍스트·표·이미지 삽입까지 가능. **그러나 둘 다 Java 라이브러리이며 '포맷 변환' 기능이 없다** — DOCX를 파싱해서 hwplib 객체 모델로 매핑하는 변환 로직을 직접 구현해야 한다. 고품질 레이아웃 보존 역변환은 사실상 새 변환 엔진을 작성하는 수준이라 비용이 매우 크다.",
+      "**pyhwp/hwp5(hwp5html)는 AGPLv3 + 반쯤 정체 상태다.** 마지막 안정 릴리스 0.1b15(2020-05-30). HWP5→HTML/ODT/txt 추출은 되지만 HWPX 미지원이고, AGPLv3는 SaaS·배포에 전염성이 강해 상업 배포기에 부적합. 이미 LibreOffice 경로가 있으므로 채택 이점 없음.",
+      "**hwp.js는 사실상 abandoned다(Apache-2.0, v0.0.3 2020-10, 2020년 유지보수 중단 공지).** 브라우저 HWP 뷰어/파서로 WebView2와 결합 가능성은 있으나, 미완성·구버전이라 신뢰성 낮음. 동일 저자(hahnlee)의 Rust 계열(hwp-rs)과 신생 Rust 생태계(openhwp, HwpForge, hwpers, unhwp)가 더 활발하지만 .NET 직접 연동은 FFI 작업이 추가로 필요.",
+      "**한컴 공식 경로(HwpAutomation COM / 한글 SDK / Docs Converter)는 품질이 가장 높지만 상업 라이선스 유료다.** HwpCtrl ActiveX/COM은 개인·비상업은 무료이나 '판매되는 솔루션'에 쓰려면 한컴 승인 + 별도 라이선스 필요(contact_sdk@hancom.com). 한글 SDK는 한글 프로그램 설치 없이 HWP/HWPX↔HTML/PDF/ODF 변환 및 약 1,000개 기능 제공, .NET에서 호출 가능하나 유료. 역방향(→HWP)을 네이티브 품질로 보장하는 유일한 길이지만 비용·배포(런타임 동봉) 제약이 큼.",
+      "**LibreOffice headless 한글 변환 안정성/폰트 이슈가 존재한다.** Old Hangul(옛한글)·제주어 음절, Noto Sans 일부 글리프가 PDF에서 깨지는 보고가 있고, 시스템에 한글 폰트(맑은 고딕/함초롬바탕 등)가 없으면 폰트 치환으로 레이아웃이 틀어진다. 레거시 HWP는 `--infilter=\"Hwp2002_File\"` 지정이 도움이 됨. 복잡한 표·다단·머리말은 레이아웃 손실 가능."
+    ],
+    "recommendedApproach": "단일 포터블 EXE / 상업 라이선스 선호라는 제약을 고려하면 **계층적 전략**이 최적이다.\n\n1) 정방향(HWP·HWPX → PDF/PNG/JPG 등): **현재 HwpxProvider의 LibreOffice + H2Orestart 경로를 유지·강화**한다. 이미 구현되어 있고 H2Orestart가 2026년에도 활발하다. 강화 포인트: (a) `--infilter=\\\"Hwp2002_File\\\"`를 .hwp에 한해 추가 지정해 import 필터 명시, (b) 한글 폰트(함초롬·맑은 고딕) 번들 또는 폰트 누락 감지 경고, (c) JRE 미설치 시 명확한 안내. H2Orestart는 GPLv3이지만 '사용자가 LibreOffice에 설치한 확장을 외부 프로세스로 호출'하는 분리 모델이라 E2E 본체 라이선스에 전염되지 않는다.\n\n2) 정방향 HWPX → DOCX/HTML/TXT '편집 가능 포맷' 출력: PDF 외에 DOCX/ODT/HTML 출력 수요가 있으면, **LibreOffice의 `--convert-to docx`/`html`/`txt`** 를 동일 파이프라인에서 노출하면 된다(soffice가 ODT 경유로 DOCX/HTML export 지원). 이게 hwp5html/pyhwp(AGPL) 채택보다 라이선스·유지보수 면에서 우수하다. HwpxProvider의 HwpOutputs 배열에 .docx/.html/.txt/.odt를 추가하고 변환 분기만 PDF 대신 해당 포맷으로 바꾸면 즉시 매트릭스가 확장된다.\n\n3) 역방향(DOCX/PDF/HTML → HWP·HWPX): **현실적으로 고품질 무료 OSS 경로는 없다.** 단기적으로는 'Coming Soon' 또는 미지원으로 두고, 정말 필요하면 두 가지 옵션 — (a) **저품질 수용형**: HTML/DOCX 텍스트·표를 추출해 hwpxlib(Apache-2.0)로 최소 구조의 HWPX를 생성(레이아웃 보존 낮음, Java 브리지 필요), (b) **고품질 유료형**: 한컴 한글 SDK/Docs Converter 상업 라이선스로 별도 Provider 구성. 무료 단일 EXE 원칙을 우선한다면 역방향은 '로드맵'으로 남기고, HWPX 출력만 hwpxlib 기반 베스트에포트로 제공하는 것을 권한다.\n\n요약: 정방향은 LibreOffice 단일 엔진으로 PDF·이미지·DOCX·HTML까지 모두 커버(추가 의존성 0). 역방향은 무료로는 베스트에포트 HWPX만, 네이티브 품질은 유료 한컴 SDK로 분리.",
+    "libraries": [
+      {
+        "name": "H2Orestart (ebandal)",
+        "purpose": "LibreOffice 확장. HWP/HWPX를 LibreOffice에서 import(읽기) → ODT/PDF/DOCX/HTML로 headless 변환. 정방향 변환의 핵심 엔진.",
+        "license": "GPLv3",
+        "maturity": "active (v0.7.12, 2026-05-10)",
+        "notes": "Java 작성, JRE 필요. import 전용 — HWP/HWPX 쓰기 불가, 저장은 ODT만. 별도 .oxt 확장+외부 프로세스 호출이라 본체 코드에 GPL 전염 안 됨. 현재 프로젝트가 이미 사용 중."
+      },
+      {
+        "name": "hwplib (neolord0 / kr.dogfoot)",
+        "purpose": "HWP 5.0 바이너리 읽기 AND 쓰기(BlankFileMaker로 새 파일 생성, HWPWriter로 저장). 역방향(→HWP) 출력의 유일한 무료 경로.",
+        "license": "Apache-2.0",
+        "maturity": "active (v1.1.5+, 2026-02-04)",
+        "notes": "Java 전용. 포맷 변환 기능 없음(DOCX/PDF/HTML export 불가) — 변환 매핑 로직을 직접 구현해야 함. 암호화 HWP 미지원. .NET에서 쓰려면 JVM 브리지(IKVM 또는 자식 프로세스 JAR) 필요."
+      },
+      {
+        "name": "hwpxlib (neolord0)",
+        "purpose": "HWPX(OWPML, ZIP+XML) 읽기/쓰기. HWPX 직접 생성·수정. 역방향 HWPX 출력 후보.",
+        "license": "Apache-2.0",
+        "maturity": "active (v1.0.8, 2025-11-14)",
+        "notes": "Java 전용(Java 7+). 다른 포맷으로의 변환 기능은 없음(읽기/쓰기 라이브러리). HWPX가 ZIP+XML이라 사실 System.IO.Compression + XML로 .NET에서 직접 파싱·생성도 가능하나, 스키마(OWPML, KS X 6101)가 방대해 라이브러리 사용이 현실적."
+      },
+      {
+        "name": "pyhwp / hwp5 (hwp5html, mete0r)",
+        "purpose": "HWP5 파서. HWP5 → HTML/ODT/txt 추출.",
+        "license": "AGPLv3+",
+        "maturity": "semi-abandoned (마지막 안정 0.1b15, 2020-05-30)",
+        "notes": "AGPLv3 전염성으로 상업 배포·SaaS에 부적합. HWPX 미지원. Python 의존. LibreOffice 경로 대비 채택 이점 없음."
+      },
+      {
+        "name": "hwp.js (hahnlee)",
+        "purpose": "웹 기술 기반 HWP 뷰어/파서(브라우저 렌더링).",
+        "license": "Apache-2.0",
+        "maturity": "abandoned (v0.0.3, 2020-10, 2020년 유지보수 중단 공지)",
+        "notes": "미완성, 배포용 문서 파싱 실패 보고. HWPX 미지원. WebView2 결합은 이론상 가능하나 신뢰성 낮음. 동저자 Rust 후속작(hwp-rs)이 더 활발."
+      },
+      {
+        "name": "Rust 생태계 (hwp-rs, openhwp, HwpForge, hwpers, unhwp)",
+        "purpose": "HWP/HWPX 파싱·렌더·Markdown 추출. openhwp는 읽기/쓰기 지향.",
+        "license": "대부분 MIT/Apache-2.0 (크레이트별 상이, 확인 필요)",
+        "maturity": "active/beta (2025-2026 신생, 성숙도 편차 큼)",
+        "notes": ".NET 연동에 FFI(C ABI) 래핑 필요. 단일 EXE에 네이티브 .dll 동봉 형태로 통합 가능하나 현재로선 미성숙·리스크. 향후 옵션."
+      },
+      {
+        "name": "한컴 한글 SDK / HwpAutomation(COM) / Docs Converter",
+        "purpose": "한컴 네이티브 변환. HWP/HWPX ↔ HTML/PDF/ODF/DOCX, 약 1,000개 한글 기능. 역방향(→HWP) 네이티브 품질 보장.",
+        "license": "상업(유료, 별도 라이선스). ActiveX/COM은 개인·비상업만 무료",
+        "maturity": "production (한컴 공식)",
+        "notes": ".NET/C#에서 COM 또는 SDK 호출 가능. 가장 높은 품질·유일한 고품질 역변환 경로지만 유료 + 한글/SDK 런타임 동봉 필요로 '무료 단일 포터블 EXE'와 상충. contact_sdk@hancom.com 라이선스 문의."
+      }
+    ],
+    "integrationNotes": "**Provider/Registry 추상화에 끼우는 구체안 (D:\\\\workspace\\\\Everything2Everthing\\\\src\\\\Everything2Everything.Core)**\n\n현재 HwpxProvider.cs는 IConverterProvider를 구현하고, Capability.SupportedConversions = PairsFromMatrix(HwpInputs, HwpOutputs)로 (입력×출력) 쌍을 선언, ProviderRegistry가 (Input,Output)→Provider 딕셔너리로 라우팅한다. DocxProvider가 동일 패턴(LibreOffice/Word로 PDF→PdfProvider 위임)이라 이를 그대로 따른다.\n\n1) **정방향 출력 포맷 확장 (가장 비용 낮고 효과 큼)**: HwpxProvider의 `HwpOutputs` 배열에 `.docx`, `.html`, `.odt`, `.txt`를 추가한다. ConvertAsync의 분기에서 outExt가 이미지/PDF가 아니면 ConvertWithLibreOfficeAsync의 `--convert-to pdf`를 해당 필터(`docx:\\\"MS Word 2007 XML\\\"`, `html:HTML (StarWriter)`, `txt:Text` 등)로 파라미터화한다. 현재 메서드는 pdf 하드코딩이므로 target 포맷·확장자를 인자로 받도록 일반화하면 된다. .hwp 입력 시 `--infilter=\\\"Hwp2002_File\\\"`를 ArgumentList에 조건부 추가하면 import 안정성이 오른다. 이렇게 하면 HWP/HWPX → DOCX/HTML/TXT/ODT/PDF/이미지 매트릭스가 한 Provider·한 외부 의존(LibreOffice+H2Orestart)으로 완성된다.\n\n2) **availability 메시지 보강**: CheckAvailabilityAsync에 JRE 미설치 시 안내를 추가(H2Orestart는 LibreOffice의 Java 통합이 꺼져 있으면 동작 안 함). ExternalToolDetector에 한글 폰트(함초롬/맑은 고딕) 존재 여부 체크를 추가해 폰트 누락 시 ProviderAvailability에 경고 Reason을 실어주면 레이아웃 깨짐 사고를 예방.\n\n3) **역방향 Provider 신설(선택)**: 별도 `HwpReverseProvider`(또는 HwpxProvider에 입력 .docx/.html/.pdf → 출력 .hwpx 쌍 추가)를 만들되, 무료 경로는 hwpxlib 기반 베스트에포트로 한정. .NET↔Java 브리지가 필요하므로 (a) IKVM.NET으로 hwpxlib JAR을 .NET 어셈블리화, 또는 (b) 번들한 JRE로 hwpxlib 래퍼 JAR을 자식 프로세스 실행(현재 LibreOffice를 외부 프로세스로 부르는 패턴과 동일해 일관적). 단일 EXE 원칙상 (b)가 기존 외부-프로세스 모델과 잘 맞는다. Capability.Status는 ComingSoon 또는 RequiresExternal로 두고, RoadmapNote에 '레이아웃 보존 제한적, 고품질은 한컴 SDK 필요' 명시.\n\n4) **유료 고품질 역변환은 별도 옵셔널 Provider**: 한컴 SDK가 설치·라이선스된 환경에서만 활성화되는 `HancomSdkProvider`를 COM(dynamic)로 구현(DocxProvider의 ConvertWithWordCom이 Type.GetTypeFromProgID로 Word COM을 dynamic 호출하는 패턴과 동일). CheckAvailabilityAsync에서 ProgID/SDK DLL 존재로 가용성 판단, 없으면 NotReady로 빠지므로 무료 배포본에는 영향 없음.\n\n라이선스 격리 원칙: GPLv3(H2Orestart)·Java 라이브러리(hwplib/hwpxlib)·한컴 SDK 모두 '외부 프로세스 또는 사용자 설치 확장'으로 분리 호출하여 E2E 본체(상업 배포)와 라이선스 경계를 유지한다. 본체에 GPL/AGPL 코드를 링크하지 않는다.",
+    "risks": [
+      "H2Orestart는 GPLv3 — 라이브러리로 링크/번들하면 copyleft 전염. 반드시 별도 .oxt 확장 + soffice.exe 외부 프로세스 호출로 분리 유지해야 상업 배포 안전. EXE에 H2Orestart 코드를 포함하지 말 것.",
+      "LibreOffice headless 한글 변환은 폰트 의존적 — 함초롬/맑은 고딕 등이 시스템에 없으면 폰트 치환으로 레이아웃·줄바꿈이 틀어지고, 옛한글/일부 글리프는 PDF에서 깨질 수 있음. '단일 포터블 EXE'라도 LibreOffice·H2Orestart·JRE·한글 폰트가 환경에 없으면 변환 불가 — 진정한 자족 EXE가 아니라 외부 의존 체인이 김.",
+      "H2Orestart 동작에 JRE/JDK 필요. LibreOffice의 Java 통합이 비활성/미설치면 HWP import 실패. 사용자 환경 편차로 인한 실패율 존재.",
+      "역방향(DOCX/PDF/HTML → HWP/HWPX)은 무료로는 고품질 불가. hwplib/hwpxlib은 '쓰기'는 되나 '변환' 매핑 로직을 직접 구현해야 하며 레이아웃 보존이 매우 어려움 — 사실상 새 변환 엔진 개발 비용. PDF→HWP는 더 비현실적(레이아웃 재구성 필요).",
+      "hwplib/hwpxlib은 Java 전용 — .NET 통합에 IKVM 또는 자식 프로세스 JAR + 번들 JRE 필요로 배포 용량·복잡도 증가. IKVM는 .NET 9 호환성·유지보수 상태를 별도 검증해야 함.",
+      "한컴 SDK/COM은 상업 라이선스 유료 + 한글/SDK 런타임 동봉 필요 — 무료 단일 EXE 컨셉과 정면 충돌. 라이선스 비용·계약 협의(contact_sdk@hancom.com) 필요.",
+      "pyhwp(AGPLv3)·hwp.js(abandoned) 모두 채택 부적합 — AGPL 전염성, 유지보수 중단. 후보에서 제외 권장.",
+      "HWPX를 .NET에서 ZIP+XML로 직접 파싱·생성하는 것은 이론상 가능하나 OWPML(KS X 6101) 스키마가 방대해 부분 지원에 그치기 쉬움. 자체 구현은 유지보수 부담 큼."
+    ],
+    "sources": [
+      "https://github.com/ebandal/H2Orestart",
+      "https://extensions.libreoffice.org/en/extensions/show/27504",
+      "https://github.com/neolord0/hwplib",
+      "https://github.com/neolord0/hwpxlib",
+      "https://mvnrepository.com/artifact/kr.dogfoot/hwplib",
+      "https://github.com/mete0r/pyhwp",
+      "https://pyhwp.readthedocs.io/en/latest/converters.html",
+      "https://github.com/hahnlee/hwp.js",
+      "https://github.com/hahnlee/hwp-rs",
+      "https://github.com/openhwp/openhwp",
+      "https://developer.hancom.com/hwpautomation",
+      "https://developer.hancom.com/docsconverter/guide/api",
+      "https://www.hancom.com/product/sdk/hwpSdk",
+      "https://forum.developer.hancom.com/t/topic/2879",
+      "https://help.libreoffice.org/latest/en-US/text/shared/guide/convertfilters.html",
+      "https://bugs.documentfoundation.org/show_bug.cgi?id=128907",
+      "https://ask.libreoffice.org/t/korean-fonts-are-not-rendered-during-document-conversion/29178",
+      "https://packages.debian.org/sid/text/libreoffice-h2orestart",
+      "https://manpages.debian.org/testing/libreoffice-common/unopkg.1.en.html",
+      "https://github.com/chrisryugj/kordoc"
+    ]
+  },
+  {
+    "key": "plugin-arch",
+    "topic": ".NET 9 확장 가능 변환기 플러그인 아키텍처 — Everything2Everything용 best practice 리서치",
+    "keyFindings": [
+      "기존 추상화는 이미 잘 설계된 정적 매트릭스다. IConverterProvider(Capability + CheckAvailabilityAsync + ConvertAsync), ProviderRegistry((input,output) 쌍 사전), ProviderCapability(ConversionPair 리스트)로 구성. 단, 현재 ProviderRegistry는 생성자에서 IEnumerable<IConverterProvider>를 받아 컴파일 타임에 고정된다 — 동적 등록/언로딩 진입점이 없다. 확장성의 첫 단계는 '런타임에 Provider를 추가하는 RegisterDynamic / Rebuild' 메서드 도입이다.",
+      "Microsoft 공식 .NET 플러그인 튜토리얼(2026-02 갱신)의 핵심 패턴: (1) 공유 계약 어셈블리(PluginBase)를 별도 프로젝트로 분리, (2) 플러그인 프로젝트는 계약을 <Private>false</Private> + <ExcludeAssets>runtime</ExcludeAssets>로 참조해 계약 DLL 중복 로드를 방지(이게 빠지면 같은 인터페이스가 서로 다른 타입으로 인식되어 캐스팅 실패), (3) 플러그인 csproj에 <EnableDynamicLoading>true</EnableDynamicLoading>를 넣어 의존성을 출력으로 복사, (4) 플러그인당 별도 AssemblyLoadContext(ALC) + AssemblyDependencyResolver로 의존성 충돌 격리. Load 오버라이드에서 계약 어셈블리는 null 반환해 default ALC로 fall back시켜야 타입 동일성이 유지된다.",
+      "보안/신뢰 경계에 대한 Microsoft의 명시적 경고: '신뢰할 수 없는 코드는 신뢰된 .NET 프로세스에 안전하게 로드할 수 없다. 보안/안정성 경계가 필요하면 OS 또는 가상화 플랫폼이 제공하는 기술을 사용하라.' 즉 in-process ALC는 '버전 격리/핫리로드'용이지 '샌드박스'가 아니다. 진짜 격리(서드파티 untrusted 플러그인, 네이티브 크래시 차단)는 out-of-process 호스트(별도 .exe + IPC) 또는 Windows AppContainer/Job Object로만 달성된다.",
+      "언로딩(hot-reload)은 협조적(cooperative)이며 footgun이 많다. collectible ALC를 써도 (a) 정적 캐시(직렬화기/DI 컨테이너가 플러그인 타입 캐시), (b) 해지 안 한 이벤트 핸들러, (c) 살아있는 Timer/Task/Thread, (d) 플러그인 타입이 host-scope 인프라로 누출되면 절대 언로드되지 않는다. 검증은 WeakReference<ALC> + 반복 GC로만 가능. 네이티브 라이브러리(ImageMagick/PDFium/LibreOffice)는 ALC 경계를 무시하므로 in-process 언로딩 대상에서 제외해야 한다.",
+      "MEF2(System.Composition)는 죽지 않았고 활발히 유지보수 중이다 — 최신 10.0.7(2025), .NET 9/10과 호환(.NET Core 2.0/Standard 2.0 타겟). 다만 이 프로젝트에는 권장하지 않는다: MEF은 런타임 리플렉션 기반 attribute 스캔이라 (a) 단일 포터블 EXE/AOT 친화성이 낮고, (b) 7개뿐인 1급 Provider에는 과도하다. 동적 서드파티 플러그인을 정말 열 때만 가치가 있다.",
+      "Source generator 방식이 이 프로젝트에 가장 적합한 '자동 등록' 수단이다. AutoRegisterInject(v1.4.1, MIT, netstandard2.0, .NET 9 호환)가 [RegisterScoped]/[RegisterSingleton] 등 attribute로 DI 등록 코드를 컴파일 타임에 생성 — 리플렉션 0, AOT 친화. 1급(in-box) Provider들은 source generator로 자동 등록하고, 동적 외부 플러그인만 ALC로 로드하는 하이브리드가 이상적.",
+      "외부 도구 어댑터 패턴은 이미 코드에 존재한다(DocumentProvider.SofficeConvertAsync가 LibreOffice를 ProcessStartInfo로 감쌈). 이를 일반화한 'ExternalToolProvider' 베이스 클래스 + JSON manifest로 FFmpeg/Ghostscript/Pandoc을 균일 인터페이스로 흡수할 수 있다. CliWrap(v3.10.1, MIT, 2026-03 갱신)이 ProcessStartInfo 보일러플레이트(스트림 리다이렉트/취소/exit code/진행률)를 대체할 fluent 래퍼로 강력 추천.",
+      "라이선스 함정 2가지가 단일 포터블 EXE 배포에 치명적이다. (1) Ghostscript: AGPL/상업 듀얼 라이선스 — 닫힌 소스 포터블 EXE에 번들하려면 Artifex 상업 라이선스 필요. PDF 처리는 이미 가진 PDFium으로 대체하는 게 안전. (2) FFmpeg: libx264/libx265 등 인기 코덱은 GPL이라 번들 시 앱 전체가 GPL 전염. 반드시 --enable-gpl 없이 빌드한 LGPL 빌드를 '동적 링크'(별도 exe 호출/별도 DLL)로 사용하고 소스 오퍼/저작권 고지를 포함해야 함. Pandoc도 GPL이라 같은 '동적 = 별도 프로세스 호출' 원칙 적용. LibreOffice(MPL-2.0)와 CliWrap/AutoRegisterInject(MIT)는 번들 안전."
+    ],
+    "recommendedApproach": "단일 포터블 EXE/WPF/Windows 11 제약에서는 '3계층 하이브리드'가 최적이다. (계층 1 — In-box Provider, 지금처럼) 7개 1급 Provider는 컴파일 타임에 고정. 단 등록 보일러플레이트를 줄이려면 AutoRegisterInject source generator를 도입해 [RegisterE2EProvider] attribute만 붙이면 자동 등록되게 한다. 리플렉션 없고 AOT/트리밍 친화라 단일 EXE에 이상적. (계층 2 — 외부 도구 어댑터 Provider) 이미 있는 SofficeConvertAsync 패턴을 'ExternalToolProvider' 추상 베이스로 일반화한다. 각 외부 도구(LibreOffice/FFmpeg/Ghostscript/Pandoc)는 코드가 아니라 JSON manifest(tool id, 실행 파일 탐지 경로, 입력/출력 확장자 매트릭스, argument 템플릿, 성공 판정 규칙)로 선언하고, 런타임에 manifest를 읽어 ProviderRegistry에 합성한다. 프로세스 실행은 CliWrap으로 통일(취소/진행률/exit code 처리 일원화). 이렇게 하면 새 도구 추가가 '코드 빌드 없이 manifest + 탐지기 추가'로 끝난다. 외부 프로세스 호출 자체가 천연 격리 경계라서 도구가 크래시해도 앱은 살아있다(가장 가성비 좋은 안정성/보안 경계). (계층 3 — 진짜 동적 플러그인, 필요할 때만) 서드파티가 .NET DLL Provider를 끼우는 시나리오가 생기면 그때 collectible ALC + AssemblyDependencyResolver를 도입한다. 단 이건 untrusted 격리가 아님을 명심하고, 신뢰할 수 없는 플러그인은 out-of-process 워커(별도 exe)로 돌린다. ImageMagick/PDFium/WebView2 같은 네이티브 의존 Provider는 절대 언로드 대상으로 만들지 않는다(네이티브가 ALC 경계를 무시). 결론: 지금 당장 필요한 건 계층 1의 source generator 자동 등록과 계층 2의 manifest 기반 외부 도구 어댑터다. ALC 동적 로딩은 '서드파티 플러그인 마켓'을 실제로 열 때까지 미루는 게 복잡도 대비 합리적이다.",
+    "libraries": [
+      {
+        "name": "System.Runtime.Loader.AssemblyLoadContext + AssemblyDependencyResolver (BCL 내장)",
+        "purpose": "플러그인 DLL을 격리된 컨텍스트에 동적 로드/언로드, 의존성 충돌 해결. .NET 공식 플러그인 메커니즘",
+        "license": "MIT (.NET 런타임)",
+        "maturity": "production (BCL 내장, .NET Core 3.0~.NET 9/10 안정)",
+        "notes": "collectible 옵션으로 hot-reload 가능하나 언로드는 협조적이라 footgun 많음. untrusted 코드 샌드박스 아님 — 격리는 OS/가상화로. 네이티브 의존 Provider에는 부적합. 계층 3에서만 필요"
+      },
+      {
+        "name": "AutoRegisterInject",
+        "purpose": "attribute 기반으로 IConverterProvider 구현체를 컴파일 타임에 DI 자동 등록 (리플렉션/스캔 제거)",
+        "license": "MIT",
+        "maturity": "active (v1.4.1, netstandard2.0, .NET 9 호환)",
+        "notes": "단일 포터블 EXE/AOT/트리밍 친화. 계층 1 in-box Provider 자동 등록에 권장. 대안: Jab(소스 제너레이터 DI 컨테이너, MIT) 또는 직접 만든 소형 source generator"
+      },
+      {
+        "name": "System.Composition (MEF2)",
+        "purpose": "attribute 기반 런타임 플러그인 발견/합성 (Export/Import)",
+        "license": "MIT",
+        "maturity": "active (최신 10.0.7, 2025, .NET 9 호환)",
+        "notes": "'죽었다'는 오래된 오해 — 현재도 유지보수됨. 그러나 런타임 리플렉션 의존이라 AOT/단일 EXE 친화성 낮고 7개 Provider엔 과함. 본 프로젝트엔 비권장, 동적 서드파티 플러그인 다수일 때만 고려"
+      },
+      {
+        "name": "CliWrap",
+        "purpose": "외부 CLI 도구(LibreOffice/FFmpeg/Ghostscript/Pandoc)를 fluent하게 실행 — 인자/스트림/취소/진행률/exit code 일원화",
+        "license": "MIT",
+        "maturity": "production (v3.10.1, 2026-03 갱신, 활발)",
+        "notes": "현재 ProcessStartInfo 보일러플레이트(SofficeConvertAsync 등)를 대체. 어댑터 Provider 베이스의 실행 엔진으로 강력 추천. net6.0/netstandard2.0 타겟이라 .NET 9 OK"
+      },
+      {
+        "name": "LibreOffice (soffice)",
+        "purpose": "문서(DOCX/HTML/TXT/HWP) 변환 외부 엔진 (이미 사용 중)",
+        "license": "MPL-2.0",
+        "maturity": "production",
+        "notes": "MPL이라 별도 프로세스 호출 시 번들/상업 사용 안전. H2Orestart로 HWP 입력 지원"
+      },
+      {
+        "name": "FFmpeg",
+        "purpose": "오디오/비디오 변환 어댑터 Provider 후보",
+        "license": "LGPL-2.1+ (코어) / 일부 코덱 GPL / nonfree",
+        "maturity": "production",
+        "notes": "반드시 --enable-gpl 없이 빌드한 LGPL 빌드를 별도 프로세스로 호출(동적 사용). libx264/x265(GPL) 포함 빌드를 번들하면 앱 전체 GPL 전염. 저작권 고지 + 소스 오퍼 필요"
+      },
+      {
+        "name": "Ghostscript",
+        "purpose": "PDF/PostScript 변환 어댑터 후보",
+        "license": "AGPL-3.0 / 상업 듀얼 (Artifex)",
+        "maturity": "production",
+        "notes": "닫힌 소스 포터블 EXE 번들엔 상업 라이선스 필수 — 위험. 가능하면 기존 PDFium으로 PDF 처리 대체 권장. 꼭 필요하면 사용자가 직접 설치한 외부 도구로만 탐지(번들 안 함)"
+      },
+      {
+        "name": "Pandoc",
+        "purpose": "마크다운/문서 포맷 광범위 변환 어댑터 후보",
+        "license": "GPL-2.0+",
+        "maturity": "production",
+        "notes": "GPL이라 별도 프로세스 호출(동적)로만 사용. EXE에 정적 결합/번들 시 GPL 전염 위험. 사용자 설치 도구로 탐지하는 방식이 안전"
+      },
+      {
+        "name": "System.Reflection.Metadata",
+        "purpose": "어셈블리를 실제 로드하지 않고 PE/메타데이터만 읽어 플러그인 manifest/attribute를 스캔 (reflection-free discovery)",
+        "license": "MIT (.NET 런타임)",
+        "maturity": "production",
+        "notes": "의존성 누락된 플러그인도 파일 락 없이 안전 스캔. 계층 3 ALC 도입 시 발견 단계에 사용"
+      }
+    ],
+    "integrationNotes": "현재 추상화에 끼워넣는 구체 단계: (1) ProviderRegistry를 '닫힌 생성자'에서 '증분 등록 가능' 구조로 확장. 현재 생성자가 한 번에 _byPair 사전을 빌드하므로, 동일 인덱싱 로직을 private void Index(IConverterProvider) 로 빼고 public void Register(IConverterProvider)/RegisterRange/Rebuild를 추가한다. 이걸로 source generator 등록 + manifest 기반 어댑터 등록 둘 다 같은 진입점을 쓴다. (2) 계층1 자동등록: IConverterProvider 구현체(HeicProvider/PdfProvider 등)에 [RegisterE2EProvider] 같은 마커를 붙이고 AutoRegisterInject(또는 소형 자작 generator)로 'IEnumerable<IConverterProvider> GetBuiltInProviders()'를 컴파일 타임 생성. App 시작 시 registry.RegisterRange(GetBuiltInProviders()). (3) 계층2 어댑터: 새 추상 클래스 ExternalToolProvider : IConverterProvider 를 만든다. 이 클래스가 (a) ProviderCapability를 manifest의 입력×출력 매트릭스에서 ProviderCapability.PairsFromMatrix로 생성(기존 헬퍼 재사용), (b) CheckAvailabilityAsync는 manifest의 toolDetect 규칙(현 ExternalToolDetector 패턴 일반화)으로 실행 파일 탐지, (c) ConvertAsync는 manifest의 argument 템플릿({input}/{output}/{outdir}/{format} 토큰 치환)을 CliWrap으로 실행하고 결과 파일 존재로 성공 판정. 기존 ExternalDependency 레코드를 manifest의 dependency 섹션과 그대로 매핑. (4) Manifest 로더: tools/*.manifest.json 을 읽어 ExternalToolProvider 인스턴스들을 만들고 registry.RegisterRange. manifest 스키마는 기존 ProviderCapability/ConversionPair/ExternalDependency 모양을 그대로 직렬화한 형태로 잡으면 추상화 변경 최소. (5) 충돌 우선순위: _byPair.TryAdd는 first-wins라 in-box Provider가 동일 쌍을 가지면 manifest 어댑터보다 먼저 등록해 우선권을 준다(현재 동작 유지). 향후 우선순위 필드가 필요하면 ProviderCapability에 Priority(int) 추가 후 Index에서 비교. (6) 안정성: 외부 도구는 CliWrap의 ExecuteAsync에 CancellationToken과 타임아웃을 걸고, 크래시해도 ConvertResult.Fail로 흡수(이미 DocumentProvider가 try/catch로 처리하는 패턴 유지). 진짜 in-process .NET 플러그인(계층3)을 열 때만 collectible ALC를 도입하되, IConverterProvider 계약을 담은 별도 Everything2Everything.Abstractions 어셈블리를 만들고 플러그인은 그것을 <Private>false</Private>로 참조하게 해 타입 동일성을 보장한다.",
+    "risks": [
+      "in-process ALC를 '샌드박스'로 오해하면 안 됨 — Microsoft가 명시적으로 untrusted 코드 격리 불가라고 경고. 서드파티 플러그인은 반드시 out-of-process로.",
+      "네이티브 의존 Provider(ImageMagick/PDFium/LibreOffice/WebView2)를 collectible ALC에 넣으면 네이티브 핸들이 ALC 경계를 무시해 언로드 실패/프로세스 누수 발생. 이들은 default ALC 고정.",
+      "Ghostscript(AGPL)와 GPL 코덱 포함 FFmpeg를 단일 포터블 EXE에 번들하면 라이선스 전염/위반. 상업 사용 전제와 충돌 — 번들 대신 '사용자 설치 외부 도구 탐지' 또는 LGPL-only 빌드 별도 프로세스 호출로 회피.",
+      "Pandoc(GPL)도 EXE에 정적 결합 시 전염. 별도 프로세스 호출(동적)로만 사용해야 함.",
+      "ALC 언로드 footgun(정적 캐시/이벤트/Timer/타입 누출)으로 메모리 누수 — hot-reload를 실제로 구현하면 WeakReference+반복 GC 검증 테스트가 필수.",
+      "MEF2 도입은 리플렉션 의존으로 단일 EXE 트리밍/AOT와 충돌 가능 — 이 프로젝트엔 과한 선택지.",
+      "manifest의 argument 템플릿에 사용자 제어 경로를 치환할 때 인자 인젝션 위험 — CliWrap의 ArgumentsBuilder(자동 이스케이프)를 쓰고 shell 문자열 결합을 피해야 함."
+    ],
+    "sources": [
+      "https://learn.microsoft.com/en-us/dotnet/core/tutorials/creating-app-with-plugin-support",
+      "https://learn.microsoft.com/en-us/dotnet/standard/assembly/unloadability",
+      "https://jordansrowles.medium.com/real-plugin-systems-in-net-assemblyloadcontext-unloadability-and-reflection-free-discovery-81f920c83644",
+      "https://www.devleader.ca/2026/04/09/plugin-loading-in-net-assemblyloadcontext-with-dependency-injection",
+      "https://learn.microsoft.com/en-us/dotnet/standard/mef/",
+      "https://www.nuget.org/packages/System.Composition/",
+      "https://github.com/patrickklaeren/AutoRegisterInject",
+      "https://www.nuget.org/packages/AutoRegisterInject",
+      "https://github.com/pakrym/jab",
+      "https://github.com/Tyrrrz/CliWrap",
+      "https://www.nuget.org/packages/CliWrap/",
+      "https://www.ffmpeg.org/legal.html",
+      "https://wip.co/posts/ffmpeg-license-can-we-legally-sell-closed-source-apps-that-use-it-ap32zk",
+      "https://ghostscript.com/licensing/",
+      "https://ghostscript.com/docs/9.54.0/Commprod.htm",
+      "https://www.nuget.org/packages/Microsoft.DeclarativeAgents.Manifest/3.5.0"
+    ]
+  },
+  {
+    "key": "doc-pipeline",
+    "topic": "범용 문서/아카이브/폰트/CAD 변환 커버리지 확장 + 변환기 UX 패턴 (Everything2Everything, .NET 9/WPF/Windows 11)",
+    "keyFindings": [
+      "Pandoc은 사실상의 'universal document 허브'다. pandoc 3.x 기준 43개 입력 / 57개 출력 포맷(마크다운 계열·HTML·LaTeX·DOCX·EPUB·RST·MediaWiki·Org·Textile·JATS 등)을 지원하며, 단일 도구로 N×M 마크업/문서 매트릭스를 한 번에 커버한다. .NET 통합은 SimonCropp의 PandocNet(MIT, v4.0.0 / 2026-04, CliWrap 기반 강타입 래퍼)이 가장 성숙하다. 단 pandoc.exe를 번들하지 않고 PATH 또는 명시 경로로 외부 설치를 요구한다 — 프로젝트가 LibreOffice를 외부 의존성으로 다루는 패턴과 정확히 동일.",
+      "프로젝트는 이미 LibreOffice로 DOCX↔HTML↔TXT를 처리하므로, Pandoc은 LibreOffice가 약한 '마크업/경량 텍스트 포맷'(rst, org, latex, mediawiki, asciidoc, textile, ipynb, epub→md 등)을 채우는 보완재로 배치하는 것이 최적이다. 둘은 경쟁이 아니라 라우팅 분담(LibreOffice=오피스 바이너리, Pandoc=마크업/학술)이다.",
+      "CloudConvert가 '극한' 변환기의 레퍼런스 매트릭스: 212포맷 / 13카테고리(문서23·이미지42·비디오28·오디오21·스프레드시트8·슬라이드11·전자책22·아카이브39·벡터10·CAD3·폰트5·데이터·해시). Everything2Everything의 현재 커버리지(이미지·PDF·문서5종·HEIC·OCR)와 비교하면 아카이브·폰트·전자책·데이터·벡터·오디오/비디오가 미개척 영역.",
+      "'극한' UX를 만드는 4대 공통 패턴: (1) HandBrake/XnConvert식 배치 큐(queue) — 수백 파일을 한 번에 넣고 순차/병렬 처리 + per-row 진행률(프로젝트는 이미 큐 inline progress bar 보유), (2) 액션 체이닝(XnConvert: resize→watermark→convert를 한 파이프라인으로), (3) 워치/핫 폴더 자동화(폴더에 떨어뜨리면 자동 변환), (4) 명확한 드롭존 + 클릭 업로드 병행 + hover 시 시각 피드백.",
+      "라이선스 함정 2건 확인: (a) SixLabors.Fonts는 3.0.0부터 'Split License'로 빌드 타임 라이선스 검증을 강제 — 연매출 1M USD 이상 + 클로즈드소스면 상업 라이선스 구매 필수. 폰트 변환에는 라이선스 비용 없는 LayoutFarm/Typography(MIT 계열) 또는 Aspose.Font(상용) 검토 권장. (b) Xabe.FFmpeg는 CC BY-NC-SA(비상업 전용)라 상업 배포 불가 — 오디오/비디오는 반드시 FFMpegCore(MIT) + FFmpeg 바이너리(LGPL 빌드)로 가야 한다.",
+      "CAD는 순수 .NET 솔루션이 아직 미성숙: ACadSharp(MIT, v3.6.x)는 DXF/DWG 읽기/쓰기가 가능하나 공식적으로 alpha(일부 엔티티 미구현). 실무 DWG↔DXF 변환은 ODA File Converter(무료, 비오픈소스, 재배포 제약)나 Aspose.CAD(상용)에 의존. LibreDWG는 GPLv3+라 클로즈드소스 EXE에 부적합. CAD는 우선순위 후순위 권장.",
+      "아카이브는 SharpCompress(MS-PL/유사 permissive, v0.4x, 2026년에도 활발히 유지보수, 5일 전 커밋)가 단연 최적 — 순수 C#, 무의존, zip/tar/gzip/bzip2/lzip/zstd/7z 쓰기 + RAR/arj/arc 읽기, non-seekable 스트림 + async 지원. 단일 EXE에 그대로 포함 가능."
+    ],
+    "recommendedApproach": "단계적 카테고리 확장을 권장한다. 핵심 원칙은 '프로젝트가 이미 검증한 외부-CLI 호출 패턴(DocumentProvider→soffice --headless --convert-to)을 그대로 복제'하는 것과 '단일 포터블 EXE에 부담을 주지 않도록 순수 관리 코드 라이브러리를 1순위로 채택'하는 것이다.\\n\\n[1순위 — 순수 .NET, EXE에 바로 포함, 라이선스 깨끗]\\n- 아카이브: SharpCompress 추가 → ArchiveProvider 신설. zip/7z/tar/gz/bz2 ↔ (압축/해제). 무의존 순수 C#라 포터블 EXE에 이상적.\\n- 데이터: Parquet.Net(MIT, v6.0.3, 순수관리, .NET8/10) + ClosedXML(MIT) + CsvHelper로 csv↔json↔xlsx↔parquet DataProvider. 전부 순수 관리 코드.\\n- 벡터: 이미 SkiaSharp 생태계에 가까우므로 Svg.Skia(MIT, v5.0.0)로 svg→png/jpg/webp/pdf. EPS는 ImageMagick+Ghostscript 델리게이트 활용(이미 ImageMagick 보유).\\n\\n[2순위 — 외부 CLI 의존, LibreOffice와 동일한 ExternalToolDetector 패턴]\\n- 마크업/학술 문서: PandocNet(MIT) + pandoc.exe 외부 의존 → PandocProvider. md/rst/org/latex/mediawiki/asciidoc/textile/ipynb/epub 등을 매트릭스로 노출.\\n- 전자책: Calibre의 ebook-convert.exe(GPLv3, 별도 프로세스 호출이므로 GPL 전파 없음) → EbookProvider. epub↔mobi↔azw3↔pdf↔docx.\\n- 오디오/비디오: FFMpegCore(MIT) + FFmpeg LGPL 바이너리 → MediaProvider. mp4/mkv/mp3/wav/flac/webm 등. (Xabe.FFmpeg는 비상업 라이선스이므로 배제)\\n\\n[3순위 — 보류/조건부]\\n- 폰트: 라이선스 비용 없는 LayoutFarm/Typography로 ttf↔woff/woff2 읽기, woff2 쓰기는 Brotli 압축 필요. SixLabors.Fonts 3.x는 빌드타임 라이선스 강제로 회피. 수요 확인 후 진행.\\n- CAD: ACadSharp가 alpha라 신중. ODA File Converter는 재배포 제약. 수요 검증 전까지 보류.\\n\\nUX는 워치폴더(FileSystemWatcher + 500ms 디바운스 + 파일 잠금 재시도) + CLI 자동화(이미 CliRouter 존재)를 더해 '배치/자동화 3종 세트(드래그앤드롭·핫폴더·CLI)'를 완성하는 것을 권장.",
+    "libraries": [
+      {
+        "name": "PandocNet (SimonCropp)",
+        "purpose": "Pandoc CLI 강타입 .NET 래퍼 — md/rst/org/latex/mediawiki/asciidoc/ipynb/epub 등 40+ 마크업·문서 상호변환의 허브",
+        "license": "MIT",
+        "maturity": "active (v4.0.0, 2026-04, CliWrap 기반). pandoc.exe 번들 안 함 — 외부 설치 필요",
+        "notes": "PandocInstance.ConvertToText<TIn,TOut>() / Convert<TIn,TOut>(in,out) API. 강타입 InFormat/OutFormat 클래스. 프로젝트의 ExternalToolDetector + soffice 호출 패턴과 동일하게 pandoc.exe 탐지 추가하면 됨. LibreOffice가 못 하는 마크업/학술 포맷 보완재."
+      },
+      {
+        "name": "SharpCompress",
+        "purpose": "아카이브 압축/해제 — zip/7z/tar/gzip/bzip2/lzip/zstd 쓰기 + rar/arj/arc 읽기",
+        "license": "MS-PL 계열 permissive (상업 사용 가능)",
+        "maturity": "production (v0.48.x, 2026년 5일 전 커밋, 활발). 순수 C#, 무의존, async 지원",
+        "notes": "단일 포터블 EXE에 그대로 포함 가능. non-seekable 스트림 지원으로 대용량 OK. ArchiveProvider 신설 1순위."
+      },
+      {
+        "name": "Parquet.Net (aloneguid)",
+        "purpose": "Apache Parquet 읽기/쓰기 (데이터 카테고리)",
+        "license": "MIT",
+        "maturity": "production (v6.0.3, 2026-05, 27M 다운로드). 순수 관리 코드, 무의존, .NET8/10",
+        "notes": "ParquetSharp(C++ PInvoke)보다 포터블 EXE에 적합 — 네이티브 의존 없음. csv/json/xlsx↔parquet DataProvider에 사용."
+      },
+      {
+        "name": "ClosedXML + CsvHelper + ExcelDataReader",
+        "purpose": "xlsx/csv 읽기·쓰기, json 변환 (데이터 카테고리)",
+        "license": "MIT (ClosedXML, CsvHelper) / MS-PL (ExcelDataReader)",
+        "maturity": "production, 모두 순수 관리 코드",
+        "notes": "ClosedXML은 OpenXML 래퍼로 xlsx 쓰기, ExcelDataReader는 구형 xls 읽기. CsvHelper로 csv↔json. 전부 EXE 포함 가능."
+      },
+      {
+        "name": "Svg.Skia (wieslawsoltes)",
+        "purpose": "SVG → PNG/JPG/WebP/PDF/XPS 래스터화 (벡터 카테고리)",
+        "license": "MIT",
+        "maturity": "active (v5.0.0, 2026-05). SkiaSharp 백엔드 의존(네이티브 자산 필요)",
+        "notes": "SVG Full 1.1 + SVG2 정적 기능. SkiaSharp 네이티브 dll이 포터블 EXE 크기를 늘리지만 단일파일 publish 시 추출 가능. EPS는 ImageMagick+Ghostscript로 보완."
+      },
+      {
+        "name": "Calibre ebook-convert (CLI)",
+        "purpose": "전자책 변환 — epub↔mobi↔azw3↔pdf↔docx, --output-profile kindle 등",
+        "license": "GPLv3 (별도 프로세스 호출이므로 앱에 GPL 전파 안 됨)",
+        "maturity": "production (Calibre 9.x, 문서 2026-05 갱신). 외부 설치 필요",
+        "notes": "LibreOffice/pandoc과 동일하게 ProcessStartInfo로 ebook-convert.exe 호출. EbookProvider 신설. 출력 확장자로 포맷 자동 추론."
+      },
+      {
+        "name": "FFMpegCore (rosenbjerg)",
+        "purpose": "오디오/비디오 변환 — mp4/mkv/webm/mp3/wav/flac 등 (FFmpeg/FFProbe 래퍼)",
+        "license": "MIT (래퍼) + FFmpeg는 LGPL 빌드 사용",
+        "maturity": "production, fluent 인자 빌더, sync/async",
+        "notes": "Xabe.FFmpeg(CC BY-NC-SA, 비상업)는 배제 — 상업 배포 불가. FFMpegCore + LGPL FFmpeg 바이너리 조합이 라이선스상 안전. MediaProvider로 대형 카테고리 확장."
+      },
+      {
+        "name": "Magick.NET (이미 보유)",
+        "purpose": "이미지 + 벡터(SVG/EPS/AI/PS) + PSD/HEIC. Ghostscript 델리게이트로 EPS/AI/PS 래스터화",
+        "license": "Apache-2.0",
+        "maturity": "production, 이미 프로젝트에서 사용 중",
+        "notes": "추가 도입 없이 EPS/AI/PS 입력을 커버 가능(Ghostscript 외부 의존만 추가). 벡터 카테고리의 일부를 기존 MagickProvider 확장으로 흡수 가능."
+      },
+      {
+        "name": "LayoutFarm/Typography",
+        "purpose": "폰트 읽기/변환 — ttf/otf/ttc/woff/woff2 읽기, 글리프 레이아웃",
+        "license": "MIT/Apache 계열 (permissive, 라이선스 비용 없음)",
+        "maturity": "active이나 변환 API는 SixLabors/Aspose보다 저수준",
+        "notes": "SixLabors.Fonts 3.x의 빌드타임 라이선스 강제를 피하는 무료 대안. woff2 쓰기는 Brotli 압축 별도 필요. 폰트 카테고리는 수요 검증 후 진행 권장."
+      },
+      {
+        "name": "ACadSharp (DomCR)",
+        "purpose": "CAD — DXF/DWG 읽기/쓰기",
+        "license": "MIT",
+        "maturity": "alpha (v3.6.x, 일부 엔티티 미구현·버그 가능)",
+        "notes": "순수 .NET이라 매력적이나 성숙도 부족. 실무 DWG↔DXF는 ODA File Converter(무료·비오픈·재배포 제약) 의존. CAD는 후순위/조건부 권장. LibreDWG(GPLv3)는 클로즈드 EXE에 부적합."
+      }
+    ],
+    "integrationNotes": "프로젝트의 추상화는 신규 카테고리 추가에 매우 친화적이다. 각 신규 Provider는 IConverterProvider 3개 멤버(Capability getter, CheckAvailabilityAsync, ConvertAsync)만 구현하면 되고, Everything2EverythingBootstrap.CreateDefault()의 providers 배열에 한 줄 추가하면 ProviderRegistry가 N×M 매트릭스를 자동 인덱싱한다(_byPair / _outputsByInput).\\n\\n구체적 통합 방법:\\n\\n1) 매트릭스 선언: ProviderCapability.PairsFromMatrix(Inputs, Outputs)를 그대로 재사용. 예) ArchiveProvider는 Inputs={zip,7z,tar,gz,...}, Outputs={zip,7z,tar,gz}로 선언. PandocProvider는 마크업 포맷 배열로 거대 매트릭스 자동 생성. (단 Pandoc/LibreOffice 매트릭스가 겹치는 pair는 ProviderRegistry가 _byPair.TryAdd로 '먼저 등록된 Provider 우선'이므로 Bootstrap 배열 순서로 라우팅 우선순위 제어 — LibreOffice를 오피스 바이너리에, Pandoc을 마크업에 우선시키려면 순서 조정).\\n\\n2) 외부 도구 탐지: DocumentProvider.CheckAvailabilityAsync가 ExternalToolDetector.TryFindLibreOfficeSoffice(out _)를 호출하고 NotReady(reason, ExternalDependencies)를 반환하는 패턴을 그대로 복제. ExternalToolDetector에 TryFindPandoc / TryFindCalibreEbookConvert / TryFindFfmpeg / TryFindGhostscript 메서드를 추가하면 됨. ExternalDependency 레코드(Name/Description/DownloadUrl/IsRequired)로 미설치 시 다운로드 안내 UI가 기존 DiagnoseWindow와 연동된다.\\n\\n3) 외부 CLI 변환: DocumentProvider.SofficeConvertAsync의 ProcessStartInfo(UseShellExecute=false, CreateNoWindow=true, ArgumentList, WaitForExitAsync(ct) + proc.Kill(true) on cancel) 패턴이 pandoc/ebook-convert/ffmpeg에 그대로 적용된다. 출력물 검증(File.Exists(produced)) + targetPath로 Move하는 흐름도 동일. progress?.Report()는 ffmpeg의 경우 stderr의 time= 파싱으로 실제 진행률 산출 가능(FFMpegCore가 OnProgress 콜백 제공).\\n\\n4) 순수 관리 코드 Provider(SharpCompress/Parquet.Net/ClosedXML/Svg.Skia)는 외부 프로세스 없이 ConvertAsync 내부에서 직접 호출 — CheckAvailabilityAsync는 항상 ProviderAvailability.Ready 반환(Status=Available). MagickProvider가 이미 이 형태이므로 동일 스타일.\\n\\n5) ConvertOptions 확장: 카테고리별 인코딩 옵션 클래스(JpegEncodingOptions 등)가 이미 있는 패턴을 따라 ArchiveOptions(압축레벨), EbookOptions(output-profile), MediaOptions(코덱/비트레이트), PandocOptions(standalone/toc) 등을 추가. ConvertOptions에 프로퍼티로 노출하면 UI가 자동 바인딩 가능.\\n\\n6) UX 확장: CliRouter(이미 존재)에 워치폴더 모드 추가 — FileSystemWatcher를 IHosted/백그라운드로 띄우고 Created 이벤트에 500ms 디바운스 타이머 + 파일 잠금 재시도(IOException 시 짧은 지연 후 재시도) + InternalBufferSize 64KB 상향. 변환은 기존 ConversionEngine + ProviderRegistry.TryGet으로 재사용. 큐 inline progress bar(이미 보유)와 결합하면 핫폴더→큐 자동 적재 UX 완성. XnConvert식 액션 체이닝은 ConvertOptions에 후처리 파이프라인(resize→convert) 추가로 확장 가능.",
+    "risks": [
+      "단일 포터블 EXE 부담: pandoc(~150MB)·calibre·ffmpeg·ghostscript는 모두 외부 바이너리라 EXE에 번들하면 크기가 폭증한다. LibreOffice처럼 '외부 설치 의존 + 미설치 시 안내' 모델을 유지해야 함. 순수 관리 라이브러리(SharpCompress/Parquet.Net/Svg.Skia)만 EXE에 직접 포함 권장. MSIX 배포라면 의존성 번들이 다소 수월하나 여전히 용량 이슈.",
+      "라이선스 지뢰: (1) SixLabors.Fonts 3.0+는 빌드타임 라이선스 검증 강제 — 무심코 NuGet 추가 시 빌드 실패 또는 라이선스 위반. (2) Xabe.FFmpeg는 CC BY-NC-SA(비상업)라 상업 배포 시 위반 — FFMpegCore로 대체 필수. (3) LibreDWG는 GPLv3+라 클로즈드소스 EXE에 링크 불가. (4) FFmpeg는 빌드에 따라 GPL/LGPL이 갈리므로 LGPL 빌드 바이너리만 동봉해야 함.",
+      "Pandoc/LibreOffice 매트릭스 중복 라우팅: docx/html 등 겹치는 pair에서 어느 엔진이 더 좋은 결과를 내는지 케이스마다 다름(Pandoc은 시맨틱 변환에 강하나 복잡한 레이아웃은 LibreOffice가 충실). _byPair.TryAdd의 '선등록 우선' 규칙만으로는 품질 최적화가 안 됨 — pair별 선호 엔진 매핑이나 사용자 선택 옵션 필요.",
+      "ACadSharp alpha 성숙도: DWG 일부 엔티티 미구현으로 실제 도면이 깨질 수 있음. CAD를 정식 기능으로 내세우면 신뢰도 리스크. ODA File Converter는 무료지만 재배포 라이선스 제약이 있어 사용자가 직접 설치하도록 안내해야 함.",
+      "워치폴더 안정성: 파일이 아직 쓰기 중일 때 Created 이벤트가 발생하면 IOException(파일 잠금). 디바운스 + 재시도 로직을 견고하게 짜지 않으면 자동 변환이 깨진 파일을 생성. 또 변환 출력이 같은 워치폴더에 떨어지면 무한 루프 위험 — 출력 디렉터리 분리 필수.",
+      "전자책/CAD 외부 도구의 콜드스타트 지연: calibre·LibreOffice·pandoc은 첫 프로세스 기동이 느림(특히 LibreOffice headless). 배치 처리 시 프로세스 재사용(서버 모드)이나 사용자에게 진행 표시로 체감 지연 완화 필요."
+    ],
+    "sources": [
+      "https://pandoc.org/MANUAL.html",
+      "https://github.com/SimonCropp/PandocNet",
+      "https://www.nuget.org/packages/Pandoc/",
+      "https://github.com/jgm/pandoc/wiki/Pandoc-wrappers-and-interfaces",
+      "https://github.com/adamhathcock/sharpcompress",
+      "https://www.nuget.org/packages/sharpcompress/",
+      "https://github.com/G-Research/ParquetSharp",
+      "https://www.nuget.org/packages/Parquet.Net",
+      "https://github.com/wieslawsoltes/Svg.Skia",
+      "https://sixlabors.com/pricing/",
+      "https://github.com/SixLabors/Fonts/blob/main/LICENSE",
+      "https://github.com/LayoutFarm/Typography",
+      "https://products.aspose.com/font/net/conversion/woff2-to-ttf/",
+      "https://manual.calibre-ebook.com/generated/en/ebook-convert.html",
+      "https://github.com/DomCR/ACadSharp",
+      "https://www.opendesign.com/guestfiles/oda_file_converter",
+      "https://www.gnu.org/software/libredwg/",
+      "https://ezdxf.readthedocs.io/en/stable/addons/odafc.html",
+      "https://github.com/rosenbjerg/FFMpegCore",
+      "https://ffmpeg.xabe.net/license.html",
+      "https://imagemagick.org/include/formats.php",
+      "https://github.com/dlemstra/Magick.NET/blob/main/docs/Readme.md",
+      "https://cloudconvert.com/",
+      "https://www.spotsaas.com/blog/cloudconvert-software-review",
+      "https://www.eleken.co/blog-posts/file-upload-ui",
+      "https://howtoconvert.co/blog/best-open-source-file-converter-apps",
+      "https://learn.microsoft.com/en-us/dotnet/fundamentals/runtime-libraries/system-io-filesystemwatcher",
+      "https://www.jeremyknight.me/2026/01/17/filewatcher-worker/",
+      "https://www.nuget.org/packages/ClosedXML"
+    ]
+  }
+]
