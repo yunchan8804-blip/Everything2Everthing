@@ -14,7 +14,7 @@ public sealed class PdfProvider : IConverterProvider
     public ProviderCapability Capability { get; } = new(
         Id: "pdf",
         DisplayName: "PDF",
-        SupportedConversions: ProviderCapability.PairsFromMatrix(PdfInputs, PdfRenderOutputs),
+        SupportedConversions: ProviderCapability.PairsFromMatrix(PdfInputs, PdfRenderOutputs, LossClass.Rasterize),
         Status: ProviderStatus.Available,
         Summary: "PDF 각 페이지를 PNG/JPEG/WebP/AVIF/BMP/TIFF로 렌더링합니다.",
         ExternalDependencies: Array.Empty<ExternalDependency>(),

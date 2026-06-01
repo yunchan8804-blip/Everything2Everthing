@@ -1,6 +1,6 @@
 {
   "_comment": "로드맵 단계별 진행 상태. 값: planned | in_progress | done. 갱신 후 `python build.py`로 index.html/PLAN.md 재생성.",
-  "P1": "planned",
+  "P1": "done",
   "P2": "planned",
   "P3": "planned",
   "P4": "planned",

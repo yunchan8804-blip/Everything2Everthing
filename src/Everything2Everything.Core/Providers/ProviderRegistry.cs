@@ -9,6 +9,7 @@ public sealed class ProviderRegistry
         = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _allInputs = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _allOutputs = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConversionGraph _graph = new();
 
     public ProviderRegistry(IEnumerable<IConverterProvider> providers)
     {
@@ -26,9 +27,13 @@ public sealed class ProviderRegistry
                     list.Add(pair.OutputExtension);
                 _allInputs.Add(pair.InputExtension);
                 _allOutputs.Add(pair.OutputExtension);
+                _graph.AddEdge(pair.InputExtension, pair.OutputExtension, provider, pair.Loss);
             }
         }
     }
+
+    /// <summary>모든 Provider 능력으로부터 빌드된 변환 그래프. 엔진의 멀티홉 경로 탐색에 사용.</summary>
+    public ConversionGraph Graph => _graph;
 
     public IReadOnlyList<IConverterProvider> All => _providers;
 

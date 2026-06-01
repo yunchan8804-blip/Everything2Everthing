@@ -85,11 +85,15 @@ public sealed class ConversionEngine
         var output = ConversionPair.Normalize(outputExtension);
         var inputExt = ConversionPair.Normalize(Path.GetExtension(sourcePath));
 
-        if (string.Equals(inputExt, output, StringComparison.OrdinalIgnoreCase))
-            return ConvertResult.Skip(sourcePath, "입력과 출력 형식이 동일해 변환이 필요하지 않습니다.");
+        // 그래프 경로 탐색: 직접 엣지가 있으면 1홉, 없으면 손실 가중치 기반 멀티홉을 자동 합성.
+        var maxHops = options.AllowMultiHop ? Math.Max(1, options.MaxHops) : 1;
+        var path = _registry.Graph.FindBestPath(inputExt, output, maxHops, !options.AvoidLossy);
 
-        if (!_registry.TryGet(sourcePath, output, out var provider) || provider is null)
+        if (path is null || path.Count == 0)
         {
+            if (string.Equals(inputExt, output, StringComparison.OrdinalIgnoreCase))
+                return ConvertResult.Skip(sourcePath, "입력과 출력 형식이 동일해 변환이 필요하지 않습니다.");
+
             var available = _registry.OutputsForFile(sourcePath);
             var hint = available.Count > 0
                 ? $" 가능한 출력: {string.Join(", ", available)}"
@@ -97,30 +101,117 @@ public sealed class ConversionEngine
             return ConvertResult.Fail(sourcePath, $"{inputExt} → {output} 변환을 지원하지 않습니다.{hint}");
         }
 
-        var availability = await provider.CheckAvailabilityAsync(cancellationToken).ConfigureAwait(false);
-        if (!availability.IsReady)
+        return await ExecuteChainAsync(sourcePath, output, path, options, progress, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 변환 경로(1홉 또는 멀티홉)를 순차 실행한다. 중간 산출물은 임시 작업폴더에 체이닝하고
+    /// 마지막 홉만 실제 출력 폴더에 쓴다. 각 홉 시작 전 Provider 가용성을 점검한다.
+    /// </summary>
+    private async Task<ConvertResult> ExecuteChainAsync(
+        string sourcePath,
+        string finalOutputExtension,
+        IReadOnlyList<ConversionGraph.Edge> path,
+        ConvertOptions options,
+        IProgress<double>? progress,
+        CancellationToken cancellationToken)
+    {
+        foreach (var edge in path)
         {
-            var missing = availability.MissingDependencies?.Select(d => d.Name) ?? Array.Empty<string>();
-            var detail = availability.Reason ?? "필수 의존성이 준비되지 않았습니다.";
-            if (missing.Any()) detail += $" (필요: {string.Join(", ", missing)})";
-            return ConvertResult.Fail(sourcePath, detail);
+            var availability = await edge.Provider.CheckAvailabilityAsync(cancellationToken).ConfigureAwait(false);
+            if (!availability.IsReady)
+            {
+                var missing = availability.MissingDependencies?.Select(d => d.Name) ?? Array.Empty<string>();
+                var detail = availability.Reason ?? "필수 의존성이 준비되지 않았습니다.";
+                if (missing.Any()) detail += $" (필요: {string.Join(", ", missing)})";
+                return ConvertResult.Fail(sourcePath, detail);
+            }
         }
 
-        var outputDir = ResolveOutputDirectory(sourcePath, output, options);
-        Directory.CreateDirectory(outputDir);
+        // 단일 홉 — 기존 동작과 동일 (출력 폴더 해결 후 직접 위임)
+        if (path.Count == 1)
+        {
+            var outputDir = ResolveOutputDirectory(sourcePath, finalOutputExtension, options);
+            Directory.CreateDirectory(outputDir);
+            try
+            {
+                return await path[0].Provider
+                    .ConvertAsync(sourcePath, outputDir, finalOutputExtension, options, progress, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) { return ConvertResult.Fail(sourcePath, ex.Message, ex); }
+        }
 
+        // 멀티홉 — 중간 산출물은 임시 폴더, 마지막만 실제 출력
+        var workRoot = Path.Combine(Path.GetTempPath(), "e2e_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(workRoot);
         try
         {
-            return await provider.ConvertAsync(sourcePath, outputDir, output, options, progress, cancellationToken)
-                .ConfigureAwait(false);
+            var current = sourcePath;
+            for (var h = 0; h < path.Count; h++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var edge = path[h];
+                var isLast = h == path.Count - 1;
+                var hopExt = edge.To;
+                var outDir = isLast
+                    ? ResolveOutputDirectory(sourcePath, finalOutputExtension, options)
+                    : Path.Combine(workRoot, "h" + h.ToString());
+                Directory.CreateDirectory(outDir);
+
+                var hopIndex = h;
+                var hopProgress = new Progress<double>(p =>
+                    progress?.Report((hopIndex + Math.Clamp(p, 0, 1)) / path.Count));
+
+                ConvertResult result;
+                try
+                {
+                    result = await edge.Provider
+                        .ConvertAsync(current, outDir, hopExt, options, hopProgress, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    return ConvertResult.Fail(sourcePath,
+                        $"{h + 1}/{path.Count}단계 ({edge.From} → {edge.To}) 실패: {ex.Message}", ex);
+                }
+
+                if (isLast)
+                {
+                    // 마지막 홉은 상태를 그대로 존중 (정상 Skip을 Fail로 둔갑시키지 않음)
+                    return result.Status switch
+                    {
+                        ConvertStatus.Success => ConvertResult.Ok(sourcePath, result.OutputPaths),
+                        ConvertStatus.Skipped => ConvertResult.Skip(sourcePath, result.Message ?? "건너뛰었습니다."),
+                        _ => ConvertResult.Fail(sourcePath,
+                            $"{h + 1}/{path.Count}단계 ({edge.From} → {edge.To}) 실패: {result.Message ?? "산출물이 없습니다."}", result.Error),
+                    };
+                }
+
+                // 중간 홉은 단일 산출물이어야 다음 홉으로 체이닝할 수 있다.
+                if (result.Status != ConvertStatus.Success || result.OutputPaths.Count == 0)
+                {
+                    return ConvertResult.Fail(sourcePath,
+                        $"{h + 1}/{path.Count}단계 ({edge.From} → {edge.To}) 실패: {result.Message ?? "산출물이 없습니다."}");
+                }
+                if (result.OutputPaths.Count > 1)
+                {
+                    // 다중 산출물(예: PDF→페이지별 이미지)을 중간 홉으로 두면 나머지가 유실된다 — 명시적 거부.
+                    return ConvertResult.Fail(sourcePath,
+                        $"{h + 1}/{path.Count}단계 ({edge.From} → {edge.To})가 여러 파일을 생성해 자동 합성된 다음 단계로 이어갈 수 없습니다. 직접 변환 경로를 사용하거나 단계를 나눠 실행하세요.");
+                }
+
+                current = result.OutputPaths[0]; // 다음 홉의 입력
+            }
+
+            return ConvertResult.Fail(sourcePath, "변환 체인 실행에 실패했습니다.");
         }
-        catch (OperationCanceledException)
+        finally
         {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            return ConvertResult.Fail(sourcePath, ex.Message, ex);
+            try { Directory.Delete(workRoot, true); } catch { /* 임시 정리 실패 무시 */ }
         }
     }
 

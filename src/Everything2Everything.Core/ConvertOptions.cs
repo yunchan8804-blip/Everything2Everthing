@@ -54,6 +54,18 @@ public sealed class ConvertOptions
 
     public OcrOptions Ocr { get; set; } = new();
 
+    // --- 변환 그래프 경로 옵션 (P1) ---
+    /// <summary>멀티홉 경로 자동 합성 허용. false면 직접(1홉) 변환만.</summary>
+    public bool AllowMultiHop { get; set; } = true;
+
+    /// <summary>멀티홉 최대 홉 수.</summary>
+    public int MaxHops { get; set; } = 3;
+
+    /// <summary>래스터화 같은 큰 손실 엣지를 회피한다.</summary>
+    public bool AvoidLossy { get; set; } = false;
+
+    public PdfCompressOptions PdfCompress { get; set; } = new();
+
     public static ConvertOptions Quick() => new();
 }
 
@@ -121,4 +133,10 @@ public sealed class OcrOptions
     public string Language { get; set; } = "ko+en";
     public bool PreserveLayout { get; set; } = true;
     public string Backend { get; set; } = "auto";
+}
+
+public sealed class PdfCompressOptions
+{
+    /// <summary>Light(구조 최적화·무손실) | Strong(렌더 재인코딩) | Max(Ghostscript). P1은 Light만 구현.</summary>
+    public string Level { get; set; } = "Light";
 }

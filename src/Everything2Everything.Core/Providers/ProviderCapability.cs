@@ -59,17 +59,24 @@ public sealed record ProviderCapability(
             .Distinct(StringComparer.OrdinalIgnoreCase);
     }
 
-    public static IReadOnlyList<ConversionPair> PairsFromMatrix(IEnumerable<string> inputs, IEnumerable<string> outputs)
+    public static IReadOnlyList<ConversionPair> PairsFromMatrix(IEnumerable<string> inputs, IEnumerable<string> outputs, LossClass loss = LossClass.Recode)
     {
         var inputList = inputs.Select(ConversionPair.Normalize).ToList();
         var outputList = outputs.Select(ConversionPair.Normalize).ToList();
         var pairs = new List<ConversionPair>(inputList.Count * outputList.Count);
         foreach (var i in inputList)
             foreach (var o in outputList)
-                pairs.Add(new ConversionPair(i, o));
+                if (!string.Equals(i, o, StringComparison.OrdinalIgnoreCase)) // 동일포맷 자기쌍 제외 (png→png 재인코딩 회귀 방지)
+                    pairs.Add(new ConversionPair(i, o, loss));
         return pairs;
     }
 
-    public static IReadOnlyList<ConversionPair> PairsToSingleOutput(IEnumerable<string> inputs, string output)
-        => inputs.Select(i => ConversionPair.Of(i, output)).ToList();
+    public static IReadOnlyList<ConversionPair> PairsToSingleOutput(IEnumerable<string> inputs, string output, LossClass loss = LossClass.Recode)
+    {
+        var o = ConversionPair.Normalize(output);
+        return inputs.Select(ConversionPair.Normalize)
+            .Where(i => !string.Equals(i, o, StringComparison.OrdinalIgnoreCase))
+            .Select(i => new ConversionPair(i, o, loss))
+            .ToList();
+    }
 }

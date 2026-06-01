@@ -100,7 +100,7 @@ Everything2Everything의 북극성은 "세상의 모든 변환을 원자(atomic)
 
 ## 실행 로드맵
 
-### P1 · 그래프 엔진 도입 + 즉시 체감 가치(PDF 압축)  `effort:L` `risk:medium` `status:planned`
+### P1 · 그래프 엔진 도입 + 즉시 체감 가치(PDF 압축)  `effort:L` `risk:medium` `status:done`
 **목표:** ProviderRegistry를 ConversionGraph로 승격하고 멀티홉 경로 탐색을 엔진에 내장한다. 동시에 PDF 압축이라는 즉시 체감 신기능을 출시해 '보이지 않는 리팩터링의 함정'을 회피한다.
 
 **산출물:**

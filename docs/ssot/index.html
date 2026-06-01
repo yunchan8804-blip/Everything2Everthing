@@ -395,7 +395,7 @@ footer{border-top:1px solid var(--line2);margin-top:60px;padding:30px 0;color:va
     <div class="tl"><details class="ph" open><summary>
           <div class="pno">P1</div>
           <div class="pti"><b>그래프 엔진 도입 + 즉시 체감 가치(PDF 압축)</b><div class="pg">ProviderRegistry를 ConversionGraph로 승격하고 멀티홉 경로 탐색을 엔진에 내장한다. 동시에 PDF 압축이라는 즉시 체감 신기능을 출시해 &#x27;보이지 않는 리팩터링의 함정&#x27;을 회피한다.</div></div>
-          <div class="pbadges"><span class="b b-plan">예정</span><span class="b b-l">L</span><span class="b b-medium">RISK medium</span></div>
+          <div class="pbadges"><span class="b b-done">완료</span><span class="b b-l">L</span><span class="b b-medium">RISK medium</span></div>
         </summary>
         <div class="body">
           <h4>산출물</h4><ul class="lst"><li>ConversionGraph + 자체 Dijkstra PathFinder(외부 의존성 0, .NET 9 PriorityQueue)</li><li>ConversionPair.LossClass 필드 + 정적 가중치 테이블</li><li>ConversionEngine.ConvertOneAsync 그래프 위임 + ChainExecutor(공용 workDir 헬퍼)</li><li>PdfToolProvider 신설: PDF 압축(Light=PDFsharp 구조최적화, Strong=PDFium 렌더+Magick 재인코딩, Max=Ghostscript 외부폴백) + 병합/분할</li><li>xUnit 테스트 프로젝트 신설(현재 0개) + 그래프 경로탐색 회귀 테스트</li></ul>
