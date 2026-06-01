@@ -108,6 +108,50 @@ HRESULT LaunchAppWithItems(const wchar_t* verb, IShellItemArray* items) {
 }
 
 // ---------------------------------------------------------------------
+// 입력 형식별 추천 출력 — 영상 우클릭엔 영상/오디오 출력만, 데이터엔 데이터 출력만 보이도록
+// ---------------------------------------------------------------------
+enum class Cat { Image, Video, Audio, Data, Vector, Doc, Markup, Text };
+
+inline Cat CatOf(const std::wstring& e) {
+    if (e == L".mp4" || e == L".webm" || e == L".mkv" || e == L".mov" || e == L".avi") return Cat::Video;
+    if (e == L".mp3" || e == L".aac" || e == L".m4a" || e == L".opus" || e == L".ogg" || e == L".flac" || e == L".wav") return Cat::Audio;
+    if (e == L".csv" || e == L".json" || e == L".xlsx") return Cat::Data;
+    if (e == L".svg") return Cat::Vector;
+    if (e == L".md" || e == L".markdown" || e == L".html" || e == L".htm") return Cat::Markup;
+    if (e == L".txt") return Cat::Text;
+    if (e == L".pdf" || e == L".docx" || e == L".doc" || e == L".hwp" || e == L".hwpx") return Cat::Doc;
+    return Cat::Image;  // 이미지/RAW/HEIC/PSD 등 나머지는 이미지로 취급
+}
+
+inline bool Recommend(const std::wstring& inExt, const std::wstring& outExt) {
+    const Cat in = CatOf(inExt), out = CatOf(outExt);
+    if (in == Cat::Video) return out == Cat::Video || out == Cat::Audio;
+    if (in == Cat::Audio) return out == Cat::Audio;
+    if (in == Cat::Data)  return out == Cat::Data;
+    if (in == Cat::Image || in == Cat::Vector)
+        return out == Cat::Image || outExt == L".pdf" || outExt == L".txt" || outExt == L".docx";
+    if (in == Cat::Doc)
+        return out == Cat::Image || outExt == L".pdf" || outExt == L".txt" || outExt == L".docx" || outExt == L".html" || outExt == L".md";
+    if (in == Cat::Markup || in == Cat::Text)
+        return outExt == L".html" || outExt == L".md" || outExt == L".txt" || outExt == L".docx" || outExt == L".pdf";
+    return true;
+}
+
+inline std::wstring FirstItemExt(IShellItemArray* items) {
+    if (!items) return L"";
+    ComPtr<IShellItem> item;
+    if (FAILED(items->GetItemAt(0, &item))) return L"";
+    wil::unique_cotaskmem_string path;
+    if (FAILED(item->GetDisplayName(SIGDN_FILESYSPATH, &path))) return L"";
+    std::wstring p(path.get());
+    const auto dot = p.find_last_of(L'.');
+    if (dot == std::wstring::npos) return L"";
+    std::wstring ext = p.substr(dot);
+    for (auto& c : ext) c = static_cast<wchar_t>(towlower(c));
+    return ext;
+}
+
+// ---------------------------------------------------------------------
 // Sub-command — leaf in the cascade (e.g., "JPEG (.jpg)" → "to jpg")
 // ---------------------------------------------------------------------
 class SubVerbCommand : public RuntimeClass<
@@ -117,9 +161,10 @@ class SubVerbCommand : public RuntimeClass<
 public:
     HRESULT RuntimeClassInitialize() { return S_OK; }
 
-    void Configure(std::wstring title, std::wstring verb) {
+    void Configure(std::wstring title, std::wstring verb, std::wstring outExt = L"") {
         title_ = std::move(title);
         verb_ = std::move(verb);
+        outExt_ = std::move(outExt);
     }
 
     IFACEMETHODIMP GetTitle(IShellItemArray*, PWSTR* name) override {
@@ -141,8 +186,10 @@ public:
         return S_OK;
     }
 
-    IFACEMETHODIMP GetState(IShellItemArray*, BOOL, EXPCMDSTATE* cmdState) override {
-        *cmdState = ECS_ENABLED;
+    IFACEMETHODIMP GetState(IShellItemArray* items, BOOL, EXPCMDSTATE* cmdState) override {
+        if (outExt_.empty()) { *cmdState = ECS_ENABLED; return S_OK; }  // "변환…" 항목은 항상 표시
+        const std::wstring inExt = FirstItemExt(items);
+        *cmdState = (inExt.empty() || Recommend(inExt, outExt_)) ? ECS_ENABLED : ECS_HIDDEN;
         return S_OK;
     }
 
@@ -163,6 +210,7 @@ public:
 private:
     std::wstring title_;
     std::wstring verb_;
+    std::wstring outExt_;
 };
 
 // ---------------------------------------------------------------------
@@ -224,10 +272,10 @@ struct SubItem {
     const wchar_t* Verb;
 };
 
-inline ComPtr<SubVerbCommand> MakeSub(const wchar_t* title, const wchar_t* verb) {
+inline ComPtr<SubVerbCommand> MakeSub(const wchar_t* title, const wchar_t* verb, const wchar_t* outExt = L"") {
     ComPtr<SubVerbCommand> cmd;
     MakeAndInitialize<SubVerbCommand>(&cmd);
-    cmd->Configure(title, verb);
+    cmd->Configure(title, verb, outExt);
     return cmd;
 }
 
@@ -274,17 +322,35 @@ public:
         *enumCommands = nullptr;
 
         std::vector<ComPtr<IExplorerCommand>> cmds;
-        cmds.reserve(11);
-        cmds.push_back(MakeSub(L"JPEG (.jpg)",          L"to jpg"));
-        cmds.push_back(MakeSub(L"PNG (.png)",           L"to png"));
-        cmds.push_back(MakeSub(L"WebP (.webp)",         L"to webp"));
-        cmds.push_back(MakeSub(L"PDF (.pdf)",           L"to pdf"));
-        cmds.push_back(MakeSub(L"텍스트 (.txt) — OCR", L"to txt"));
-        cmds.push_back(MakeSub(L"Word (.docx) — OCR",  L"to docx"));
-        cmds.push_back(MakeSub(L"AVIF (.avif)",         L"to avif"));
-        cmds.push_back(MakeSub(L"GIF (.gif)",           L"to gif"));
-        cmds.push_back(MakeSub(L"TIFF (.tif)",          L"to tif"));
-        cmds.push_back(MakeSub(L"BMP (.bmp)",           L"to bmp"));
+        cmds.reserve(26);
+        // 이미지 (입력이 이미지/벡터/문서일 때 표시)
+        cmds.push_back(MakeSub(L"JPEG (.jpg)",          L"to jpg",  L".jpg"));
+        cmds.push_back(MakeSub(L"PNG (.png)",           L"to png",  L".png"));
+        cmds.push_back(MakeSub(L"WebP (.webp)",         L"to webp", L".webp"));
+        cmds.push_back(MakeSub(L"AVIF (.avif)",         L"to avif", L".avif"));
+        cmds.push_back(MakeSub(L"GIF (.gif)",           L"to gif",  L".gif"));
+        cmds.push_back(MakeSub(L"TIFF (.tif)",          L"to tif",  L".tif"));
+        cmds.push_back(MakeSub(L"BMP (.bmp)",           L"to bmp",  L".bmp"));
+        cmds.push_back(MakeSub(L"PDF (.pdf)",           L"to pdf",  L".pdf"));
+        cmds.push_back(MakeSub(L"텍스트 (.txt)",        L"to txt",  L".txt"));
+        cmds.push_back(MakeSub(L"Word (.docx)",         L"to docx", L".docx"));
+        cmds.push_back(MakeSub(L"HTML (.html)",         L"to html", L".html"));
+        cmds.push_back(MakeSub(L"Markdown (.md)",       L"to md",   L".md"));
+        // 영상 (입력이 영상일 때 표시)
+        cmds.push_back(MakeSub(L"MP4 (.mp4)",           L"to mp4",  L".mp4"));
+        cmds.push_back(MakeSub(L"WebM (.webm)",         L"to webm", L".webm"));
+        cmds.push_back(MakeSub(L"MKV (.mkv)",           L"to mkv",  L".mkv"));
+        cmds.push_back(MakeSub(L"MOV (.mov)",           L"to mov",  L".mov"));
+        // 오디오 (입력이 영상/오디오일 때 표시)
+        cmds.push_back(MakeSub(L"MP3 (.mp3)",           L"to mp3",  L".mp3"));
+        cmds.push_back(MakeSub(L"M4A (.m4a)",           L"to m4a",  L".m4a"));
+        cmds.push_back(MakeSub(L"FLAC (.flac)",         L"to flac", L".flac"));
+        cmds.push_back(MakeSub(L"WAV (.wav)",           L"to wav",  L".wav"));
+        // 데이터 (입력이 데이터일 때 표시)
+        cmds.push_back(MakeSub(L"JSON (.json)",         L"to json", L".json"));
+        cmds.push_back(MakeSub(L"CSV (.csv)",           L"to csv",  L".csv"));
+        cmds.push_back(MakeSub(L"Excel (.xlsx)",        L"to xlsx", L".xlsx"));
+        // 항상 표시
         cmds.push_back(MakeSub(L"변환…  (옵션 선택)",   L"dialog"));
 
         ComPtr<SubCommandEnumerator> enumerator;
