@@ -193,7 +193,7 @@ Everything2Everything의 북극성은 "세상의 모든 변환을 원자(atomic)
 
 **Exit Criteria:** API 키 입력 시 PDF 요약·이미지 캡션·번역이 동작하고, 키가 없으면 AI 페어만 사라지고 모든 기존 변환은 100% 동작.
 
-### P6 · 매트릭스 자동 극대화 + 헤드리스 CLI  `effort:L` `risk:medium` `status:planned` · depends: P5
+### P6 · 매트릭스 자동 극대화 + 헤드리스 CLI  `effort:L` `risk:medium` `status:in_progress` · depends: P5
 **목표:** 앞 단계에서 쌓인 모든 엣지를 그래프가 자동 합성해 진짜 N×M·다방향을 완성하고(video→mp3→txt AI전사 등), 헤드리스 CLI로 자동화·스크립팅을 개방한다.
 
 **산출물:**

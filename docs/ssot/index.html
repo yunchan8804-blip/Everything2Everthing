@@ -445,7 +445,7 @@ footer{border-top:1px solid var(--line2);margin-top:60px;padding:30px 0;color:va
         </div></details><details class="ph"><summary>
           <div class="pno">P6</div>
           <div class="pti"><b>매트릭스 자동 극대화 + 헤드리스 CLI</b><div class="pg">앞 단계에서 쌓인 모든 엣지를 그래프가 자동 합성해 진짜 N×M·다방향을 완성하고(video→mp3→txt AI전사 등), 헤드리스 CLI로 자동화·스크립팅을 개방한다.</div></div>
-          <div class="pbadges"><span class="b b-plan">예정</span><span class="b b-l">L</span><span class="b b-medium">RISK medium</span><span class="b b-plan">depends · P5</span></div>
+          <div class="pbadges"><span class="b b-prog">진행중</span><span class="b b-l">L</span><span class="b b-medium">RISK medium</span><span class="b b-plan">depends · P5</span></div>
         </summary>
         <div class="body">
           <h4>산출물</h4><ul class="lst"><li>OutputsForInput을 transitive closure로 확장 — &#x27;이 파일로 만들 수 있는 모든 포맷&#x27; UI 노출 + 손실 경로 경고 배지</li><li>멀티홉 도그푸딩 검증: hwp→pdf→png, video→mp3→txt(AI) 같은 신규 합성 경로 동작 확인</li><li>헤드리스 CLI 분리: --json/--output-dir/--quality/--prompt/--codec/--recursive 플래그 + stdout JSON 결과 + exit code</li><li>워치폴더 모드(FileSystemWatcher + 디바운스 + 파일잠금 재시도, 출력 디렉터리 분리로 무한루프 방지)</li><li>QuickProgressWindow 취소 토큰 전파 + 케이퍼빌리티 사전 점검</li></ul>

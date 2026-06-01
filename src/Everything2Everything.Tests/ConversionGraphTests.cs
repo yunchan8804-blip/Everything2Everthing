@@ -207,4 +207,20 @@ public class RegistryGraphIntegrationTests
         var path = graph.FindBestPath(".png", ".pdf", maxHops: 3);
         Assert.NotNull(path);
     }
+
+    [Fact]
+    public void OutputsForInput_ExposesMultiHopReachable()
+    {
+        var reg = Everything2EverythingBootstrap.CreateDefault().Providers;
+
+        var jsonOut = reg.OutputsForInput(".json");
+        Assert.Contains(".csv", jsonOut);   // 직접
+        Assert.Contains(".xlsx", jsonOut);  // 멀티홉 json→csv→xlsx
+        Assert.DoesNotContain(".json", jsonOut); // 동일 포맷 self 제외
+
+        var svgOut = reg.OutputsForInput(".svg");
+        Assert.Contains(".png", svgOut);    // 직접
+        Assert.Contains(".jpg", svgOut);    // 멀티홉 svg→png→jpg
+        Assert.Contains(".pdf", svgOut);    // 직접
+    }
 }

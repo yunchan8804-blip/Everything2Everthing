@@ -56,6 +56,18 @@ public sealed class ProviderRegistry
 
     public IReadOnlyList<string> OutputsForInput(string inputExtension)
     {
+        // 그래프 reachability(transitive closure)로 멀티홉 변환까지 노출한다 (예: json→xlsx, svg→jpg).
+        // 동일 포맷(self-edge: txt→txt AI, png→png 압축)은 '다른 형식으로 변환' 목록에서 제외.
+        var input = ConversionPair.Normalize(inputExtension);
+        return _graph.ReachableOutputs(input, maxHops: 3, allowLossy: true)
+            .Where(o => !string.Equals(o, input, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(e => e, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>1홉 직접 출력만 (그래프 reachability 이전의 좁은 목록이 필요한 곳용).</summary>
+    public IReadOnlyList<string> DirectOutputsForInput(string inputExtension)
+    {
         var input = ConversionPair.Normalize(inputExtension);
         return _outputsByInput.TryGetValue(input, out var list)
             ? list.OrderBy(e => e, StringComparer.OrdinalIgnoreCase).ToList()
