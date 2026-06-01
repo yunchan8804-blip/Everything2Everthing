@@ -1,0 +1,145 @@
+{
+  "vision": "FormatShift를 \"변환 전에 결과를 신뢰할 수 있는\" 다크 유틸리티로 끌어올린다. 세 축이 직교한다: (1) 형식색(FsFmt*) = '무엇을/무엇으로', (2) 손실 등급색(FsLoss*) = '얼마나 보존되나', (3) 상태색(FsStatus*, Radix dark) = 'AI키·외부도구가 준비됐나'. 사용자가 명시 요구한 '형식 색상'과 'AI 설정창'을 최우선으로 하되, 형식색은 이미 직전 커밋(25bebb4)에서 구현 완료된 상태이므로 잔여 마감(빈 상태 칩 텍스트)만 처리하고, 남은 에너지를 AI 설정창과 손실 등급 배지에 집중한다. 모든 신규 토큰은 기존 FsBg/FsText/FsFmt 명명 규칙으로만 확장하고, Core(LossClass/IChatClient/ExternalToolDetector)는 SSOT 그대로 재사용해 UI 계층만 손댄다.",
+  "priorities": [
+    {
+      "title": "AI API 키 설정 창(SettingsWindow) 신설 — 사용자 명시 요구, 현재 키 입력 UI가 전무함",
+      "impact": "high",
+      "effort": "high"
+    },
+    {
+      "title": "App에 Settings(ISettingsStore) 공유 노출 + ExternalToolDetector public 승격 — 설정창의 전제 인프라",
+      "impact": "high",
+      "effort": "low"
+    },
+    {
+      "title": "손실 등급(Lossless/Container/Recode/Rasterize) 배지·dot 시스템 — Core LossClass가 이미 있는데 UI 미노출, 체감 가치 큼",
+      "impact": "high",
+      "effort": "medium"
+    },
+    {
+      "title": "Radix dark 상태 시맨틱 토큰 + 손실 토큰 + FsPasswordInputStyle 추가 (테마 1회 확장)",
+      "impact": "high",
+      "effort": "low"
+    },
+    {
+      "title": "capability 경고를 평문 TextBlock → InfoBar(Amber tint) 패턴으로 격상",
+      "impact": "medium",
+      "effort": "low"
+    },
+    {
+      "title": "형식색 잔여 마감: 빈 큐 상태 지원형식 칩 텍스트 갱신(신규 16형식 반영) — 색 토큰/매핑은 이미 완료됨",
+      "impact": "medium",
+      "effort": "low"
+    },
+    {
+      "title": "전반 UX 폴리시(인터랙티브 빈 상태·hover 페이드인·accent bar·tabular-nums)",
+      "impact": "medium",
+      "effort": "medium"
+    }
+  ],
+  "implementationPlan": [
+    {
+      "step": "테마 토큰 1회 확장 — Radix dark 상태색 + 손실 등급색 + PasswordBox 스타일",
+      "files": [
+        "src/Everything2Everything.App/Views/FormatShiftTheme.xaml"
+      ],
+      "detail": "FsAccent 블록(25행) 아래에 추가: (A) Radix dark 상태 12토큰 — FsStatusSuccess Solid #30A46C/Text #3DD68C/Bg #132D21, Warn #FFC53D/#FFCA16/#302008, Danger #E5484D/#FF9592/#3B1219, Info #0090FF/#70B8FF/#0D2847. (B) 손실 등급 토큰 — FsLossLossless=Success계열(녹색), FsLossContainer=중립회색 dot(FsTextSecondary #8B909A 재사용, userDecision 참조), FsLossRecode=Amber계열, FsLossRasterize=Danger계열의 dot/text/bg 3쌍. (C) Geist 투명보더 FsBorderHairline=#14FFFFFF(8% 알파). 그리고 FsPathInputStyle(287행) 복제해 FsPasswordInputStyle(TargetType=PasswordBox, PART_ContentHost 대신 PasswordBox 템플릿, FsBgInput 배경/FsFontMono/radius 6, 포커스 시 BorderBrush=FsAccentBlue) 추가. 형식색 6토큰(43-57행)은 이미 존재하므로 건드리지 않음."
+    },
+    {
+      "step": "App에 ISettingsStore 공유 노출 + Bootstrap 시그니처 확장",
+      "files": [
+        "src/Everything2Everything.Core/Everything2EverythingBootstrap.cs",
+        "src/Everything2Everything.App/App.xaml.cs"
+      ],
+      "detail": "Bootstrap.CreateDefault()가 내부에서 new DpapiSettingsStore()를 만들어 LlmProvider에만 넘기는데(9·26행), 동일 인스턴스를 App이 공유해야 함. CreateDefault(out ISettingsStore settings) 오버로드(또는 (ConversionEngine, ISettingsStore) 튜플 반환)를 추가. App.xaml.cs(10행)에서 Engine과 함께 'public ISettingsStore Settings { get; }'를 같은 store로 초기화해 LlmProvider·SettingsWindow가 키 'openai.apikey'/'anthropic.apikey'/'ai.backend'/'ai.model'을 공유하게 함."
+    },
+    {
+      "step": "ExternalToolDetector를 internal→public 승격(또는 public ToolStatusProbe 래퍼)",
+      "files": [
+        "src/Everything2Everything.Core/Converters/ExternalToolDetector.cs"
+      ],
+      "detail": "현재 internal static(5행). 설정창 외부도구 섹션이 App 계층에서 TryFindFfmpeg/TryFindLibreOfficeSoffice/IsWordComAvailable를 호출해야 하므로 class를 public으로 바꾸거나, 이미 public인 표면을 원하면 Core에 얇은 'public static class ToolStatusProbe' 래퍼를 신설해 3개 메서드를 위임. 시그니처(out string)는 그대로 유지."
+    },
+    {
+      "step": "SettingsWindow.xaml 신설 — 3카드(AI백엔드/모델/외부도구) 모달",
+      "files": [
+        "src/Everything2Everything.App/Views/SettingsWindow.xaml"
+      ],
+      "detail": "FluentWindow(또는 기존 Window) 640x720, FormatShiftTheme.xaml 머지 + FsBgBase 배경. 32px TitleBar + ScrollViewer 3카드(FsBgSurface #1C1E22, 보더 FsBorderHairline 8%, radius 6). 카드1: '활성 백엔드' FsSegmentStyle 3분할(Auto/OpenAI/Anthropic) + OpenAI·Anthropic 각 행에 [PasswordBox(FsPasswordInputStyle, placeholder sk-.../sk-ant-...)] + [👁 평문토글] + [Verify 버튼] + 우측 status dot(8px)+배지 자리. 빈 필드엔 에러 미표시(premature validation 회피). 카드2: 백엔드별 모델 ComboBox + '비워두면 기본 모델' 캡션. 카드3: FFmpeg/LibreOffice/MS Word COM StatusRow 3개(dot + 도구명 + 상태라벨 + 미설치 시 Warn tint 배경 + 다운로드 CTA). 푸터: 저장·닫기. DiagnoseWindow.xaml을 구조 레퍼런스로 사용."
+    },
+    {
+      "step": "SettingsWindow.xaml.cs 신설 — 로드/Verify/저장/외부도구 감지 핸들러",
+      "files": [
+        "src/Everything2Everything.App/Views/SettingsWindow.xaml.cs"
+      ],
+      "detail": "생성자 new SettingsWindow(ISettingsStore settings, ConversionEngine engine). 로드: Settings.Get로 키 존재 시 '저장된 키 있음' placeholder, 환경변수(OPENAI_API_KEY/ANTHROPIC_API_KEY) 감지 시 EnvHint 노출. OnBackendSegmentClick(3-way 토글), OnToggleReveal(PasswordBox↔평문 TextBox 스왑), OnVerifyClick(new OpenAiChatClient/AnthropicChatClient(key).CompleteAsync('ping','ping',model,maxTokens=1,ct) → 200=Success배지/401·403=Danger/네트워크오류=Warn, 검증중 indeterminate ProgressBar). OnSaveClick(Settings.Set). OnDownloadClick(Process.Start로 gyan.dev/ffmpeg·libreoffice.org 브라우저 오픈). 외부도구 섹션은 ToolStatusProbe.TryFind*로 채워 dot/배지 매핑."
+    },
+    {
+      "step": "MainWindow에 ⚙ 설정 진입점 추가",
+      "files": [
+        "src/Everything2Everything.App/Views/MainWindow.xaml",
+        "src/Everything2Everything.App/Views/MainWindow.xaml.cs"
+      ],
+      "detail": "MainWindow.xaml Actions StackPanel(336행) 'Register Menu' 앞에 ⚙ Button(FsSecondaryButtonStyle, 32x32, gear Path, Click=OnSettingsClick). MainWindow.xaml.cs에 OnSettingsClick: var app=(App)Application.Current; new SettingsWindow(app.Settings, app.Engine){Owner=this}.ShowDialog(); 닫힌 뒤 _ = RefreshCapabilityStatusAsync()로 키 반영(모달이라 동기화 단순)."
+    },
+    {
+      "step": "손실 등급 팔레트 헬퍼 + dot/pill 스타일",
+      "files": [
+        "src/Everything2Everything.App/Views/MainWindow.xaml.cs",
+        "src/Everything2Everything.App/Views/FormatShiftTheme.xaml"
+      ],
+      "detail": "MainWindow.xaml.cs FormatPalette(1146행) 옆에 'internal static class LossPalette'를 동형으로 추가: LossClass→(DotBrushKey, TextBrushKey, BgBrushKey, ShortLabel, KoLabel). 가시 라벨은 한국어(무손실/재포장/재인코딩/래스터화), 영어 enum명은 툴팁(ConversionPair.cs XML doc 문구 재사용). FormatShiftTheme.xaml에 FsLossDotStyle(Ellipse 8x8)+FsLossPillStyle(Border radius6, Padding 8,2, Height22) 추가."
+    },
+    {
+      "step": "손실 등급 계산 + 출력 드롭다운/출력 배지 노출",
+      "files": [
+        "src/Everything2Everything.App/Views/MainWindow.xaml.cs",
+        "src/Everything2Everything.App/Views/MainWindow.xaml"
+      ],
+      "detail": "MainWindow.xaml.cs에 LossGradeFor(IEnumerable<string> sources, string outputExt): 각 입력에 engine.Providers.Graph.FindBestPath(in,out)→path.Max(e=>e.Loss)를 구하고 큐 전체의 worst-case(Max severity)를 등급으로 채택. RefreshAvailableOutputFormats(852행)의 ComboBoxItem.Content를 dot+라벨 템플릿으로 교체하거나 ItemTemplate 도입해 각 형식 옆 등급 dot 예고. OutputFormatBadge(xaml 89행) 아래에 현재 선택 등급 pill 1줄(LossGradeBadge) 추가. 선택이 Rasterize면 OutputFormatHint(xaml 102행)에 '벡터/텍스트 편집성이 사라집니다(단방향)'를 FsLossRasterizeText 색으로 표시."
+    },
+    {
+      "step": "큐 row 손실 dot + capability 경고 InfoBar화 + 빈 상태 칩 텍스트 마감",
+      "files": [
+        "src/Everything2Everything.App/Views/MainWindow.xaml.cs",
+        "src/Everything2Everything.App/Views/MainWindow.xaml"
+      ],
+      "detail": "QueueItem에 LossClass + 파생속성(LossDotBrush/LossPillVisibility/LossLabel/LossBrush) 추가. 큐 row DataTemplate(386행)의 형식배지 우상단 또는 Grid.Column 3 근처에 dot 배치, 절제: Lossless/Container는 dot만, Recode/Rasterize만 pill(LossPillVisibility 조건부). CapabilityStatusText(xaml 233행 평문 TextBlock)를 Background=FsStatusWarnBg(#302008) + 경고아이콘 + FsStatusWarnText(#FFCA16) + 'Diagnose' CTA의 Border(InfoBar 패턴)로 교체. 형식색은 이미 완료됐으므로 DropZoneEmpty(xaml 377행)의 지원형식 칩 텍스트만 신규 16형식 포함하도록 갱신(현재 'PNG·JPG·GIF·HEIC·RAW·PDF·DOCX·HTML·HWP/HWPX'에 CSV/JSON/XLSX/SVG/MP4/MP3 등 추가, 또는 WrapPanel 형식색 칩으로 교체)."
+    },
+    {
+      "step": "빌드/검증 — publish + 카스케이드 재등록",
+      "files": [
+        "src/Everything2Everything.App/Everything2Everything.App.csproj"
+      ],
+      "detail": "dotnet build로 경고0/오류0 확인 후, MEMORY project_build_pipeline 시퀀스대로 publish + 카스케이드 재등록. 사용자가 직접 push & GUI 검증(feedback_user_workflow: 단일 commit 선호). Verify 1토큰 핑은 소액 과금 가능성을 커밋 메시지/PR에 명시."
+    }
+  ],
+  "userDecisions": [
+    {
+      "question": "Verify(키 검증) 방식을 실제 API 1토큰 핑으로 할지, 형식 정규식 검사로 할지?",
+      "options": [
+        "실제 API 1토큰 핑(CompleteAsync maxTokens=1) — 무효 키까지 확실히 잡지만 소액 과금 가능",
+        "sk-/sk-ant- prefix 정규식 검사 — 무과금이지만 무효 키는 못 잡음",
+        "2단계: prefix 검사로 Verify 버튼 활성화 → 클릭 시에만 실제 핑"
+      ],
+      "recommendation": "3번(2단계). 빈/형식오류 키는 무과금으로 즉시 걸러 Verify 비활성, 사용자가 명시적으로 Verify를 누를 때만 실제 핑을 보내 과금 동의를 분명히 함. Cursor가 권장하는 실제 검증의 신뢰성과 과금 투명성을 모두 충족."
+    },
+    {
+      "question": "손실 등급 'Container'를 Blue(Radix Blue9)로 둘지, 무채색 회색 dot으로 둘지?",
+      "options": [
+        "Blue #0090FF — Radix 시맨틱 일관",
+        "중립 회색 dot(FsTextSecondary #8B909A) — 구조변경은 손실이 아니므로 조용히 처리",
+        "Teal 등 제3의 색"
+      ],
+      "recommendation": "2번(중립 회색). 앱 액센트 FsAccentBlue(#3B72FF)와 hue가 가까워 Blue는 '클릭 가능'으로 오인될 수 있음. Container는 손실이 아니므로 색을 아껴 조용히 두고, Blue는 순수 info용으로 보존하는 게 4등급 그라데이션(녹→회→앰버→레드) 가독성에 유리."
+    },
+    {
+      "question": "외부도구 '경로 지정'을 ISettingsStore 영구 키(ffmpeg.dir)로 저장할지, 기존 %LOCALAPPDATA% 폴더 복사 안내만 할지?",
+      "options": [
+        "ISettingsStore 'ffmpeg.dir' 신설 — 사용자가 임의 경로 지정 가능, ExternalToolDetector도 이 키 우선 조회하도록 확장 필요",
+        "기존 %LOCALAPPDATA%\\Everything2Everything\\ffmpeg 폴더 복사 안내만 — 코드 변경 최소(이미 ExternalToolDetector가 이 폴더를 1순위 조회)"
+      ],
+      "recommendation": "2번(폴더 안내). ExternalToolDetector.TryFindFfmpeg이 이미 %LOCALAPPDATA%\\Everything2Everything\\ffmpeg를 1순위로 보고 있어(54-63행) 추가 키·조회 분기 없이 다운로드 CTA + '이 폴더에 넣으세요' 안내만으로 충분. 설정창 1차 릴리스 범위를 줄여 AI 키 검증에 집중하고, 임의 경로 지정은 후속으로."
+    }
+  ]
+}

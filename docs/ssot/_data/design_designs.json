@@ -1,0 +1,450 @@
+[
+  {
+    "key": "formats",
+    "area": "FormatShift 형식 색상·카테고리 시스템 (FsFmt* 토큰 + AllFormats / FormatPalette 매핑)",
+    "inspiredBy": "파일 형식 hue 컨벤션은 VS Code Material Icon Theme(실제 SVG fill: table=#8BC34A, json=#F9A825, video=#FF9800, svg=#FFB300), Seti UI(Solarized: csv/xlsx=green, audio/svg=purple, video=pink), GitHub Linguist(svg=#FF9900 교차검증)에서 차용. 단, 이 앱의 형식색은 32x28px 솔리드 배지 위 흰 텍스트(Foreground=White)로 쓰이므로 — Catppuccin/Radix step11 파스텔(텍스트 라벨용, 흰 텍스트엔 너무 밝음)이 아니라 — 기존 FsFmt 14색과 동일한 Chakra/Tailwind 500 솔리드 톤에 채도·명도를 맞춰 재조정. 다크 배경(#090A0C~#1C1E22)에서 한 칩만 튀지 않도록 Linear의 'OKLCH 균일 명도' 원칙을 적용해 6색을 동급 luminance로 정렬. 충돌 회피(file-format-colors 토픽의 '최종 매핑')에 따라 기존 14색과 겹치지 않게 hue를 배정: PDF가 이미 red라 영상=코랄, PNG/GIF가 purple이라 오디오=라이트퍼플, HEIC가 amber라 JSON=더 노란 골드.",
+    "proposal": "회색(FsFmtOther)으로 방치돼 있던 신규 16개 형식(csv/json/xlsx/svg/mp4·webm·mkv·mov·avi/mp3·aac·m4a·opus·ogg·flac·wav)을 6개 카테고리 색으로 점등. 카테고리 단위로 묶어 '데이터/표=그린(csv #68A063, xlsx #38A169), 데이터/구조=골드(json #E3B341), 벡터=핑크마젠타(svg #E05A9C), 영상=코랄(#FF7043, mp4·webm·mkv·mov·avi 공유), 오디오=라이트퍼플(#B794F4, mp3·aac·m4a·opus·ogg·flac·wav 공유)'로 배정. 색상환을 노랑→그린→핑크→코랄→퍼플로 넓게 띄워 인접 형식이 헷갈리지 않게 함. 6색 모두 Tailwind 400~500 luminance라 기존 14색과 한 세트로 보이고, 출력 배지(OutputFormatBadge)와 입력 큐 row 배지 양쪽에서 동일 hue로 일관되게 표시.",
+    "implementationSteps": [
+      "FormatShiftTheme.xaml의 FsFmtOther(41행) 다음에 신규 6개 SolidColorBrush 토큰 블록 추가: FsFmtCsv #68A063, FsFmtXlsx #38A169, FsFmtJson #E3B341, FsFmtSvg #E05A9C, FsFmtVideo #FF7043, FsFmtAudio #B794F4. 각 토큰에 출처(Material/Seti/Linguist) 주석 명시.",
+      "MainWindow.xaml.cs의 AllFormats 배열(813~843행)에서 신규 16개 항목의 4번째 인자 colorResource를 'FsFmtOther' → 카테고리 키로 교체(csv→FsFmtCsv, json→FsFmtJson, xlsx→FsFmtXlsx, svg→FsFmtSvg, 영상 5종→FsFmtVideo, 오디오 7종→FsFmtAudio). 이로써 TARGET FORMAT 사이드바 배지(UpdateOutputFormatBadge)가 카테고리 색으로 점등.",
+      "MainWindow.xaml.cs의 FormatPalette.For() switch(1148~1164행)에 동일 매핑 추가 — 입력 파일이 큐 row / Past Results / 미리보기 메타에서도 같은 색 배지로 보이도록(QueueItem.FromPath·HistoryRow.From가 이 함수를 사용). xls·m4v·oga 등 형제 확장자도 같은 카테고리로 포함.",
+      "dotnet build로 검증 — 경고 0개 / 오류 0개 확인 완료."
+    ],
+    "colorTokens": [
+      {
+        "name": "FsFmtCsv",
+        "hex": "#68A063",
+        "usage": "CSV (데이터/표) — Material table=#8BC34A·Seti green 차용, xlsx보다 살짝 라이트한 라임그린으로 명도 분리"
+      },
+      {
+        "name": "FsFmtXlsx",
+        "hex": "#38A169",
+        "usage": "Excel/XLSX (스프레드시트) — Excel 브랜드 그린과 정합, 기존 webp(#48BB78)보다 딥하게 구분"
+      },
+      {
+        "name": "FsFmtJson",
+        "hex": "#E3B341",
+        "usage": "JSON (데이터/구조) — Material json=#F9A825·Seti yellow 컨벤션, 기존 HEIC(#D69E2E)보다 노랑쪽 골드로 충돌 회피"
+      },
+      {
+        "name": "FsFmtSvg",
+        "hex": "#E05A9C",
+        "usage": "SVG (벡터) — Seti svg=purple/css=pink 계열, 노랑 JSON과 한 화면에서 즉시 구분되는 핑크마젠타"
+      },
+      {
+        "name": "FsFmtVideo",
+        "hex": "#FF7043",
+        "usage": "영상 mp4/webm/mkv/mov/avi (공유) — 통념 '영상=난색', Material video=#FF9800 기반 코랄. 기존 PDF red(#E53E3E)와 구분"
+      },
+      {
+        "name": "FsFmtAudio",
+        "hex": "#B794F4",
+        "usage": "오디오 mp3/aac/m4a/opus/ogg/flac/wav (공유) — Seti audio=purple 통념, 기존 PNG/GIF purple보다 라이트한 바이올렛"
+      }
+    ],
+    "xamlSnippets": [
+      {
+        "purpose": "FormatShiftTheme.xaml — FsFmtOther 다음에 추가한 신규 카테고리 형식색 토큰 (출처 주석 포함)",
+        "xaml": "<!-- Format pills (신규: 데이터/벡터/영상/오디오 카테고리) -->\n<!-- 출처: VS Code Material Icon Theme + Seti UI(Solarized) + GitHub Linguist 의 hue 컨벤션을\n     차용하되, 채도/명도는 기존 Chakra/Tailwind 500 솔리드 톤(흰 텍스트 위 대비)에 맞춰 재조정.\n     Linear OKLCH 균일 명도 원칙(다크 배경에서 한 칩만 튀지 않게)을 적용. -->\n<!-- 데이터/표 = 그린 (Material table=#8BC34A, Seti green, Excel 브랜드 그린) -->\n<SolidColorBrush x:Key=\"FsFmtCsv\"   Color=\"#68A063\"/>\n<SolidColorBrush x:Key=\"FsFmtXlsx\"  Color=\"#38A169\"/>\n<!-- 데이터/구조 = 골드 (Material json=#F9A825, Seti yellow) -->\n<SolidColorBrush x:Key=\"FsFmtJson\"  Color=\"#E3B341\"/>\n<!-- 벡터 = 핑크-마젠타 (Seti svg=purple/css=pink); 노랑 JSON과 즉시 구분 -->\n<SolidColorBrush x:Key=\"FsFmtSvg\"   Color=\"#E05A9C\"/>\n<!-- 영상 = 코랄/오렌지레드 (Material video=#FF9800); 기존 PDF와 구분 -->\n<SolidColorBrush x:Key=\"FsFmtVideo\" Color=\"#FF7043\"/>\n<!-- 오디오 = 라이트 퍼플 (Seti audio=purple); 기존 PNG/GIF보다 라이트 -->\n<SolidColorBrush x:Key=\"FsFmtAudio\" Color=\"#B794F4\"/>"
+      },
+      {
+        "purpose": "MainWindow.xaml.cs — AllFormats 매핑 갱신 (FsFmtOther → 카테고리 색)",
+        "xaml": "new(\".csv\",  \"CSV\",      \"CSV\",  \"FsFmtCsv\"),\nnew(\".json\", \"JSON\",     \"JSON\", \"FsFmtJson\"),\nnew(\".xlsx\", \"Excel\",    \"XLSX\", \"FsFmtXlsx\"),\nnew(\".svg\",  \"SVG\",      \"SVG\",  \"FsFmtSvg\"),\nnew(\".mp4\",  \"MP4\",      \"MP4\",  \"FsFmtVideo\"),\nnew(\".webm\", \"WebM\",     \"WEBM\", \"FsFmtVideo\"),\nnew(\".mkv\",  \"MKV\",      \"MKV\",  \"FsFmtVideo\"),\nnew(\".mov\",  \"MOV\",      \"MOV\",  \"FsFmtVideo\"),\nnew(\".avi\",  \"AVI\",      \"AVI\",  \"FsFmtVideo\"),\nnew(\".mp3\",  \"MP3\",      \"MP3\",  \"FsFmtAudio\"),\nnew(\".aac\",  \"AAC\",      \"AAC\",  \"FsFmtAudio\"),\nnew(\".m4a\",  \"M4A\",      \"M4A\",  \"FsFmtAudio\"),\nnew(\".opus\", \"Opus\",     \"OPUS\", \"FsFmtAudio\"),\nnew(\".ogg\",  \"OGG\",      \"OGG\",  \"FsFmtAudio\"),\nnew(\".flac\", \"FLAC\",     \"FLAC\", \"FsFmtAudio\"),\nnew(\".wav\",  \"WAV\",      \"WAV\",  \"FsFmtAudio\"),"
+      },
+      {
+        "purpose": "MainWindow.xaml.cs — FormatPalette.For() 입력 확장자 매핑 추가 (큐 row/이력 배지용)",
+        "xaml": "// 신규 카테고리 (output AllFormats 매핑과 동일 hue 유지)\n\"csv\" => (\"CSV\", \"FsFmtCsv\"),\n\"json\" => (\"JSON\", \"FsFmtJson\"),\n\"xlsx\" or \"xls\" => (\"XLSX\", \"FsFmtXlsx\"),\n\"svg\" => (\"SVG\", \"FsFmtSvg\"),\n\"mp4\" or \"webm\" or \"mkv\" or \"mov\" or \"avi\" or \"m4v\"\n    => (ext.ToUpperInvariant(), \"FsFmtVideo\"),\n\"mp3\" or \"aac\" or \"m4a\" or \"opus\" or \"ogg\" or \"oga\" or \"flac\" or \"wav\"\n    => (ext.ToUpperInvariant(), \"FsFmtAudio\"),"
+      }
+    ],
+    "userDecisions": [
+      "형식색을 Catppuccin 파스텔(2순위 권고)이 아니라 기존 14색과 동일한 Chakra/Tailwind 500 솔리드 톤으로 맞췄습니다 — 이 앱의 형식색은 흰 텍스트(Foreground=White) 솔리드 배지 배경으로 쓰이기 때문입니다. 만약 향후 형식색을 '라벨/텍스트'로도 쓰려면(예: row 우측 형식명) 그때는 Catppuccin/Radix step11 파스텔로 전체 14+6색 일괄 교체가 더 적합합니다 — 진행할까요?",
+      "JSON 골드(#E3B341)는 흰 텍스트 대비가 다소 낮은 경계 케이스입니다. 다만 기존 FsFmtHeic(#D69E2E)가 이미 동급 골드에 흰 텍스트를 쓰고 있어 일관성은 유지됩니다. 가독성을 더 높이려면 JSON 배지에 한해 어두운 텍스트(#1C1E22)를 쓰는 옵션도 있습니다 — 적용할까요?",
+      "리서치 권고에 있던 '배경/텍스트 3계층 Catppuccin/Radix 재정렬', '보더 8% 투명도화', 'OKLCH 14색 전체 재정렬', 'hover 마이크로인터랙션', '큐 row 좌측 카테고리 accent bar', 'empty state 개선'은 이번 과제 범위(신규 형식 색 부여) 밖이라 적용하지 않았습니다. 별도 작업으로 진행을 원하시면 알려주세요."
+    ]
+  },
+  {
+    "key": "settings",
+    "area": "AI API 키 설정 창(SettingsWindow.xaml/.cs) + 외부 도구(FFmpeg/LibreOffice) 미설치 안내 + MainWindow 우상단 ⚙ 진입점",
+    "inspiredBy": "Cursor(Settings → API Keys: 마스킹 입력 + 명시적 Verify 버튼 + 성공/실패 인라인 배지 — \"검증 피드백 없으면 사용자가 키 적용을 불신한다\"), Zed(OS 키체인/DPAPI 암호화 저장 + 환경변수 자동 감지 후 \"환경변수에서 감지됨\" 보조 텍스트 노출), Raycast(Form.PasswordField 전용 보안 필드 + 'sk-...' placeholder 힌트, List/Detail 좌-우 섹션 구조), Microsoft Fluent/WinUI InfoBar(외부 의존성 미설치 안내를 Severity Warning/Success로 일괄 처리 — 다크에선 원색 대신 surface 위 subtle tint), Radix Colors dark scales(상태 시맨틱 12-step: solid=step9 / 텍스트=step11 / subtle 배경=step3 — Success #30A46C·#3DD68C·#132D21, Warning #FFC53D·#FFCA16·#302008, Danger #E5484D·#FF9592·#3B1219, Info #0090FF·#70B8FF·#0D2847), Linear(중립색 위주 + 사이드바를 더 어둡게 / 본문 작업영역을 밝게 하는 위계, radius 6px 통일, status dot 8px + 6px gap), Vercel Geist(보더는 rgba(255,255,255,0.08) 8% 알파로 거의 안 보이게, 그림자 대신 보더로 패널 분리), Apple HIG(2~5개 상호배타 즉시전환=Segmented Control, on/off=ToggleSwitch, 5개 초과=Select 드롭다운 기준). 기존 FsBg/FsText/FsAccent/FsFmt 토큰 체계와 FsSegmentStyle·FsPrimaryButtonStyle·FsPathInputStyle을 그대로 계승.",
+    "proposal": "기존 DiagnoseWindow처럼 ui:FluentWindow 모달로 신규 SettingsWindow(640x720)를 만들되, Mica 대신 MainWindow와 동일한 FsBgBase 다크 톤 + FormatShiftTheme.xaml 머지로 일관성을 유지한다. 화면은 3개 섹션 카드(FsBgSurface #1C1E22, radius 6px, 보더 rgba 8%)로 구성한다.\n\n(1) AI 백엔드 섹션 — Cursor/Zed 패턴. '활성 백엔드'는 Segmented Control(Auto / OpenAI / Anthropic, 기존 FsSegmentStyle 재사용)로 즉시 전환. OpenAI·Anthropic 각각 한 행에 [PasswordBox(마스킹, placeholder 'sk-...' / 'sk-ant-...')] + [👁 평문토글] + [Verify 버튼]. PasswordBox는 FsPathInputStyle을 PasswordBox용으로 포팅한 FsPasswordInputStyle(FsBgInput #0F1012, FsFontMono, radius 6px)을 쓴다. Verify 결과는 우측에 status dot(8px) + 라벨 배지로: 성공=Green dot #30A46C + 'Valid'(#3DD68C / 배경 #132D21), 실패=Red #E5484D + 인라인 에러(#FF9592 / 배경 #3B1219), 검증중=indeterminate ProgressBar(180x3, FsAccentBlue). 환경변수(OPENAI_API_KEY/ANTHROPIC_API_KEY)가 잡히면 입력란 위에 '환경변수에서 감지됨' 보조텍스트(#8B909A=FsTextSecondary) + Info dot #0090FF. 검증 전 빈 필드엔 에러를 표시하지 않는다(premature validation 회피).\n\n(2) 모델 섹션 — 백엔드별 모델 ComboBox(OpenAI: gpt-4o-mini/gpt-4o, Anthropic: claude-3-5-sonnet-latest/claude-3-5-haiku-latest). 선택값은 ConvertOptions.AiOptions.Model로 흐르고, '비워두면 백엔드 기본 모델 사용' 캡션을 단다.\n\n(3) 외부 도구 섹션 — Fluent InfoBar 패턴을 FsFmt 톤으로 직접 그린 StatusRow 3개(FFmpeg / LibreOffice / MS Word COM). 각 행: 좌측 status dot + 도구명 + 상태 라벨 + (미설치 시) Warning subtle tint 배경(#302008) + 단일 '다운로드' CTA(FsPrimaryButtonStyle, 형식별 색은 영상=#FF7043 FFmpeg, 문서=#38A169 LibreOffice) + '이미 설치됨? 경로 지정' 보조 링크. 감지되면 Green Success 행으로 전환('준비됨' #3DD68C). ExternalToolDetector를 internal→public 노출하거나 App.Engine.Providers 점검 결과를 재사용해 채운다.\n\n저장은 ISettingsStore(DpapiSettingsStore) 단일 인스턴스를 App에서 노출해 LlmProvider와 공유 — 키 'openai.apikey'/'anthropic.apikey', 백엔드 'ai.backend', 모델 'ai.model'. 평문 settings.json 금지(이미 DPAPI 암호화로 보장됨). MainWindow 네비바 우상단 Actions StackPanel 맨 앞에 ⚙ 아이콘 버튼(FsSecondaryButtonStyle, 32x32, Path gear)을 추가해 SettingsWindow를 Owner=this 모달로 띄운다.\n\n상태 토큰은 FsFmt 신규색(#FF7043 video, #38A169 xlsx, #E3B341 json 등)과 함께 Radix dark 시맨틱 6종(Success/Warning/Danger/Info의 solid·text·bg)을 FormatShiftTheme.xaml에 추가해 배지/dot/InfoBar 전반에서 재사용한다.",
+    "colorTokens": [
+      {
+        "name": "FsStatusSuccess (Radix Green9 solid · dot/CTA)",
+        "hex": "#30A46C",
+        "usage": "Verify 성공 dot, 외부도구 '준비됨' dot, Save 버튼 호버"
+      },
+      {
+        "name": "FsStatusSuccessText (Green11 · 배지 텍스트)",
+        "hex": "#3DD68C",
+        "usage": "'Valid' / '준비됨' 라벨 텍스트 (다크 #1C1E22 위 4.5:1+)"
+      },
+      {
+        "name": "FsStatusSuccessBg (Green3 · subtle fill)",
+        "hex": "#132D21",
+        "usage": "성공 배지/Success InfoBar 행 배경"
+      },
+      {
+        "name": "FsStatusWarn (Radix Amber9 solid)",
+        "hex": "#FFC53D",
+        "usage": "미설치 경고 dot, InfoBar 아이콘"
+      },
+      {
+        "name": "FsStatusWarnText (Amber11)",
+        "hex": "#FFCA16",
+        "usage": "'미설치'/'점검 필요' 라벨 텍스트"
+      },
+      {
+        "name": "FsStatusWarnBg (Amber3 · InfoBar tint)",
+        "hex": "#302008",
+        "usage": "FFmpeg/LibreOffice 미설치 안내 행 배경 (subtle tint)"
+      },
+      {
+        "name": "FsStatusDanger (Radix Red9 solid)",
+        "hex": "#E5484D",
+        "usage": "Verify 실패 dot, 변환불가 표시"
+      },
+      {
+        "name": "FsStatusDangerText (Red11)",
+        "hex": "#FF9592",
+        "usage": "키 검증 실패 인라인 에러 텍스트"
+      },
+      {
+        "name": "FsStatusDangerBg (Red3 · subtle fill)",
+        "hex": "#3B1219",
+        "usage": "실패 배지/에러 박스 배경"
+      },
+      {
+        "name": "FsStatusInfo (Radix Blue9 solid)",
+        "hex": "#0090FF",
+        "usage": "'환경변수에서 감지됨' dot, 정보성 표시"
+      },
+      {
+        "name": "FsStatusInfoText (Blue11)",
+        "hex": "#70B8FF",
+        "usage": "환경변수 감지 보조텍스트 강조 시"
+      },
+      {
+        "name": "FsStatusInfoBg (Blue3)",
+        "hex": "#0D2847",
+        "usage": "정보성 배지 배경"
+      },
+      {
+        "name": "FsFmtVideo (FFmpeg 카테고리 · Material/Seti video)",
+        "hex": "#FF7043",
+        "usage": "FFmpeg 다운로드 CTA / 영상 형식칩 (pdf #E53E3E와 구분되는 코랄)"
+      },
+      {
+        "name": "FsFmtXlsx (LibreOffice/문서 · 엑셀 그린)",
+        "hex": "#38A169",
+        "usage": "LibreOffice 다운로드 CTA / 문서 형식 강조"
+      },
+      {
+        "name": "FsFmtJson (데이터 · Material json 골드)",
+        "hex": "#E3B341",
+        "usage": "신규 데이터 형식칩 (회색 방치 형식 정상화, 동시 적용 권장)"
+      },
+      {
+        "name": "FsBorderAlpha8 (Geist 8% 보더)",
+        "hex": "#14FFFFFF",
+        "usage": "설정 카드/섹션 구분 1px 보더 (rgba(255,255,255,0.08) ARGB 표기)"
+      },
+      {
+        "name": "FsTextSecondary (기존 · 보조텍스트, 변경 없음)",
+        "hex": "#8B909A",
+        "usage": "'환경변수에서 감지됨'/'비워두면 기본 모델' 캡션 (Zed 패턴)"
+      }
+    ],
+    "xamlSnippets": [
+      {
+        "purpose": "FormatShiftTheme.xaml에 추가할 Radix dark 상태 시맨틱 토큰 + FFmpeg/LibreOffice 형식색 (기존 FsFmt* 패턴 계승, 28~41행 뒤에 삽입)",
+        "xaml": "<!-- Status semantics (Radix dark step9/11/3) -->\n<SolidColorBrush x:Key=\"FsStatusSuccess\"     Color=\"#30A46C\"/>\n<SolidColorBrush x:Key=\"FsStatusSuccessText\" Color=\"#3DD68C\"/>\n<SolidColorBrush x:Key=\"FsStatusSuccessBg\"   Color=\"#132D21\"/>\n<SolidColorBrush x:Key=\"FsStatusWarn\"        Color=\"#FFC53D\"/>\n<SolidColorBrush x:Key=\"FsStatusWarnText\"    Color=\"#FFCA16\"/>\n<SolidColorBrush x:Key=\"FsStatusWarnBg\"      Color=\"#302008\"/>\n<SolidColorBrush x:Key=\"FsStatusDanger\"      Color=\"#E5484D\"/>\n<SolidColorBrush x:Key=\"FsStatusDangerText\"  Color=\"#FF9592\"/>\n<SolidColorBrush x:Key=\"FsStatusDangerBg\"    Color=\"#3B1219\"/>\n<SolidColorBrush x:Key=\"FsStatusInfo\"        Color=\"#0090FF\"/>\n<SolidColorBrush x:Key=\"FsStatusInfoText\"    Color=\"#70B8FF\"/>\n<SolidColorBrush x:Key=\"FsStatusInfoBg\"      Color=\"#0D2847\"/>\n<!-- New format-category colors (회색 방치 형식 정상화) -->\n<SolidColorBrush x:Key=\"FsFmtVideo\" Color=\"#FF7043\"/>\n<SolidColorBrush x:Key=\"FsFmtAudio\" Color=\"#B794F4\"/>\n<SolidColorBrush x:Key=\"FsFmtXlsx\"  Color=\"#38A169\"/>\n<SolidColorBrush x:Key=\"FsFmtJson\"  Color=\"#E3B341\"/>\n<SolidColorBrush x:Key=\"FsFmtCsv\"   Color=\"#68A063\"/>\n<SolidColorBrush x:Key=\"FsFmtSvg\"   Color=\"#E05A9C\"/>"
+      },
+      {
+        "purpose": "PasswordBox 전용 입력 스타일 (FsPathInputStyle을 PasswordBox용으로 포팅 — PART_ContentHost 동일 사용 가능)",
+        "xaml": "<Style x:Key=\"FsPasswordInputStyle\" TargetType=\"PasswordBox\">\n    <Setter Property=\"Background\" Value=\"{StaticResource FsBgInput}\"/>\n    <Setter Property=\"Foreground\" Value=\"{StaticResource FsTextPrimary}\"/>\n    <Setter Property=\"BorderBrush\" Value=\"{StaticResource FsBorderSubtle}\"/>\n    <Setter Property=\"BorderThickness\" Value=\"1\"/>\n    <Setter Property=\"Padding\" Value=\"10,8\"/>\n    <Setter Property=\"FontFamily\" Value=\"{StaticResource FsFontMono}\"/>\n    <Setter Property=\"FontSize\" Value=\"12\"/>\n    <Setter Property=\"PasswordChar\" Value=\"●\"/>\n    <Setter Property=\"CaretBrush\" Value=\"{StaticResource FsAccentBlue}\"/>\n    <Setter Property=\"Template\">\n        <Setter.Value>\n            <ControlTemplate TargetType=\"PasswordBox\">\n                <Border Background=\"{TemplateBinding Background}\"\n                        BorderBrush=\"{TemplateBinding BorderBrush}\"\n                        BorderThickness=\"{TemplateBinding BorderThickness}\"\n                        CornerRadius=\"6\" Padding=\"{TemplateBinding Padding}\">\n                    <ScrollViewer x:Name=\"PART_ContentHost\"/>\n                </Border>\n                <ControlTemplate.Triggers>\n                    <Trigger Property=\"IsKeyboardFocusWithin\" Value=\"True\">\n                        <Setter Property=\"BorderBrush\" Value=\"{StaticResource FsAccentBlue}\"/>\n                    </Trigger>\n                </ControlTemplate.Triggers>\n            </ControlTemplate>\n        </Setter.Value>\n    </Style.Setter>\n</Style>"
+      },
+      {
+        "purpose": "SettingsWindow.xaml — 창 셸 + API 키 한 행(PasswordBox + 👁 토글 + Verify + status dot 배지). Cursor/Zed/Raycast 패턴 집약",
+        "xaml": "<ui:FluentWindow x:Class=\"Everything2Everything.App.Views.SettingsWindow\"\n    xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n    xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n    xmlns:ui=\"http://schemas.lepo.co/wpfui/2022/xaml\"\n    Title=\"설정\" Width=\"640\" Height=\"720\"\n    ExtendsContentIntoTitleBar=\"True\" WindowBackdropType=\"None\"\n    WindowCornerPreference=\"Round\" WindowStartupLocation=\"CenterOwner\">\n  <Window.Resources>\n    <ResourceDictionary>\n      <ResourceDictionary.MergedDictionaries>\n        <ResourceDictionary Source=\"FormatShiftTheme.xaml\"/>\n      </ResourceDictionary.MergedDictionaries>\n    </ResourceDictionary>\n  </Window.Resources>\n  <Grid Background=\"{StaticResource FsBgBase}\">\n    <Grid.RowDefinitions>\n      <RowDefinition Height=\"32\"/><RowDefinition Height=\"*\"/><RowDefinition Height=\"Auto\"/>\n    </Grid.RowDefinitions>\n    <ui:TitleBar Grid.Row=\"0\" Title=\"\"/>\n    <ScrollViewer Grid.Row=\"1\" Padding=\"24\" VerticalScrollBarVisibility=\"Auto\">\n      <StackPanel>\n        <!-- AI 백엔드 카드 -->\n        <Border Background=\"{StaticResource FsBgSurface}\" CornerRadius=\"6\"\n                BorderBrush=\"#14FFFFFF\" BorderThickness=\"1\" Padding=\"20\">\n          <StackPanel>\n            <TextBlock Text=\"AI BACKEND\" Style=\"{StaticResource FsLabelStyle}\"/>\n            <Border Margin=\"0,8,0,16\" Background=\"{StaticResource FsBgInput}\"\n                    BorderBrush=\"{StaticResource FsBorderSubtle}\" BorderThickness=\"1\"\n                    CornerRadius=\"6\" Padding=\"2\">\n              <UniformGrid Rows=\"1\" Columns=\"3\">\n                <ToggleButton x:Name=\"BackendAutoBtn\" Content=\"Auto\" IsChecked=\"True\"\n                              Style=\"{StaticResource FsSegmentStyle}\" Tag=\"auto\"\n                              Click=\"OnBackendSegmentClick\"/>\n                <ToggleButton x:Name=\"BackendOpenAiBtn\" Content=\"OpenAI\"\n                              Style=\"{StaticResource FsSegmentStyle}\" Tag=\"openai\"\n                              Click=\"OnBackendSegmentClick\"/>\n                <ToggleButton x:Name=\"BackendAnthropicBtn\" Content=\"Anthropic\"\n                              Style=\"{StaticResource FsSegmentStyle}\" Tag=\"anthropic\"\n                              Click=\"OnBackendSegmentClick\"/>\n              </UniformGrid>\n            </Border>\n            <!-- OpenAI 키 행 -->\n            <TextBlock Text=\"OPENAI API KEY\" Style=\"{StaticResource FsLabelStyle}\" Margin=\"0,0,0,4\"/>\n            <TextBlock x:Name=\"OpenAiEnvHint\" Style=\"{StaticResource FsCaptionStyle}\"\n                       Foreground=\"{StaticResource FsTextSecondary}\" Margin=\"0,0,0,6\"\n                       Visibility=\"Collapsed\" Text=\"● 환경변수 OPENAI_API_KEY에서 감지됨\"/>\n            <Grid>\n              <Grid.ColumnDefinitions>\n                <ColumnDefinition Width=\"*\"/><ColumnDefinition Width=\"Auto\"/>\n                <ColumnDefinition Width=\"Auto\"/>\n              </Grid.ColumnDefinitions>\n              <PasswordBox x:Name=\"OpenAiKeyBox\" Style=\"{StaticResource FsPasswordInputStyle}\"/>\n              <ToggleButton x:Name=\"OpenAiРeveal\" Grid.Column=\"1\" Width=\"36\" Margin=\"8,0,0,0\"\n                            Content=\"👁\" Style=\"{StaticResource FsSegmentStyle}\"\n                            Click=\"OnToggleRevealOpenAi\"/>\n              <Button Grid.Column=\"2\" Margin=\"8,0,0,0\" Content=\"Verify\"\n                      Style=\"{StaticResource FsSecondaryButtonStyle}\"\n                      Click=\"OnVerifyOpenAiClick\"/>\n            </Grid>\n            <!-- Verify 결과 배지 (성공/실패/검증중) -->\n            <StackPanel x:Name=\"OpenAiStatusRow\" Orientation=\"Horizontal\" Margin=\"0,8,0,0\"\n                        Visibility=\"Collapsed\">\n              <Ellipse x:Name=\"OpenAiDot\" Width=\"8\" Height=\"8\" VerticalAlignment=\"Center\"\n                       Fill=\"{StaticResource FsStatusSuccess}\"/>\n              <TextBlock x:Name=\"OpenAiStatusText\" Margin=\"6,0,0,0\" FontSize=\"12\"\n                         Foreground=\"{StaticResource FsStatusSuccessText}\" Text=\"Valid\"/>\n            </StackPanel>\n          </StackPanel>\n        </Border>\n        <!-- (Anthropic 키 카드 · 모델 카드 · 외부도구 카드 동일 패턴 반복) -->\n      </StackPanel>\n    </ScrollViewer>\n    <!-- 푸터: 저장/닫기 -->\n    <Border Grid.Row=\"2\" Padding=\"24,16\" BorderBrush=\"#14FFFFFF\" BorderThickness=\"0,1,0,0\">\n      <StackPanel Orientation=\"Horizontal\" HorizontalAlignment=\"Right\">\n        <Button Content=\"닫기\" Margin=\"0,0,8,0\" Style=\"{StaticResource FsSecondaryButtonStyle}\"\n                Click=\"OnCloseClick\"/>\n        <Button Content=\"저장\" Width=\"96\" Style=\"{StaticResource FsPrimaryButtonStyle}\"\n                Click=\"OnSaveClick\"/>\n      </StackPanel>\n    </Border>\n  </Grid>\n</ui:FluentWindow>"
+      },
+      {
+        "purpose": "외부 도구 미설치 안내 행 (Fluent InfoBar를 FsFmt 톤으로 — Warning tint 배경 + 단일 다운로드 CTA + 경로 지정 보조 링크)",
+        "xaml": "<Border x:Name=\"FfmpegRow\" CornerRadius=\"6\" Padding=\"14,12\" Margin=\"0,8,0,0\"\n        Background=\"{StaticResource FsStatusWarnBg}\">\n  <Grid>\n    <Grid.ColumnDefinitions>\n      <ColumnDefinition Width=\"Auto\"/><ColumnDefinition Width=\"*\"/>\n      <ColumnDefinition Width=\"Auto\"/>\n    </Grid.ColumnDefinitions>\n    <Ellipse Width=\"8\" Height=\"8\" VerticalAlignment=\"Center\"\n             Fill=\"{StaticResource FsStatusWarn}\"/>\n    <StackPanel Grid.Column=\"1\" Margin=\"10,0,0,0\" VerticalAlignment=\"Center\">\n      <TextBlock Text=\"FFmpeg — 영상/오디오 변환에 필요\" Style=\"{StaticResource FsBodyStyle}\"\n                 FontSize=\"12\" FontWeight=\"Medium\"/>\n      <TextBlock x:Name=\"FfmpegReason\" Style=\"{StaticResource FsCaptionStyle}\"\n                 Foreground=\"{StaticResource FsStatusWarnText}\" Margin=\"0,2,0,0\"\n                 Text=\"미설치 — ffmpeg.exe/ffprobe.exe를 찾을 수 없습니다\"/>\n      <TextBlock Margin=\"0,4,0,0\">\n        <Hyperlink Click=\"OnSetFfmpegPathClick\" Foreground=\"{StaticResource FsTextSecondary}\">\n          <Run Text=\"이미 설치됨? 경로 지정\"/></Hyperlink>\n      </TextBlock>\n    </StackPanel>\n    <Button Grid.Column=\"2\" Content=\"다운로드\" VerticalAlignment=\"Center\"\n            Background=\"{StaticResource FsFmtVideo}\" Foreground=\"White\"\n            Style=\"{StaticResource FsPrimaryButtonStyle}\" Padding=\"12,6\"\n            Click=\"OnDownloadFfmpegClick\"/>\n  </Grid>\n</Border>"
+      },
+      {
+        "purpose": "MainWindow.xaml 네비바 우상단 ⚙ 진입점 (336행 Actions StackPanel 맨 앞에 삽입)",
+        "xaml": "<Button x:Name=\"SettingsButton\" Width=\"32\" Margin=\"0,0,8,0\"\n        Style=\"{StaticResource FsSecondaryButtonStyle}\" Padding=\"6\"\n        ToolTip=\"설정 (AI 키 · 외부 도구)\"\n        Click=\"OnSettingsClick\">\n  <Path Width=\"16\" Height=\"16\" Stretch=\"Uniform\"\n        Stroke=\"{StaticResource FsTextSecondary}\" StrokeThickness=\"2\"\n        Data=\"M12,9 A3,3 0 1,1 12,15 A3,3 0 1,1 12,9 Z M19.4,13 A7.5,7.5 0 0,0 19.4,11 L21.5,9.4 L19.5,6 L17,7 A7.5,7.5 0 0,0 15,5.8 L14.6,3 L9.4,3 L9,5.8 A7.5,7.5 0 0,0 7,7 L4.5,6 L2.5,9.4 L4.6,11 A7.5,7.5 0 0,0 4.6,13 L2.5,14.6 L4.5,18 L7,17 A7.5,7.5 0 0,0 9,18.2 L9.4,21 L14.6,21 L15,18.2 A7.5,7.5 0 0,0 17,17 L19.5,18 L21.5,14.6 Z\"/>\n</Button>"
+      }
+    ],
+    "implementationSteps": [
+      "FormatShiftTheme.xaml: Radix dark 상태 시맨틱 12토큰(FsStatusSuccess/Warn/Danger/Info × solid/text/bg) + 신규 형식색(FsFmtVideo #FF7043, FsFmtAudio #B794F4, FsFmtXlsx #38A169, FsFmtJson #E3B341, FsFmtCsv #68A063, FsFmtSvg #E05A9C) 추가. FsPasswordInputStyle(PasswordBox용) 스타일 추가 — 기존 FsPathInputStyle 구조 복제 + PasswordChar ● + 포커스 시 FsAccentBlue 보더",
+      "App.xaml.cs: 현재 Bootstrap이 내부에서 DpapiSettingsStore를 생성하므로, Everything2EverythingBootstrap.CreateDefault()가 ISettingsStore를 외부에서 받거나 반환하도록 시그니처를 확장하고 App에 'public ISettingsStore Settings { get; }'를 노출해 LlmProvider와 SettingsWindow가 동일 인스턴스를 공유 (키 'openai.apikey'/'anthropic.apikey'/'ai.backend'/'ai.model')",
+      "ExternalToolDetector를 internal→public으로 승격(또는 얇은 public ToolStatusProbe 래퍼 신설)해 TryFindFfmpeg/TryFindLibreOfficeSoffice/IsWordComAvailable를 App 계층에서 호출 가능하게 함. 결과를 Settings 외부도구 섹션의 status dot/배지에 매핑(준비됨=Success, 미설치=Warning)",
+      "SettingsWindow.xaml 신규: 32px TitleBar + ScrollViewer 3카드(AI 백엔드/모델/외부도구) + 푸터(저장·닫기). 카드는 FsBgSurface #1C1E22 + 보더 #14FFFFFF(8% 알파) + radius 6px. 백엔드는 FsSegmentStyle 3-segment, 키는 PasswordBox+👁토글+Verify 행 + status 배지, 외부도구는 InfoBar식 StatusRow",
+      "SettingsWindow.xaml.cs 신규: 생성자에서 ((App)Application.Current).Settings로 기존 키 로드 → PasswordBox에 마스킹 표시(또는 '저장된 키 있음' placeholder), 환경변수 감지 시 EnvHint 노출. OnBackendSegmentClick(3-way 토글, ConflictSegment 패턴 차용), OnToggleReveal*(PasswordChar 토글 또는 평문 TextBox 스왑), OnVerify*Click(IChatClient.CompleteAsync로 1토큰 핑 → 성공 Green/실패 Red 배지, 검증중 indeterminate), OnSaveClick(ISettingsStore.Set), OnDownload*/OnSetPath* 핸들러",
+      "Verify 구현: OpenAiChatClient/AnthropicChatClient를 임시 인스턴스화해 CompleteAsync(system='ping', user='ping', maxTokens=1) 호출 → 401/403=키 무효(Danger), 200=Valid(Success), 네트워크 오류=Warning. premature validation 회피: 빈 필드는 Verify 버튼 비활성",
+      "외부도구 다운로드 CTA: FFmpeg→https://www.gyan.dev/ffmpeg/builds/ 또는 https://ffmpeg.org/download.html, LibreOffice→https://www.libreoffice.org/download/ 를 Process.Start로 브라우저 오픈. '경로 지정' 링크는 OpenFolderDialog로 ffmpeg 폴더를 받아 %LOCALAPPDATA%\\Everything2Everything\\ffmpeg에 매핑하거나 설정 키로 저장",
+      "MainWindow.xaml: 네비바 Actions StackPanel(336행) 맨 앞에 ⚙ Button(FsSecondaryButtonStyle, 32x32, gear Path) 추가. MainWindow.xaml.cs: OnSettingsClick에서 new SettingsWindow(((App)Application.Current).Settings, ((App)Application.Current).Engine){ Owner=this }.ShowDialog(); 닫힌 뒤 _ = RefreshCapabilityStatusAsync()로 키 반영"
+    ],
+    "userDecisions": [
+      "Verify 방식: 실제 API 1토큰 핑(소액 과금 발생 가능, 가장 확실)으로 갈지 vs 키 형식 정규식 검사(sk-/sk-ant- prefix, 무과금이지만 무효 키 못 잡음)만 할지 — Cursor는 실제 검증 권장",
+      "모델 선택 범위: 고정 드롭다운(gpt-4o-mini/gpt-4o, claude-3-5-sonnet/haiku)로 충분한지, 아니면 자유 입력 TextBox로 임의 모델명 허용할지",
+      "외부도구 '경로 지정'을 SettingsWindow에서 영구 저장(ISettingsStore 'ffmpeg.dir' 키 신설)할지, 아니면 기존 %LOCALAPPDATA%\\Everything2Everything\\ffmpeg 폴더에 복사 안내만 할지 — 후자는 코드 변경 최소",
+      "신규 형식색(FsFmtVideo/Audio/Xlsx/Json/Csv/Svg)을 이번에 함께 적용해 MainWindow.xaml.cs의 AllFormats 'FsFmtOther' 회색 매핑까지 교체할지, 아니면 Settings 창에 필요한 상태색만 먼저 넣을지 (리서치 권고는 일괄 교체)",
+      "SettingsWindow를 모달(ShowDialog, DiagnoseWindow와 동일)로 둘지 vs 비모달로 둘지 — 모달이면 닫힐 때 RefreshCapabilityStatus 동기화가 단순"
+    ]
+  },
+  {
+    "key": "badges",
+    "area": "손실 등급(Lossless / Container / Recode / Rasterize) 배지 + 상태 dot 시스템 — 출력 드롭다운 / 큐 row / capability 경고",
+    "inspiredBy": "Radix Colors (dark scales) — Badge의 \"같은 step 번호 = 같은 UI 역할\" 규칙(solid=step9 / text=step11 / subtle bg=step3)을 4개 손실 등급의 dot·텍스트·배경 토큰화에 그대로 적용. 실제 hex: Green9 #30A46C·Green11 #3DD68C·Green3 #132D21, Amber9 #FFC53D·Amber11 #FFCA16·Amber3 #302008, Red9 #E5484D·Red11 #FF9592·Red3 #3B1219, Blue9 #0090FF·Blue11 #70B8FF·Blue3 #0D2847 (https://www.radix-ui.com/themes/docs/components/badge). shadcn/Radix Badge — pill 형태(height 20~22px, radius 6px, h-padding 8px). Linear (status dot/pill, https://linear.app/now/how-we-redesigned-the-linear-ui) — 8px 채워진 원 + 6px gap + 라벨 패턴, 다크에서 LCH로 명도 통일해 어떤 등급이든 같은 밝기로 보이게. Microsoft Fluent / WinUI InfoBar (https://learn.microsoft.com/windows/apps/design/controls/infobar) — capability 경고를 Severity(Warning) subtle tint(step3 배경 + step11 텍스트) + 단일 CTA로. Things 3 (https://culturedcode.com/things/features/) — 큐 row hover 시에만 보조 정보 페이드인. 기존 FsFmt/FsAccent 토큰 체계와 8px spacing·6px radius는 계승.",
+    "proposal": "손실 등급은 이미 Core의 LossClass enum(Lossless/Container/Recode/Rasterize, ProviderRegistry.cs)에 SSOT로 존재하고 FindBestPath가 경로의 엣지별 Loss를 반환한다. 하지만 UI에는 전혀 노출되지 않아, 사용자가 \"JPG로 바꾸면 화질이 깎이는지\", \"PDF→PNG는 텍스트 편집성이 사라지는지\"를 알 수 없다. 이 4등급을 Radix Badge의 step9/11/3 3토큰 규칙으로 시각화하되, 색상은 \"심각도 그라데이션\"으로 의미 고정한다: Lossless=Green(안전), Container=Blue(중립·구조변경), Recode=Amber(주의·화질저하), Rasterize=Red(경고·편집성 상실, 단방향 절벽). 형식색(FsFmt*)은 \"무엇으로/무엇에서\"를 나타내고, 손실 등급색은 \"얼마나 보존되는가\"를 나타내는 직교(orthogonal)한 축이므로 절대 섞지 않는다. 표현 강도는 3단계로 차등: (1) 출력 드롭다운 = 선택지마다 8px dot + 짧은 라벨(Lossless/Recode 등)로 선택 전 예고, (2) 큐 row = 등급에 따라 dot만 또는 Recode/Rasterize일 때만 작은 pill 배지(과하지 않게 — Lossless/Container는 dot만), (3) capability 경고 = InfoBar Warning tint. 핵심 절제 원칙: Lossless·Container는 조용한 dot, Recode·Rasterize만 텍스트 라벨까지 노출해 \"주의가 필요할 때만 눈에 띄게\".",
+    "colorTokens": [
+      {
+        "name": "FsLossLosslessDot",
+        "hex": "#30A46C",
+        "usage": "Lossless 등급 dot/solid (Radix Green9). 무손실 — 픽셀·내용 완전 보존"
+      },
+      {
+        "name": "FsLossLosslessText",
+        "hex": "#3DD68C",
+        "usage": "Lossless 배지 텍스트 (Radix Green11). 다크 배경 4.5:1+ 대비"
+      },
+      {
+        "name": "FsLossLosslessBg",
+        "hex": "#132D21",
+        "usage": "Lossless pill subtle 배경 (Radix Green3)"
+      },
+      {
+        "name": "FsLossContainerDot",
+        "hex": "#0090FF",
+        "usage": "Container 등급 dot (Radix Blue9). 컨테이너/구조 변경, 내용 보존"
+      },
+      {
+        "name": "FsLossContainerText",
+        "hex": "#70B8FF",
+        "usage": "Container 배지 텍스트 (Radix Blue11)"
+      },
+      {
+        "name": "FsLossContainerBg",
+        "hex": "#0D2847",
+        "usage": "Container pill subtle 배경 (Radix Blue3)"
+      },
+      {
+        "name": "FsLossRecodeDot",
+        "hex": "#FFC53D",
+        "usage": "Recode 등급 dot (Radix Amber9). 재인코딩/손실 압축 — 주의"
+      },
+      {
+        "name": "FsLossRecodeText",
+        "hex": "#FFCA16",
+        "usage": "Recode 배지 텍스트 (Radix Amber11)"
+      },
+      {
+        "name": "FsLossRecodeBg",
+        "hex": "#302008",
+        "usage": "Recode pill subtle 배경 (Radix Amber3) — InfoBar Warning tint와 공유"
+      },
+      {
+        "name": "FsLossRasterizeDot",
+        "hex": "#E5484D",
+        "usage": "Rasterize 등급 dot (Radix Red9). 래스터화 — 편집성 상실, 단방향 절벽"
+      },
+      {
+        "name": "FsLossRasterizeText",
+        "hex": "#FF9592",
+        "usage": "Rasterize 배지 텍스트 (Radix Red11)"
+      },
+      {
+        "name": "FsLossRasterizeBg",
+        "hex": "#3B1219",
+        "usage": "Rasterize pill subtle 배경 (Radix Red3)"
+      }
+    ],
+    "implementationSteps": [
+      "FormatShiftTheme.xaml: 기존 FsAccent* 블록(line 25) 아래에 위 12개 FsLoss* SolidColorBrush 토큰을 'Loss grade tokens (Radix dark Badge)' 주석과 함께 추가. 기존 FsFmt* 형식색은 손대지 않는다(직교 축).",
+      "FormatShiftTheme.xaml: 손실 dot 재사용 스타일 FsLossDotStyle(Ellipse, Width/Height 8) + pill 컨테이너 스타일 FsLossPillStyle(Border, CornerRadius 6, Padding 8,2, Height 22)를 추가. dot은 8px 원 + 6px gap 라벨(Linear 패턴).",
+      "MainWindow.xaml.cs: LossClass→(DotBrush, TextBrush, BgBrush, ShortLabel, FullLabel) 매핑 헬퍼 정적 클래스 LossPalette 추가(FormatPalette와 동형). ShortLabel='Lossless'/'Container'/'Recode'/'Rasterize', FullLabel은 한국어 툴팁('무손실 — 픽셀 완전 보존' 등 enum XML doc 문구 재사용).",
+      "MainWindow.xaml.cs: 출력 형식 선택 시 engine.Providers.Graph.FindBestPath(input, output)의 worst-case Loss를 계산하는 메서드 LossGradeFor(IEnumerable<string> sources, string outputExt) 추가 — 큐 전체 입력에 대해 각 경로의 최악 등급 중 가장 나쁜 것을 등급으로 채택(Max severity).",
+      "출력 드롭다운: OutputFormatCombo ItemTemplate을 dot+라벨+등급dot 3요소로 교체(현재는 'JPEG (.jpg)' 텍스트만). 각 ComboBoxItem.Tag 옆에 그 형식의 손실 등급 dot을 우측 정렬로 배치해 선택 전 예고. OutputFormatBadge 아래에 현재 선택 등급 pill 1줄 추가(LossGradeBadge x:Name).",
+      "큐 row: QueueItem에 LossClass 속성 + LossDotBrush/LossPillVisibility/LossLabel/LossBrush 파생 속성 추가. ItemTemplate Grid.Column 3(StateText) 영역 또는 형식 배지 우상단에 dot 배치. 절제: Lossless/Container는 dot만, Recode/Rasterize일 때만 pill 라벨을 ProgressVisibility처럼 조건부 노출(LossPillVisibility).",
+      "capability 경고: 현재 CapabilityStatusText(평문 TextBlock, line 233)를 Radix Amber tint InfoBar 패턴 Border로 교체 — Background FsLossRecodeBg(#302008), 좌측 경고 아이콘 + FsLossRecodeText(#FFCA16) 텍스트 + 단일 'Diagnose' CTA. RefreshCapabilityStatusAsync의 '⚠ N개 형식이...' 문자열을 이 Border 내부 TextBlock에 바인딩.",
+      "Rasterize 경고 강화(선택): 선택한 출력이 Rasterize 등급이면 출력 드롭다운 hint(OutputFormatHint)에 '벡터/텍스트 편집성이 사라집니다 (단방향)' 한 줄을 FsLossRasterizeText 색으로 표시해 비가역성을 사전 고지."
+    ],
+    "userDecisions": [
+      "Container 등급 색을 Blue(#0090FF, Radix Blue9)로 둘지 vs Teal/중립 회색으로 둘지 — Blue는 앱 액센트 FsAccentBlue(#3B72FF)와 hue가 가까워 '클릭 가능'으로 오인될 여지가 있음. 대안: Container를 무채색 dot(FsTextSecondary #8B909A)으로 '조용히' 처리(구조 변경은 손실이 아니므로 색을 아예 안 주는 것도 정합적). 추천: Container=중립 회색 dot, Blue는 순수 정보(info)용으로 아껴두기.",
+      "큐 row에서 Recode/Rasterize pill을 '항상 노출' vs 'hover 시에만 페이드인'(Things 3 패턴) — 항상 노출은 정보 우선, hover는 미니멀 우선. 큐는 변환 전 검토 화면이므로 손실은 항상 보이는 게 안전하다고 보지만, 사용자가 미니멀을 선호하면 hover로 전환.",
+      "출력 드롭다운 각 항목에 등급 dot을 '모든 형식'에 표시할지 vs Recode/Rasterize에만 표시할지 — 모든 형식에 dot을 주면 일관되지만 Lossless 초록 dot이 다수라 시각 노이즈가 될 수 있음. 추천: 전부 표시하되 Lossless는 가장 낮은 채도라 자연히 묻힘(Radix가 의도한 명도 통일 효과).",
+      "손실 등급 라벨을 영어(Lossless/Container/Recode/Rasterize, enum 이름 그대로) vs 한국어(무손실/재포장/재인코딩/래스터화)로 표기할지 — 코드/툴팁은 영어 enum 유지, UI 가시 라벨만 한국어로 갈지 결정 필요. 앱이 한국어 hint를 쓰므로 가시 라벨도 한국어 권장, 영어는 툴팁 보조."
+    ],
+    "xamlSnippets": [
+      {
+        "purpose": "FormatShiftTheme.xaml — 손실 등급 토큰 (Radix dark Badge step9/11/3). 기존 FsAccent* 블록(line 25) 바로 아래에 삽입",
+        "xaml": "<!-- Loss grade tokens (Radix dark Badge: dot=step9 / text=step11 / bg=step3) -->\n<!-- Lossless = Green9/11/3 -->\n<SolidColorBrush x:Key=\"FsLossLosslessDot\"  Color=\"#30A46C\"/>\n<SolidColorBrush x:Key=\"FsLossLosslessText\" Color=\"#3DD68C\"/>\n<SolidColorBrush x:Key=\"FsLossLosslessBg\"   Color=\"#132D21\"/>\n<!-- Container = 중립(회색 dot 권장) 또는 Blue9/11/3 -->\n<SolidColorBrush x:Key=\"FsLossContainerDot\"  Color=\"#8B909A\"/>\n<SolidColorBrush x:Key=\"FsLossContainerText\" Color=\"#A6ADC8\"/>\n<SolidColorBrush x:Key=\"FsLossContainerBg\"   Color=\"#1C1E22\"/>\n<!-- Recode = Amber9/11/3 (Warning) -->\n<SolidColorBrush x:Key=\"FsLossRecodeDot\"  Color=\"#FFC53D\"/>\n<SolidColorBrush x:Key=\"FsLossRecodeText\" Color=\"#FFCA16\"/>\n<SolidColorBrush x:Key=\"FsLossRecodeBg\"   Color=\"#302008\"/>\n<!-- Rasterize = Red9/11/3 (Danger, 단방향) -->\n<SolidColorBrush x:Key=\"FsLossRasterizeDot\"  Color=\"#E5484D\"/>\n<SolidColorBrush x:Key=\"FsLossRasterizeText\" Color=\"#FF9592\"/>\n<SolidColorBrush x:Key=\"FsLossRasterizeBg\"   Color=\"#3B1219\"/>"
+      },
+      {
+        "purpose": "FormatShiftTheme.xaml — 재사용 dot + pill 스타일 (Linear 8px dot / shadcn pill 22px h, 6px radius)",
+        "xaml": "<!-- 8px loss dot (Linear status dot 패턴) -->\n<Style x:Key=\"FsLossDotStyle\" TargetType=\"Ellipse\">\n    <Setter Property=\"Width\"  Value=\"8\"/>\n    <Setter Property=\"Height\" Value=\"8\"/>\n    <Setter Property=\"VerticalAlignment\" Value=\"Center\"/>\n</Style>\n\n<!-- Loss pill (Radix/shadcn Badge: h22, radius6, hpad8) -->\n<Style x:Key=\"FsLossPillStyle\" TargetType=\"Border\">\n    <Setter Property=\"CornerRadius\" Value=\"6\"/>\n    <Setter Property=\"Height\" Value=\"22\"/>\n    <Setter Property=\"Padding\" Value=\"8,0\"/>\n    <Setter Property=\"VerticalAlignment\" Value=\"Center\"/>\n</Style>"
+      },
+      {
+        "purpose": "MainWindow.xaml — 출력 드롭다운 아래 '현재 선택 손실 등급' pill (OutputFormatBadge 영역 line 89~101 아래, OutputFormatHint 위에 삽입). dot 8px + 6px gap + 한국어 라벨",
+        "xaml": "<!-- Selected output loss grade (예: Recode일 때) -->\n<Border x:Name=\"LossGradeBadge\" Margin=\"0,8,0,0\"\n        HorizontalAlignment=\"Left\"\n        Style=\"{StaticResource FsLossPillStyle}\"\n        Background=\"{StaticResource FsLossRecodeBg}\">\n    <StackPanel Orientation=\"Horizontal\" VerticalAlignment=\"Center\">\n        <Ellipse x:Name=\"LossGradeDot\" Style=\"{StaticResource FsLossDotStyle}\"\n                 Fill=\"{StaticResource FsLossRecodeDot}\"/>\n        <TextBlock x:Name=\"LossGradeLabel\" Margin=\"6,0,0,0\"\n                   FontFamily=\"{StaticResource FsFontSans}\" FontSize=\"11\"\n                   FontWeight=\"SemiBold\"\n                   Foreground=\"{StaticResource FsLossRecodeText}\"\n                   Text=\"재인코딩 (화질 손실)\"/>\n    </StackPanel>\n</Border>"
+      },
+      {
+        "purpose": "MainWindow.xaml — 큐 row ItemTemplate: 형식 배지(line 401~409) 우상단에 손실 dot 오버레이. Lossless/Container는 dot만, Recode/Rasterize는 dot이 눈에 띄는 색",
+        "xaml": "<!-- 형식 배지 + 우상단 손실 등급 dot 오버레이 -->\n<Grid Width=\"32\" Height=\"32\" VerticalAlignment=\"Center\">\n    <Border CornerRadius=\"4\" Background=\"{Binding FormatBrush}\">\n        <TextBlock Text=\"{Binding FormatLabel}\" Foreground=\"White\"\n                   FontSize=\"10\" FontWeight=\"SemiBold\"\n                   HorizontalAlignment=\"Center\" VerticalAlignment=\"Center\"/>\n    </Border>\n    <Ellipse Width=\"10\" Height=\"10\"\n             HorizontalAlignment=\"Right\" VerticalAlignment=\"Top\"\n             Margin=\"0,-3,-3,0\"\n             Stroke=\"{StaticResource FsBgPanel}\" StrokeThickness=\"2\"\n             Fill=\"{Binding LossDotBrush}\"\n             ToolTip=\"{Binding LossTooltip}\"/>\n</Grid>"
+      },
+      {
+        "purpose": "MainWindow.xaml — 큐 row의 StateText 컬럼(Grid.Column 3, line 428~432) 위/옆에 조건부 Recode·Rasterize pill (절제: Recode/Rasterize일 때만 Visible)",
+        "xaml": "<StackPanel Grid.Column=\"3\" Orientation=\"Horizontal\" VerticalAlignment=\"Center\">\n    <Border Style=\"{StaticResource FsLossPillStyle}\" Height=\"20\"\n            Background=\"{Binding LossPillBg}\"\n            Visibility=\"{Binding LossPillVisibility}\"\n            Margin=\"0,0,8,0\"\n            ToolTip=\"{Binding LossTooltip}\">\n        <StackPanel Orientation=\"Horizontal\" VerticalAlignment=\"Center\">\n            <Ellipse Style=\"{StaticResource FsLossDotStyle}\" Fill=\"{Binding LossDotBrush}\"/>\n            <TextBlock Text=\"{Binding LossLabel}\" Margin=\"6,0,0,0\"\n                       FontFamily=\"{StaticResource FsFontSans}\" FontSize=\"10\"\n                       FontWeight=\"SemiBold\" Foreground=\"{Binding LossTextBrush}\"/>\n        </StackPanel>\n    </Border>\n    <TextBlock Text=\"{Binding StateText}\"\n               FontFamily=\"{StaticResource FsFontMono}\" FontSize=\"12\"\n               Foreground=\"{Binding StateBrush}\" VerticalAlignment=\"Center\"/>\n</StackPanel>"
+      },
+      {
+        "purpose": "MainWindow.xaml — capability 경고를 평문 TextBlock(line 233)에서 Radix Amber InfoBar(Fluent Severity=Warning)로 교체. subtle tint 배경 + 단일 Diagnose CTA",
+        "xaml": "<Border x:Name=\"CapabilityWarning\" Margin=\"0,0,0,12\"\n        Visibility=\"Collapsed\"\n        Background=\"{StaticResource FsLossRecodeBg}\"\n        BorderBrush=\"#3DFFC53D\" BorderThickness=\"1\"\n        CornerRadius=\"6\" Padding=\"12,10\">\n    <Grid>\n        <Grid.ColumnDefinitions>\n            <ColumnDefinition Width=\"Auto\"/>\n            <ColumnDefinition Width=\"*\"/>\n        </Grid.ColumnDefinitions>\n        <Path Grid.Column=\"0\" Width=\"16\" Height=\"16\" Stretch=\"Uniform\"\n              VerticalAlignment=\"Top\" Margin=\"0,1,10,0\"\n              Stroke=\"{StaticResource FsLossRecodeText}\" StrokeThickness=\"1.5\"\n              Data=\"M12,2 L22,20 L2,20 Z M12,9 L12,14 M12,17 L12,17.01\"/>\n        <StackPanel Grid.Column=\"1\">\n            <TextBlock x:Name=\"CapabilityWarningText\"\n                       FontFamily=\"{StaticResource FsFontSans}\" FontSize=\"12\"\n                       Foreground=\"{StaticResource FsLossRecodeText}\"\n                       TextWrapping=\"Wrap\"\n                       Text=\"2개 형식이 외부 도구를 기다립니다\"/>\n            <TextBlock x:Name=\"CapabilityWarningLink\" Margin=\"0,6,0,0\"\n                       FontFamily=\"{StaticResource FsFontSans}\" FontSize=\"11\"\n                       FontWeight=\"SemiBold\" Cursor=\"Hand\"\n                       Foreground=\"{StaticResource FsAccentBlue}\"\n                       Text=\"진단 열기 →\"\n                       MouseLeftButtonUp=\"OnDiagnoseClick\"/>\n        </StackPanel>\n    </Grid>\n</Border>"
+      },
+      {
+        "purpose": "MainWindow.xaml.cs — LossClass → 색/라벨/툴팁 매핑 헬퍼 (FormatPalette와 동형, SSOT 한 곳)",
+        "xaml": "internal static class LossPalette\n{\n    // (DotKey, TextKey, BgKey, 한국어 라벨, 툴팁)\n    public static (string Dot, string Text, string Bg, string Label, string Tip) For(LossClass loss) => loss switch\n    {\n        LossClass.Lossless  => (\"FsLossLosslessDot\",  \"FsLossLosslessText\",  \"FsLossLosslessBg\",\n                                \"무손실\",     \"픽셀·내용을 완전 보존합니다\"),\n        LossClass.Container => (\"FsLossContainerDot\", \"FsLossContainerText\", \"FsLossContainerBg\",\n                                \"재포장\",     \"컨테이너·구조만 변경, 내용은 보존됩니다\"),\n        LossClass.Recode    => (\"FsLossRecodeDot\",    \"FsLossRecodeText\",    \"FsLossRecodeBg\",\n                                \"재인코딩\",   \"재인코딩으로 화질이 일부 손실됩니다\"),\n        LossClass.Rasterize => (\"FsLossRasterizeDot\", \"FsLossRasterizeText\", \"FsLossRasterizeBg\",\n                                \"래스터화\",   \"벡터·텍스트 편집성이 사라집니다 (단방향)\"),\n        _ => (\"FsLossRecodeDot\", \"FsLossRecodeText\", \"FsLossRecodeBg\", \"재인코딩\", \"\"),\n    };\n\n    // 배지/pill을 Recode·Rasterize일 때만 노출하는 절제 규칙\n    public static Visibility PillVisibility(LossClass loss) =>\n        loss is LossClass.Recode or LossClass.Rasterize\n            ? Visibility.Visible : Visibility.Collapsed;\n}"
+      },
+      {
+        "purpose": "MainWindow.xaml.cs — 선택한 출력의 worst-case 손실 등급 계산 (큐 전체 입력에 대해 FindBestPath 경로의 최악 등급 중 최댓값). 기존 RefreshAvailableOutputFormats에서 호출",
+        "xaml": "// 큐 전체에서 이 출력으로 갈 때의 '최악 손실 등급'을 산출 (Max severity)\nprivate LossClass WorstLossFor(string outputExt)\n{\n    var graph = ((App)Application.Current).Engine.Providers.Graph;\n    var worst = LossClass.Lossless;\n    var inputs = _activeQueue.Count == 0\n        ? Array.Empty<string>()\n        : _activeQueue.Select(q => Path.GetExtension(q.SourcePath)).Distinct().ToArray();\n\n    foreach (var input in inputs)\n    {\n        var path = graph.FindBestPath(input, outputExt, maxHops: 3, allowLossy: true);\n        if (path is null) continue;\n        foreach (var edge in path)            // 경로의 worst edge가 그 변환의 등급\n            if ((int)edge.Loss > (int)worst) worst = edge.Loss;\n    }\n    return worst;   // enum 순서가 곧 심각도: Lossless<Container<Recode<Rasterize\n}\n\nprivate void UpdateLossGradeBadge(string? outputExt)\n{\n    if (LossGradeBadge is null || outputExt is null) return;\n    var grade = WorstLossFor(outputExt);\n    var (dot, text, bg, label, tip) = LossPalette.For(grade);\n    LossGradeDot.Fill = (Brush)FindResource(dot);\n    LossGradeLabel.Foreground = (Brush)FindResource(text);\n    LossGradeBadge.Background = (Brush)FindResource(bg);\n    LossGradeLabel.Text = grade == LossClass.Recode ? \"재인코딩 (화질 손실)\"\n                        : grade == LossClass.Rasterize ? \"래스터화 (편집성 상실)\" : label;\n    LossGradeBadge.ToolTip = tip;\n    // 절제: 무손실/재포장은 배지를 조용히 숨김\n    LossGradeBadge.Visibility = LossPalette.PillVisibility(grade);\n}"
+      }
+    ]
+  },
+  {
+    "key": "polish",
+    "area": "Everything2Everything (FormatShift Utility) — 전반 UX 폴리시: 빈 큐 상태 / 드롭 피드백 / 미리보기 / 여백 / hover 마이크로인터랙션 + FsFmt 형식색 확장",
+    "inspiredBy": "Linear (배경 3단 ramp #08090A→#0F1011→#1C1E22 / 사이드바 dimmer 위계 / radius 6px 통일 / status dot 8px+6px gap / Inter letter-spacing 음수 보정 -0.1~-0.3px) · Vercel Geist (보더를 rgba(255,255,255,0.06~0.08) 투명도 기반으로, 그림자 대신 보더로 패널 분리) · Notion Calendar/구 Cron (그리드 보더 9% 알파 / 팝오버 그림자 0 4px 12px rgba(0,0,0,0.45) 최소 사용 / tabular-nums 숫자 정렬) · Raycast (List/Detail 좌우 패턴 / row 내부 패딩을 높이에 비례 / 시맨틱 토큰 추상화 → WPF DynamicResource 궁합) · Things 3 (hover 시에만 액션 버튼 페이드인 150~200ms) · Arc (형식 카테고리별 좌측 2px 저채도 accent bar) · Linear/Notion Empty State 4요소(헤드라인+plain language 보조설명+모노크롬 아이콘+구체적 CTA, 같은 화면에서 인터랙티브하게) · Catppuccin Mocha(신규 형식색 파스텔 — csv/json/xlsx/svg/video/audio) + VS Code Material Icon Theme/Seti UI(형식별 hue 컨벤션: json=골드, 데이터/표=그린, svg=핑크-마젠타, video=코랄, audio=라이트퍼플) · Radix Colors dark step9/step11(status dot solid=step9, 배지 텍스트=step11)",
+    "proposal": "3컬럼 레이아웃(사이드바 320 / 좌측 큐·이력 / 우측 380 Preview)을 그대로 유지하면서, 체감이 가장 큰 5개 영역만 리서치 기반으로 다듬는다.\n\n(1) 빈 큐 상태(DropZoneEmpty)를 '수동 안내문' → 'Linear/Notion식 인터랙티브 empty state'로 전환. 점선 드롭존 Border(BorderBrush=FsAccentBlue 35% 알파, 12,8 dash, radius 8) + 모노크롬 다운로드 아이콘 + 헤드라인 'Drop files to convert' + plain-language 보조설명 + 실제 동작하는 'Browse files' 버튼(Ctrl+O 연결) + 지원 형식 칩 프리뷰(WrapPanel, 형식색 칩)를 같은 자리에 배치. 현란한 일러스트 금지.\n\n(2) 드롭 피드백(DropHintOverlay)을 평면 스크림 → 액센트 점선 프레임 + 살짝 진해지는 배경(#E6090A0C)으로. 내부에 dashed Border(FsAccentBlue 2px, radius 12, margin 24)를 둬 '여기로 떨어뜨리면 들어간다'는 영역감을 준다.\n\n(3) hover 마이크로인터랙션(Things 3). 큐 row의 삭제 X 아이콘을 평소 Opacity 0 → IsMouseOver 시 1로 페이드인(150ms), row 배경도 hover 시 FsBgSurfaceHover로. Past Results row도 동일. 폴더 열기 아이콘 동일 처리.\n\n(4) 형식 카테고리 accent bar(Arc). 큐/이력 row 좌측에 2px 저채도 세로 바(형식색)를 둬 이미지/문서/표/벡터/영상/오디오를 한눈에 구분.\n\n(5) 신규 6개 형식색 정상화 — 회색(FsFmtOther) 방치된 csv/json/xlsx/svg/video/audio에 Catppuccin Mocha 톤 + 형식 컨벤션 hue를 부여(json=골드 #E3B341, csv=라임 #68A063, xlsx=엑셀그린 #38A169, svg=핑크마젠타 #E05A9C, video=코랄 #FF7043, audio=라이트퍼플 #B794F4). 기존 14색과 충돌 없이 동급 밝기.\n\n(6) 여백/타이포 폴리시: 보더를 rgba 투명도 기반(Geist), Inter letter-spacing 음수 보정, 숫자 컬럼 tabular-nums, radius 6px(컨테이너)/4px(칩) 2단계 수렴.\n\n다크 테마와 FsBg/FsText/FsFmt 토큰 체계는 100% 계승하고, 신규 토큰은 기존 명명 규칙(FsFmtXxx)으로만 확장한다.",
+    "colorTokens": [
+      {
+        "name": "FsFmtJson (신규)",
+        "hex": "#E3B341",
+        "usage": "JSON 형식 칩/배지. Material json=#F9A825·Seti yellow 컨벤션 따른 골드. 기존 heic(#D69E2E)와 충돌 회피 위해 살짝 더 노랗게. '데이터=노랑' 직관"
+      },
+      {
+        "name": "FsFmtCsv (신규)",
+        "hex": "#68A063",
+        "usage": "CSV 형식 칩/배지. Material table=#8BC34A·Seti green 컨벤션. 데이터테이블 라임그린, webp(#48BB78)와 구분되게 딥하게"
+      },
+      {
+        "name": "FsFmtXlsx (신규)",
+        "hex": "#38A169",
+        "usage": "XLSX 형식 칩/배지. 엑셀 브랜드 그린과 정합. csv와 같은 데이터군이되 명도로 구분"
+      },
+      {
+        "name": "FsFmtSvg (신규)",
+        "hex": "#E05A9C",
+        "usage": "SVG 벡터 형식 칩/배지. json 골드와 한 화면에서 즉시 구분되도록 핑크-마젠타(Seti svg=purple/css=핑크 계열 차용)"
+      },
+      {
+        "name": "FsFmtVideo (신규)",
+        "hex": "#FF7043",
+        "usage": "mp4/webm/mkv/mov/avi 영상 칩/배지. Material video=#FF9800 난색 컨벤션 + pdf 레드(#E53E3E)와 구분되는 코랄/오렌지레드"
+      },
+      {
+        "name": "FsFmtAudio (신규)",
+        "hex": "#B794F4",
+        "usage": "mp3/aac/m4a/opus/ogg/flac/wav 오디오 칩/배지. Seti audio=purple 컨벤션 + png/gif 퍼플과 구분되는 라이트 바이올렛"
+      },
+      {
+        "name": "FsFmtMd (신규, 선택)",
+        "hex": "#60A5FA",
+        "usage": "Markdown 칩. Material markdown=blue 컨벤션. Tailwind blue-400로 기존 액센트 계열과 통일"
+      },
+      {
+        "name": "FsBorderHairline (신규)",
+        "hex": "#14FFFFFF",
+        "usage": "Geist식 8% 투명 보더(rgba 255,255,255,0.08). 3컬럼·row 구분선을 진한 회색 대신 투명도로 — 다크에서 자연스러움. 기존 FsBorderSubtle(#26282D)을 대체하지 않고 '구분선 전용'으로 추가"
+      },
+      {
+        "name": "FsBorderHairlineWeak (신규)",
+        "hex": "#0FFFFFFF",
+        "usage": "그리드 라인 6% 투명 보더(Notion Calendar). 이력 row 하단 구분선"
+      },
+      {
+        "name": "FsAccentBlueGlow (신규)",
+        "hex": "#593B72FF",
+        "usage": "드롭존/포커스용 액센트 35% 알파(ARGB #59=35%). 점선 드롭존 보더·empty state 강조"
+      },
+      {
+        "name": "FsStatusSuccessBg (신규)",
+        "hex": "#132D21",
+        "usage": "Radix Green3 — 'Success' 배지 subtle fill. 기존 인라인 #10B98122 하드코딩을 토큰화"
+      },
+      {
+        "name": "FsStatusSuccessText",
+        "hex": "#3DD68C",
+        "usage": "Radix Green11 — Success 배지 텍스트(현 FsAccentGreen #10B981 유지 가능하나 다크 대비는 step11이 더 안전)"
+      },
+      {
+        "name": "FsStatusWarnBg (신규)",
+        "hex": "#302008",
+        "usage": "Radix Amber3 — '손실(lossy)' 배지·InfoBar tint 배경"
+      },
+      {
+        "name": "FsStatusWarnText",
+        "hex": "#FFCA16",
+        "usage": "Radix Amber11 — 손실/주의 배지 텍스트"
+      }
+    ],
+    "xamlSnippets": [
+      {
+        "purpose": "FormatShiftTheme.xaml — 신규 형식색 6종 + 마크다운 + Geist 투명 보더 + Radix status 토큰 추가 (기존 28~41행 FsFmt 블록 바로 아래에 삽입). FsFmtOther 폴백을 실제 색으로 승격.",
+        "xaml": "<!-- New format pills (Catppuccin tone + Material/Seti hue convention) -->\n<SolidColorBrush x:Key=\"FsFmtJson\"  Color=\"#E3B341\"/>\n<SolidColorBrush x:Key=\"FsFmtCsv\"   Color=\"#68A063\"/>\n<SolidColorBrush x:Key=\"FsFmtXlsx\"  Color=\"#38A169\"/>\n<SolidColorBrush x:Key=\"FsFmtSvg\"   Color=\"#E05A9C\"/>\n<SolidColorBrush x:Key=\"FsFmtVideo\" Color=\"#FF7043\"/>\n<SolidColorBrush x:Key=\"FsFmtAudio\" Color=\"#B794F4\"/>\n<SolidColorBrush x:Key=\"FsFmtMd\"    Color=\"#60A5FA\"/>\n\n<!-- Geist hairline borders (alpha-based, 구분선 전용) -->\n<SolidColorBrush x:Key=\"FsBorderHairline\"     Color=\"#14FFFFFF\"/>\n<SolidColorBrush x:Key=\"FsBorderHairlineWeak\" Color=\"#0FFFFFFF\"/>\n<SolidColorBrush x:Key=\"FsAccentBlueGlow\"     Color=\"#593B72FF\"/>\n\n<!-- Radix dark status tokens (인라인 하드코딩 #10B98122 토큰화) -->\n<SolidColorBrush x:Key=\"FsStatusSuccessBg\"   Color=\"#132D21\"/>\n<SolidColorBrush x:Key=\"FsStatusSuccessText\" Color=\"#3DD68C\"/>\n<SolidColorBrush x:Key=\"FsStatusWarnBg\"      Color=\"#302008\"/>\n<SolidColorBrush x:Key=\"FsStatusWarnText\"    Color=\"#FFCA16\"/>"
+      },
+      {
+        "purpose": "FormatShiftTheme.xaml — 타이포 letter-spacing 음수 보정(Linear) + tabular-nums(Notion Calendar). 기존 FsBodyStyle/FsLabelStyle/FsMonoStyle Setter에 추가. WPF는 TextBlock에 직접 letter-spacing이 없으므로 TextOptions/Typography 사용.",
+        "xaml": "<!-- FsBodyStyle 에 추가 -->\n<Setter Property=\"TextOptions.TextFormattingMode\" Value=\"Ideal\"/>\n<Setter Property=\"Typography.Kerning\" Value=\"True\"/>\n\n<!-- 숫자 정렬용 신규 스타일 (파일크기/진행률/해상도) -->\n<Style x:Key=\"FsNumStyle\" TargetType=\"TextBlock\" BasedOn=\"{StaticResource FsMonoStyle}\">\n    <Setter Property=\"Typography.NumeralAlignment\" Value=\"Tabular\"/>\n    <Setter Property=\"Typography.SlashedZero\" Value=\"True\"/>\n</Style>"
+      },
+      {
+        "purpose": "MainWindow.xaml — 빈 큐 상태(DropZoneEmpty, 363~380행 교체). Linear/Notion식 인터랙티브 empty state: 점선 드롭존 + 모노크롬 아이콘 + 헤드라인 + plain-language + 동작하는 Browse 버튼 + 형식 칩 프리뷰.",
+        "xaml": "<Grid x:Name=\"DropZoneEmpty\">\n  <Border Background=\"{StaticResource FsBgBase}\" Padding=\"48\">\n    <Border HorizontalAlignment=\"Center\" VerticalAlignment=\"Center\"\n            MaxWidth=\"420\" Padding=\"40,48\" CornerRadius=\"12\"\n            Background=\"{StaticResource FsBgPanel}\"\n            BorderBrush=\"{StaticResource FsAccentBlueGlow}\" BorderThickness=\"1.5\">\n      <Border.Resources>\n        <Style TargetType=\"Border\"><Setter Property=\"SnapsToDevicePixels\" Value=\"True\"/></Style>\n      </Border.Resources>\n      <StackPanel HorizontalAlignment=\"Center\">\n        <!-- 모노크롬 다운로드 아이콘 (Linear식, 현란한 일러스트 금지) -->\n        <Border Width=\"56\" Height=\"56\" CornerRadius=\"28\"\n                Background=\"#143B72FF\" HorizontalAlignment=\"Center\">\n          <Path Width=\"26\" Height=\"26\" Stretch=\"Uniform\" HorizontalAlignment=\"Center\" VerticalAlignment=\"Center\"\n                Stroke=\"{StaticResource FsAccentBlue}\" StrokeThickness=\"1.8\"\n                Data=\"M21,15 L21,19 C21,20.1 20.1,21 19,21 L5,21 C3.9,21 3,20.1 3,19 L3,15 M7,10 L12,15 L17,10 M12,15 L12,3\"/>\n        </Border>\n        <TextBlock Margin=\"0,20,0,0\" FontSize=\"16\" FontWeight=\"SemiBold\"\n                   Foreground=\"{StaticResource FsTextPrimary}\" HorizontalAlignment=\"Center\"\n                   Text=\"Drop files to convert\"/>\n        <TextBlock Margin=\"0,6,0,0\" Style=\"{StaticResource FsCaptionStyle}\"\n                   HorizontalAlignment=\"Center\" TextAlignment=\"Center\" TextWrapping=\"Wrap\"\n                   Text=\"이미지·문서·표·벡터·영상·오디오를 드래그하거나 아래에서 직접 고르세요. 큐에 넣으면 변환 가능한 형식이 자동 필터됩니다.\"/>\n        <!-- 동작하는 CTA (Ctrl+O 와 동일) -->\n        <Button Margin=\"0,20,0,0\" Width=\"140\" Content=\"Browse files\"\n                Style=\"{StaticResource FsPrimaryButtonStyle}\"\n                Command=\"{Binding AddFilesCommand, RelativeSource={RelativeSource AncestorType=Window}}\"/>\n        <!-- 지원 형식 칩 프리뷰 -->\n        <WrapPanel HorizontalAlignment=\"Center\" Margin=\"0,24,0,0\" MaxWidth=\"320\">\n          <WrapPanel.Resources>\n            <Style TargetType=\"Border\">\n              <Setter Property=\"CornerRadius\" Value=\"4\"/>\n              <Setter Property=\"Padding\" Value=\"7,3\"/>\n              <Setter Property=\"Margin\" Value=\"3\"/>\n            </Style>\n            <Style TargetType=\"TextBlock\">\n              <Setter Property=\"FontSize\" Value=\"10\"/>\n              <Setter Property=\"FontWeight\" Value=\"SemiBold\"/>\n              <Setter Property=\"FontFamily\" Value=\"{StaticResource FsFontMono}\"/>\n            </Style>\n          </WrapPanel.Resources>\n          <Border Background=\"#26805AD5\"><TextBlock Text=\"PNG\"  Foreground=\"{StaticResource FsFmtPng}\"/></Border>\n          <Border Background=\"#263182CE\"><TextBlock Text=\"JPG\"  Foreground=\"{StaticResource FsFmtJpg}\"/></Border>\n          <Border Background=\"#26E53E3E\"><TextBlock Text=\"PDF\"  Foreground=\"{StaticResource FsFmtPdf}\"/></Border>\n          <Border Background=\"#262B6CB0\"><TextBlock Text=\"DOCX\" Foreground=\"{StaticResource FsFmtDocx}\"/></Border>\n          <Border Background=\"#2638A169\"><TextBlock Text=\"XLSX\" Foreground=\"{StaticResource FsFmtXlsx}\"/></Border>\n          <Border Background=\"#26E3B341\"><TextBlock Text=\"JSON\" Foreground=\"{StaticResource FsFmtJson}\"/></Border>\n          <Border Background=\"#26E05A9C\"><TextBlock Text=\"SVG\"  Foreground=\"{StaticResource FsFmtSvg}\"/></Border>\n          <Border Background=\"#26FF7043\"><TextBlock Text=\"MP4\"  Foreground=\"{StaticResource FsFmtVideo}\"/></Border>\n          <Border Background=\"#26B794F4\"><TextBlock Text=\"MP3\"  Foreground=\"{StaticResource FsFmtAudio}\"/></Border>\n        </WrapPanel>\n      </StackPanel>\n    </Border>\n  </Border>\n</Grid>"
+      },
+      {
+        "purpose": "MainWindow.xaml — 드롭 오버레이(DropHintOverlay, 717~728행 교체). 평면 스크림 → 액센트 점선 프레임으로 '떨어뜨릴 영역' 명시(Geist/Linear).",
+        "xaml": "<Border x:Name=\"DropHintOverlay\" Visibility=\"Collapsed\" Grid.ColumnSpan=\"2\"\n        Background=\"#E6090A0C\" IsHitTestVisible=\"False\">\n  <Border Margin=\"24\" CornerRadius=\"12\"\n          BorderBrush=\"{StaticResource FsAccentBlue}\" BorderThickness=\"2\">\n    <Border.OpacityMask>\n      <DrawingBrush/>\n    </Border.OpacityMask>\n    <StackPanel HorizontalAlignment=\"Center\" VerticalAlignment=\"Center\">\n      <Border Width=\"96\" Height=\"96\" CornerRadius=\"48\" Background=\"#1F3B72FF\">\n        <Path Width=\"44\" Height=\"44\" Stretch=\"Uniform\" HorizontalAlignment=\"Center\" VerticalAlignment=\"Center\"\n              Stroke=\"{StaticResource FsAccentBlue}\" StrokeThickness=\"2\"\n              Data=\"M21,15 L21,19 C21,20.1 20.1,21 19,21 L5,21 C3.9,21 3,20.1 3,19 L3,15 M7,10 L12,15 L17,10 M12,15 L12,3\"/>\n      </Border>\n      <TextBlock Text=\"Drop to add to queue\" Margin=\"0,20,0,0\"\n                 FontSize=\"18\" FontWeight=\"SemiBold\"\n                 Foreground=\"{StaticResource FsTextPrimary}\" HorizontalAlignment=\"Center\"/>\n    </StackPanel>\n  </Border>\n</Border>"
+      },
+      {
+        "purpose": "FormatShiftTheme.xaml — Things 3식 hover row 스타일(공통). 큐/이력 row Border에 적용. 평소 X아이콘 숨김 + hover 시 배경/아이콘 페이드인. ContentControl 기반 재사용 스타일.",
+        "xaml": "<!-- 큐/이력 row 컨테이너 공통 스타일 -->\n<Style x:Key=\"FsRowStyle\" TargetType=\"Border\">\n    <Setter Property=\"Background\" Value=\"{StaticResource FsBgPanel}\"/>\n    <Setter Property=\"BorderBrush\" Value=\"{StaticResource FsBorderHairline}\"/>\n    <Setter Property=\"BorderThickness\" Value=\"1\"/>\n    <Setter Property=\"CornerRadius\" Value=\"6\"/>\n    <Setter Property=\"Padding\" Value=\"12,10\"/>\n    <Setter Property=\"Cursor\" Value=\"Hand\"/>\n    <Style.Triggers>\n        <Trigger Property=\"IsMouseOver\" Value=\"True\">\n            <Setter Property=\"Background\" Value=\"{StaticResource FsBgSurfaceHover}\"/>\n            <Setter Property=\"BorderBrush\" Value=\"{StaticResource FsBorderSubtle}\"/>\n        </Trigger>\n    </Style.Triggers>\n</Style>\n\n<!-- hover 시에만 페이드인 되는 액션 아이콘 버튼 (Things 3) -->\n<Style x:Key=\"FsRowActionStyle\" TargetType=\"Button\">\n    <Setter Property=\"Background\" Value=\"Transparent\"/>\n    <Setter Property=\"BorderThickness\" Value=\"0\"/>\n    <Setter Property=\"Padding\" Value=\"6\"/>\n    <Setter Property=\"Cursor\" Value=\"Hand\"/>\n    <Setter Property=\"Opacity\" Value=\"0\"/>\n    <Setter Property=\"Template\">\n        <Setter.Value>\n            <ControlTemplate TargetType=\"Button\">\n                <Border x:Name=\"Bd\" Background=\"{TemplateBinding Background}\"\n                        CornerRadius=\"4\" Padding=\"{TemplateBinding Padding}\">\n                    <ContentPresenter HorizontalAlignment=\"Center\" VerticalAlignment=\"Center\"/>\n                </Border>\n                <ControlTemplate.Triggers>\n                    <Trigger Property=\"IsMouseOver\" Value=\"True\">\n                        <Setter TargetName=\"Bd\" Property=\"Background\" Value=\"#14FFFFFF\"/>\n                    </Trigger>\n                </ControlTemplate.Triggers>\n            </ControlTemplate>\n        </Setter.Value>\n    </Setter>\n    <!-- 부모 Border(IsMouseOver) hover 시 페이드인: row DataTemplate 안에서 DataTrigger로 -->\n</Style>"
+      },
+      {
+        "purpose": "MainWindow.xaml — 큐 row DataTemplate(386~446행)에 ① Arc식 좌측 형식 accent bar 추가 ② Things3식 X아이콘 hover 페이드인 ③ 숫자 컬럼 tabular-nums. 핵심 변경부만 발췌.",
+        "xaml": "<Border x:Name=\"RowRoot\" Margin=\"0,0,0,8\" Padding=\"0\"\n        Style=\"{StaticResource FsRowStyle}\"\n        PreviewMouseLeftButtonUp=\"OnQueueRowClick\" Tag=\"{Binding}\">\n  <Grid>\n    <Grid.ColumnDefinitions>\n      <ColumnDefinition Width=\"2\"/>          <!-- Arc accent bar -->\n      <ColumnDefinition Width=\"40\"/>\n      <ColumnDefinition Width=\"*\"/>\n      <ColumnDefinition Width=\"100\"/>\n      <ColumnDefinition Width=\"120\"/>\n      <ColumnDefinition Width=\"40\"/>\n    </Grid.ColumnDefinitions>\n    <!-- 좌측 형식 accent bar (저채도, 형식색) -->\n    <Border Grid.Column=\"0\" Width=\"2\" CornerRadius=\"1\"\n            Background=\"{Binding FormatBrush}\" Opacity=\"0.7\"\n            VerticalAlignment=\"Stretch\" Margin=\"0,4\"/>\n    <Border Grid.Column=\"1\" Width=\"32\" Height=\"32\" CornerRadius=\"4\" Margin=\"10,0,0,0\"\n            Background=\"{Binding FormatBrush}\" VerticalAlignment=\"Center\">\n      <TextBlock Text=\"{Binding FormatLabel}\" Foreground=\"White\" FontSize=\"10\"\n                 FontWeight=\"SemiBold\" HorizontalAlignment=\"Center\" VerticalAlignment=\"Center\"/>\n    </Border>\n    <!-- ...(파일명/메타/프로그레스 동일)... 크기/상태는 FsNumStyle 로 -->\n    <TextBlock Grid.Column=\"3\" Text=\"{Binding SizeText}\" Style=\"{StaticResource FsNumStyle}\"\n               HorizontalAlignment=\"Right\" VerticalAlignment=\"Center\"/>\n    <!-- hover 시에만 보이는 삭제 버튼 -->\n    <Button Grid.Column=\"5\" Style=\"{StaticResource FsRowActionStyle}\"\n            Click=\"OnRemoveQueueItem\" Tag=\"{Binding}\">\n      <Button.Triggers>\n        <EventTrigger RoutedEvent=\"Button.Loaded\"/>\n      </Button.Triggers>\n      <Path Width=\"14\" Height=\"14\" Stretch=\"Uniform\" Stroke=\"{StaticResource FsTextTertiary}\"\n            StrokeThickness=\"2\" Data=\"M18,6 L6,18 M6,6 L18,18\"/>\n    </Button>\n  </Grid>\n  <!-- row hover 시 액션 버튼 페이드인 (DataTrigger: 부모 IsMouseOver) -->\n  <Border.Style>\n    <Style TargetType=\"Border\" BasedOn=\"{StaticResource FsRowStyle}\">\n      <Style.Triggers>\n        <Trigger Property=\"IsMouseOver\" Value=\"True\">\n          <Setter Property=\"Tag\" Value=\"{Binding}\"/>\n        </Trigger>\n      </Style.Triggers>\n    </Style>\n  </Border.Style>\n</Border>"
+      },
+      {
+        "purpose": "MainWindow.xaml — row 액션 버튼 hover 페이드인을 트리거로 연결(위 스니펫의 정석 버전). 부모 Border의 IsMouseOver에 바인딩해 Opacity 0→1 애니메이션(150ms). DataTemplate 내부 Button.Style 에 삽입.",
+        "xaml": "<Button.Style>\n  <Style TargetType=\"Button\" BasedOn=\"{StaticResource FsRowActionStyle}\">\n    <Style.Triggers>\n      <!-- 부모 row Border 위에 마우스가 있으면 페이드인 -->\n      <DataTrigger Binding=\"{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Border}}\" Value=\"True\">\n        <DataTrigger.EnterActions>\n          <BeginStoryboard>\n            <Storyboard>\n              <DoubleAnimation Storyboard.TargetProperty=\"Opacity\" To=\"1\" Duration=\"0:0:0.15\"/>\n            </Storyboard>\n          </BeginStoryboard>\n        </DataTrigger.EnterActions>\n        <DataTrigger.ExitActions>\n          <BeginStoryboard>\n            <Storyboard>\n              <DoubleAnimation Storyboard.TargetProperty=\"Opacity\" To=\"0\" Duration=\"0:0:0.12\"/>\n            </Storyboard>\n          </BeginStoryboard>\n        </DataTrigger.ExitActions>\n      </DataTrigger>\n    </Style.Triggers>\n  </Style>\n</Button.Style>"
+      },
+      {
+        "purpose": "MainWindow.xaml — Preview empty state(PreviewEmpty, 606~618행) 강화. plain-language + '같은 자리 인터랙티브' 원칙으로 'Browse files' 보조 링크 추가, 그리고 Past Results 인라인 #10B98122 → 토큰 교체.",
+        "xaml": "<!-- PreviewEmpty: 안내문에 행동 단서 추가 -->\n<StackPanel x:Name=\"PreviewEmpty\" HorizontalAlignment=\"Center\" VerticalAlignment=\"Center\" Margin=\"20\">\n  <Border Width=\"48\" Height=\"48\" CornerRadius=\"24\" Background=\"#0FFFFFFF\" HorizontalAlignment=\"Center\">\n    <Path Width=\"24\" Height=\"24\" Stretch=\"Uniform\" HorizontalAlignment=\"Center\" VerticalAlignment=\"Center\"\n          Stroke=\"{StaticResource FsTextTertiary}\" StrokeThickness=\"1.5\"\n          Data=\"M1,12 C1,12 5,4 12,4 C19,4 23,12 23,12 C23,12 19,20 12,20 C5,20 1,12 1,12 Z M12,9 A3,3 0 1,1 12,15 A3,3 0 1,1 12,9 Z\"/>\n  </Border>\n  <TextBlock Margin=\"0,14,0,0\" FontSize=\"13\" FontWeight=\"SemiBold\"\n             Foreground=\"{StaticResource FsTextSecondary}\" HorizontalAlignment=\"Center\" Text=\"No selection\"/>\n  <TextBlock Margin=\"0,4,0,0\" Style=\"{StaticResource FsCaptionStyle}\"\n             HorizontalAlignment=\"Center\" TextAlignment=\"Center\" TextWrapping=\"Wrap\" MaxWidth=\"240\"\n             Text=\"큐 또는 이력 항목을 클릭하면 여기에 미리보기와 메타데이터가 표시됩니다.\"/>\n</StackPanel>\n\n<!-- Past Results 날짜 헤더 savings 배지: 하드코딩 #10B98122 → 토큰 (471행) -->\n<Border Grid.Column=\"1\" CornerRadius=\"20\" Padding=\"10,4\"\n        Background=\"{StaticResource FsStatusSuccessBg}\">\n  <TextBlock Text=\"{Binding SessionSavingsText}\" Style=\"{StaticResource FsNumStyle}\"\n             Foreground=\"{StaticResource FsStatusSuccessText}\"/>\n</Border>"
+      },
+      {
+        "purpose": "MainWindow.xaml.cs — 신규 형식색 매핑 연결. FormatPalette.For 와 AllFormats 의 FsFmtOther 폴백을 신규 토큰으로 교체.",
+        "xaml": "// FormatPalette.For() switch 에 추가\n\"csv\"  => (\"CSV\",  \"FsFmtCsv\"),\n\"json\" => (\"JSON\", \"FsFmtJson\"),\n\"xlsx\" or \"xls\" => (\"XLSX\", \"FsFmtXlsx\"),\n\"svg\"  => (\"SVG\",  \"FsFmtSvg\"),\n\"mp4\" or \"webm\" or \"mkv\" or \"mov\" or \"avi\" => (ext.ToUpperInvariant(), \"FsFmtVideo\"),\n\"mp3\" or \"aac\" or \"m4a\" or \"opus\" or \"ogg\" or \"flac\" or \"wav\" => (ext.ToUpperInvariant(), \"FsFmtAudio\"),\n\"md\" or \"markdown\" => (\"MD\", \"FsFmtMd\"),\n\n// AllFormats 배열의 ColorResource 도 동일하게 (csv→FsFmtCsv, json→FsFmtJson, xlsx→FsFmtXlsx,\n// svg→FsFmtSvg, mp4/webm/mkv/mov/avi→FsFmtVideo, mp3/aac/m4a/opus/ogg/flac/wav→FsFmtAudio, md→FsFmtMd)"
+      }
+    ],
+    "implementationSteps": [
+      "1) FormatShiftTheme.xaml 28~41행 FsFmt 블록 아래에 신규 형식색 7종(FsFmtJson/Csv/Xlsx/Svg/Video/Audio/Md) + Geist 투명보더 3종(FsBorderHairline/HairlineWeak/AccentBlueGlow) + Radix status 4종(FsStatusSuccessBg/Text/WarnBg/WarnText)을 추가 (1번 스니펫).",
+      "2) 같은 파일에 FsNumStyle(tabular-nums) 추가하고 FsBodyStyle에 Typography.Kerning 보정 (2번 스니펫).",
+      "3) FormatShiftTheme.xaml에 공통 row 스타일 FsRowStyle + 액션버튼 FsRowActionStyle 추가 (5번 스니펫).",
+      "4) MainWindow.xaml.cs의 FormatPalette.For() switch와 AllFormats 배열에서 csv/json/xlsx/svg/video/audio/md의 ColorResource를 FsFmtOther → 신규 토큰으로 교체 (9번 스니펫). 이걸로 큐/이력/배지 색이 일괄 정상화됨.",
+      "5) MainWindow.xaml DropZoneEmpty(363~380행)를 인터랙티브 empty state로 교체 — 점선 드롭존 + Browse 버튼(AddFilesCommand 바인딩) + 형식 칩 프리뷰 (3번 스니펫).",
+      "6) DropHintOverlay(717~728행)를 액센트 점선 프레임 + 진해진 배경(#E6090A0C)으로 교체 (4번 스니펫).",
+      "7) 큐 row DataTemplate(386~446행)에 좌측 2px accent bar 추가 + 삭제버튼을 FsRowActionStyle로 + 부모 hover DataTrigger로 페이드인(150ms) + SizeText에 FsNumStyle 적용 (6·7번 스니펫). Past Results row(484~560행)도 폴더열기 아이콘에 동일 hover 패턴 적용.",
+      "8) Past Results 날짜 헤더 savings 배지의 하드코딩 #10B98122 → FsStatusSuccessBg 토큰으로, 텍스트는 FsStatusSuccessText로 교체 (8번 스니펫). PreviewEmpty도 아이콘 원형 칩 + plain-language로 다듬기.",
+      "9) 여백 통일 패스: 패널 padding 16~24, 그룹 간 24~32(현행 유지), row 내부 12/10, 칩 간격 6~8px로 8 배수 그리드 점검. radius는 컨테이너 6 / 칩·배지 4로 수렴 (대부분 이미 일치).",
+      "10) dotnet publish 후 카스케이드 재등록 → 사용자가 직접 push & GUI 검증 (MEMORY: project_build_pipeline / feedback_user_workflow)."
+    ],
+    "userDecisions": [
+      "신규 형식색을 Catppuccin/Material 컨벤션 hue(제안값: json=#E3B341 골드, csv=#68A063, xlsx=#38A169, svg=#E05A9C 핑크, video=#FF7043 코랄, audio=#B794F4 퍼플)로 갈지, 아니면 기존 14색이 Chakra/Tailwind 톤이므로 Tailwind 400 세트로 통일할지 — 제안은 컨벤션 hue + 기존 톤에 채도 맞춤(전자). 승인 필요.",
+      "markdown(.md) 색을 신규 추가(FsFmtMd #60A5FA 블루)할지, 기존대로 FsFmtOther 회색 유지할지. (md=blue는 Material 컨벤션이나 docx/jpg 블루와 인접 — 선택 사항)",
+      "row 좌측 Arc식 2px accent bar를 형식별 '개별 색'으로 둘지, 아니면 이미지/문서/표/벡터/영상/오디오 '카테고리 6색'으로 묶을지. 제안은 형식색 그대로(개별). 카테고리로 묶으면 더 차분하지만 코드에 카테고리 매핑 추가 필요.",
+      "드롭 오버레이 점선(dashed) 표현 — WPF Border는 native dash가 없어 StrokeDashArray를 쓰려면 Rectangle 오버레이로 대체해야 함. 제안 스니펫은 solid 2px 프레임으로 단순화했는데, 진짜 점선이 필요하면 Rectangle+StrokeDashArray=\"6,4\"로 교체할지 확정 필요.",
+      "Things3 hover 페이드인 애니메이션(150ms)을 전 row에 적용 시 대량 큐(수백 개)에서 Storyboard 비용 — 큐가 클 때 VirtualizingStackPanel 적용 여부도 같이 볼지(현재 ItemsControl은 가상화 비활성)."
+    ]
+  }
+]

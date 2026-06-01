@@ -824,22 +824,22 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         new(".html", "HTML",     "HTML", "FsFmtHtml"),
         new(".md",   "Markdown", "MD",   "FsFmtOther"),
         new(".txt",  "텍스트",     "TXT",  "FsFmtOther"),
-        new(".csv",  "CSV",      "CSV",  "FsFmtOther"),
-        new(".json", "JSON",     "JSON", "FsFmtOther"),
-        new(".xlsx", "Excel",    "XLSX", "FsFmtOther"),
-        new(".svg",  "SVG",      "SVG",  "FsFmtOther"),
-        new(".mp4",  "MP4",      "MP4",  "FsFmtOther"),
-        new(".webm", "WebM",     "WEBM", "FsFmtOther"),
-        new(".mkv",  "MKV",      "MKV",  "FsFmtOther"),
-        new(".mov",  "MOV",      "MOV",  "FsFmtOther"),
-        new(".avi",  "AVI",      "AVI",  "FsFmtOther"),
-        new(".mp3",  "MP3",      "MP3",  "FsFmtOther"),
-        new(".aac",  "AAC",      "AAC",  "FsFmtOther"),
-        new(".m4a",  "M4A",      "M4A",  "FsFmtOther"),
-        new(".opus", "Opus",     "OPUS", "FsFmtOther"),
-        new(".ogg",  "OGG",      "OGG",  "FsFmtOther"),
-        new(".flac", "FLAC",     "FLAC", "FsFmtOther"),
-        new(".wav",  "WAV",      "WAV",  "FsFmtOther"),
+        new(".csv",  "CSV",      "CSV",  "FsFmtCsv"),
+        new(".json", "JSON",     "JSON", "FsFmtJson"),
+        new(".xlsx", "Excel",    "XLSX", "FsFmtXlsx"),
+        new(".svg",  "SVG",      "SVG",  "FsFmtSvg"),
+        new(".mp4",  "MP4",      "MP4",  "FsFmtVideo"),
+        new(".webm", "WebM",     "WEBM", "FsFmtVideo"),
+        new(".mkv",  "MKV",      "MKV",  "FsFmtVideo"),
+        new(".mov",  "MOV",      "MOV",  "FsFmtVideo"),
+        new(".avi",  "AVI",      "AVI",  "FsFmtVideo"),
+        new(".mp3",  "MP3",      "MP3",  "FsFmtAudio"),
+        new(".aac",  "AAC",      "AAC",  "FsFmtAudio"),
+        new(".m4a",  "M4A",      "M4A",  "FsFmtAudio"),
+        new(".opus", "Opus",     "OPUS", "FsFmtAudio"),
+        new(".ogg",  "OGG",      "OGG",  "FsFmtAudio"),
+        new(".flac", "FLAC",     "FLAC", "FsFmtAudio"),
+        new(".wav",  "WAV",      "WAV",  "FsFmtAudio"),
     };
 
     private bool _suppressFormatChanged;
@@ -1160,6 +1160,15 @@ internal static class FormatPalette
         "bmp" => ("BMP", "FsFmtBmp"),
         "raw" or "dng" or "nef" or "cr2" or "cr3" or "arw" or "raf" or "orf" or "rw2" or "srw" or "pef"
             => ("RAW", "FsFmtRaw"),
+        // 신규 카테고리 (output AllFormats 매핑과 동일 hue 유지)
+        "csv" => ("CSV", "FsFmtCsv"),
+        "json" => ("JSON", "FsFmtJson"),
+        "xlsx" or "xls" => ("XLSX", "FsFmtXlsx"),
+        "svg" => ("SVG", "FsFmtSvg"),
+        "mp4" or "webm" or "mkv" or "mov" or "avi" or "m4v"
+            => (ext.ToUpperInvariant(), "FsFmtVideo"),
+        "mp3" or "aac" or "m4a" or "opus" or "ogg" or "oga" or "flac" or "wav"
+            => (ext.ToUpperInvariant(), "FsFmtAudio"),
         _ => (ext.ToUpperInvariant(), "FsFmtOther"),
     };
 }

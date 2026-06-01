@@ -40,6 +40,53 @@
     <SolidColorBrush x:Key="FsFmtHwp"  Color="#9B2C2C"/>
     <SolidColorBrush x:Key="FsFmtOther" Color="#4A5568"/>
 
+    <!-- Format pills (신규: 데이터/벡터/영상/오디오 카테고리) -->
+    <!-- 출처: VS Code Material Icon Theme + Seti UI(Solarized) + GitHub Linguist 의 hue 컨벤션을
+         차용하되, 채도/명도는 기존 Chakra/Tailwind 500 솔리드 톤(흰 텍스트 위 대비)에 맞춰 재조정.
+         Linear OKLCH 균일 명도 원칙(다크 #090A0C~#1C1E22 배경에서 한 칩만 튀지 않게)을 적용. -->
+    <!-- 데이터/표 = 그린 (Material table=#8BC34A, Seti green, Excel 브랜드 그린) -->
+    <SolidColorBrush x:Key="FsFmtCsv"   Color="#68A063"/>
+    <SolidColorBrush x:Key="FsFmtXlsx"  Color="#38A169"/>
+    <!-- 데이터/구조 = 골드 (Material json=#F9A825, Seti yellow); 기존 HEIC(#D69E2E)보다 노랑쪽 -->
+    <SolidColorBrush x:Key="FsFmtJson"  Color="#E3B341"/>
+    <!-- 벡터 = 핑크-마젠타 (Seti svg=purple/css=pink); 노랑 JSON과 즉시 구분 -->
+    <SolidColorBrush x:Key="FsFmtSvg"   Color="#E05A9C"/>
+    <!-- 영상 = 코랄/오렌지레드 (Material video=#FF9800, 통념 영상=난색); 기존 PDF(#E53E3E)와 구분 -->
+    <SolidColorBrush x:Key="FsFmtVideo" Color="#FF7043"/>
+    <!-- 오디오 = 라이트 퍼플 (Seti audio=purple, 통념 오디오=보라); 기존 PNG/GIF보다 라이트 -->
+    <SolidColorBrush x:Key="FsFmtAudio" Color="#B794F4"/>
+
+    <!-- 손실 등급 토큰 (Radix dark; Container는 중립 회색 — 사용자 결정) -->
+    <SolidColorBrush x:Key="FsLossLosslessDot"   Color="#30A46C"/>
+    <SolidColorBrush x:Key="FsLossLosslessText"  Color="#3DD68C"/>
+    <SolidColorBrush x:Key="FsLossLosslessBg"    Color="#132D21"/>
+    <SolidColorBrush x:Key="FsLossContainerDot"  Color="#717784"/>
+    <SolidColorBrush x:Key="FsLossContainerText" Color="#A6ADC8"/>
+    <SolidColorBrush x:Key="FsLossContainerBg"   Color="#23252A"/>
+    <SolidColorBrush x:Key="FsLossRecodeDot"     Color="#FFC53D"/>
+    <SolidColorBrush x:Key="FsLossRecodeText"    Color="#FFCA16"/>
+    <SolidColorBrush x:Key="FsLossRecodeBg"      Color="#302008"/>
+    <SolidColorBrush x:Key="FsLossRasterizeDot"  Color="#E5484D"/>
+    <SolidColorBrush x:Key="FsLossRasterizeText" Color="#FF9592"/>
+    <SolidColorBrush x:Key="FsLossRasterizeBg"   Color="#3B1219"/>
+
+    <!-- 상태 시맨틱 토큰 (Radix dark scales) -->
+    <SolidColorBrush x:Key="FsStatusSuccess"     Color="#30A46C"/>
+    <SolidColorBrush x:Key="FsStatusSuccessText" Color="#3DD68C"/>
+    <SolidColorBrush x:Key="FsStatusSuccessBg"   Color="#132D21"/>
+    <SolidColorBrush x:Key="FsStatusWarn"        Color="#FFC53D"/>
+    <SolidColorBrush x:Key="FsStatusWarnText"    Color="#FFCA16"/>
+    <SolidColorBrush x:Key="FsStatusWarnBg"      Color="#302008"/>
+    <SolidColorBrush x:Key="FsStatusDanger"      Color="#E5484D"/>
+    <SolidColorBrush x:Key="FsStatusDangerText"  Color="#FF9592"/>
+    <SolidColorBrush x:Key="FsStatusDangerBg"    Color="#3B1219"/>
+    <SolidColorBrush x:Key="FsStatusInfo"        Color="#0090FF"/>
+    <SolidColorBrush x:Key="FsStatusInfoText"    Color="#70B8FF"/>
+    <SolidColorBrush x:Key="FsStatusInfoBg"      Color="#0D2847"/>
+
+    <!-- Geist식 8% 투명 보더 -->
+    <SolidColorBrush x:Key="FsBorderHairline" Color="#14FFFFFF"/>
+
     <!-- Font families -->
     <FontFamily x:Key="FsFontSans">Inter, Segoe UI Variable Text, Segoe UI</FontFamily>
     <FontFamily x:Key="FsFontMono">JetBrains Mono, Cascadia Mono, Consolas</FontFamily>
