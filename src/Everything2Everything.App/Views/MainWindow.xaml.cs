@@ -824,6 +824,22 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         new(".html", "HTML",     "HTML", "FsFmtHtml"),
         new(".md",   "Markdown", "MD",   "FsFmtOther"),
         new(".txt",  "텍스트",     "TXT",  "FsFmtOther"),
+        new(".csv",  "CSV",      "CSV",  "FsFmtOther"),
+        new(".json", "JSON",     "JSON", "FsFmtOther"),
+        new(".xlsx", "Excel",    "XLSX", "FsFmtOther"),
+        new(".svg",  "SVG",      "SVG",  "FsFmtOther"),
+        new(".mp4",  "MP4",      "MP4",  "FsFmtOther"),
+        new(".webm", "WebM",     "WEBM", "FsFmtOther"),
+        new(".mkv",  "MKV",      "MKV",  "FsFmtOther"),
+        new(".mov",  "MOV",      "MOV",  "FsFmtOther"),
+        new(".avi",  "AVI",      "AVI",  "FsFmtOther"),
+        new(".mp3",  "MP3",      "MP3",  "FsFmtOther"),
+        new(".aac",  "AAC",      "AAC",  "FsFmtOther"),
+        new(".m4a",  "M4A",      "M4A",  "FsFmtOther"),
+        new(".opus", "Opus",     "OPUS", "FsFmtOther"),
+        new(".ogg",  "OGG",      "OGG",  "FsFmtOther"),
+        new(".flac", "FLAC",     "FLAC", "FsFmtOther"),
+        new(".wav",  "WAV",      "WAV",  "FsFmtOther"),
     };
 
     private bool _suppressFormatChanged;

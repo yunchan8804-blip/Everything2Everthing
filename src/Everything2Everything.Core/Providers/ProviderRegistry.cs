@@ -58,8 +58,10 @@ public sealed class ProviderRegistry
     {
         // 그래프 reachability(transitive closure)로 멀티홉 변환까지 노출한다 (예: json→xlsx, svg→jpg).
         // 동일 포맷(self-edge: txt→txt AI, png→png 압축)은 '다른 형식으로 변환' 목록에서 제외.
+        // UI 노출용은 2홉으로 제한 — 3홉은 html→png→gif→mp4 같이 카테고리를 넘나드는 과도한 변환을 만든다.
+        // (실제 변환 FindBestPath는 options.MaxHops(기본 3)를 그대로 써서 사용자가 명시하면 더 깊은 경로도 수행)
         var input = ConversionPair.Normalize(inputExtension);
-        return _graph.ReachableOutputs(input, maxHops: 3, allowLossy: true)
+        return _graph.ReachableOutputs(input, maxHops: 2, allowLossy: true)
             .Where(o => !string.Equals(o, input, StringComparison.OrdinalIgnoreCase))
             .OrderBy(e => e, StringComparer.OrdinalIgnoreCase)
             .ToList();
