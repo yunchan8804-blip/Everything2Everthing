@@ -1,11 +1,11 @@
 {
-  "_comment": "로드맵 단계별 진행 상태. 값: planned | in_progress | done. 갱신 후 `python build.py`로 index.html/PLAN.md 재생성.",
+  "_comment": "로드맵 단계별 진행 상태. 값: planned | in_progress | done. 갱신 후 `python build.py`로 index.html/PLAN.md 재생성. 2026-06-01 세션: 사용자 결정으로 '검증 가능한 순수 .NET 먼저' 전략 → 순서가 master 로드맵과 다름(P7/P3/P4/P5 일부를 앞당겨 구현).",
   "P1": "done",
   "P2": "planned",
-  "P3": "planned",
-  "P4": "planned",
-  "P5": "planned",
+  "P3": "in_progress",
+  "P4": "in_progress",
+  "P5": "in_progress",
   "P6": "planned",
-  "P7": "planned",
+  "P7": "in_progress",
   "P8": "planned"
 }

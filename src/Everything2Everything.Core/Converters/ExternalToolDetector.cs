@@ -49,6 +49,39 @@ internal static class ExternalToolDetector
         }
     }
 
+    /// <summary>
+    /// FFmpeg/ffprobe 바이너리 폴더를 찾는다. (1) 앱 전용 폴더(%LOCALAPPDATA%\Everything2Everything\ffmpeg),
+    /// (2) 시스템 PATH 순. ffmpeg.exe와 ffprobe.exe가 모두 있는 폴더만 유효.
+    /// </summary>
+    public static bool TryFindFfmpeg(out string ffmpegDirectory)
+    {
+        ffmpegDirectory = "";
+        var candidates = new List<string>();
+
+        var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (!string.IsNullOrEmpty(local))
+            candidates.Add(Path.Combine(local, "Everything2Everything", "ffmpeg"));
+
+        var pathEnv = Environment.GetEnvironmentVariable("PATH") ?? "";
+        foreach (var dir in pathEnv.Split(Path.PathSeparator))
+            if (!string.IsNullOrWhiteSpace(dir))
+                candidates.Add(dir.Trim());
+
+        foreach (var dir in candidates.Distinct())
+        {
+            try
+            {
+                if (File.Exists(Path.Combine(dir, "ffmpeg.exe")) && File.Exists(Path.Combine(dir, "ffprobe.exe")))
+                {
+                    ffmpegDirectory = dir;
+                    return true;
+                }
+            }
+            catch { /* 잘못된 경로 무시 */ }
+        }
+        return false;
+    }
+
     public static bool IsH2OrestartInstalled()
     {
         try

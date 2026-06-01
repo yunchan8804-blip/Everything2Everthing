@@ -415,7 +415,7 @@ footer{border-top:1px solid var(--line2);margin-top:60px;padding:30px 0;color:va
         </div></details><details class="ph"><summary>
           <div class="pno">P3</div>
           <div class="pti"><b>외부 프로세스 통합 + 인터페이스 일반화</b><div class="pg">3중 복제된 LibreOffice 호출을 단일 ExternalProcessRunner로 통합하고(타임아웃·stderr·Kill), IConverterProvider/ConvertResult를 일반화해 미디어·AI 엣지가 들어올 그릇을 판다.</div></div>
-          <div class="pbadges"><span class="b b-plan">예정</span><span class="b b-l">L</span><span class="b b-medium">RISK medium</span><span class="b b-plan">depends · P2</span></div>
+          <div class="pbadges"><span class="b b-prog">진행중</span><span class="b b-l">L</span><span class="b b-medium">RISK medium</span><span class="b b-plan">depends · P2</span></div>
         </summary>
         <div class="body">
           <h4>산출물</h4><ul class="lst"><li>ExternalProcessRunner(CliWrap): 타임아웃+stderr수집+Kill 통합, LibreOffice 3중 복제 흡수</li><li>Abstractions 어셈블리 분리(IConverterProvider/ConvertResult 이전, 타입 동일성)</li><li>IConverterProvider→ConvertRequest/ConvertContext 일반화, 기존 8개 Provider 어댑터로 무중단 마이그레이션</li><li>ConvertResult에 ExtractedText/AiResponse/Metadata/IntermediateArtifacts 필드</li><li>ISettingsStore(DPAPI 암호화) 신설 — API 키·도구 경로 영속화 토대</li><li>Priority 기반 충돌 모델로 _byPair.TryAdd first-wins 교체</li></ul>
@@ -425,7 +425,7 @@ footer{border-top:1px solid var(--line2);margin-top:60px;padding:30px 0;color:va
         </div></details><details class="ph"><summary>
           <div class="pno">P4</div>
           <div class="pti"><b>미디어 레이어 — 영상/오디오 코덱·압축</b><div class="pg">FFmpeg로 카테고리를 &#x27;미디어 변환기&#x27;로 점프시킨다. 영상/오디오 N×M 코덱·압축을 라이선스 안전하게 통합하고 배치 병렬화로 트랜스코딩 병목을 해소.</div></div>
-          <div class="pbadges"><span class="b b-plan">예정</span><span class="b b-xl">XL</span><span class="b b-high">RISK high</span><span class="b b-plan">depends · P3</span></div>
+          <div class="pbadges"><span class="b b-prog">진행중</span><span class="b b-xl">XL</span><span class="b b-high">RISK high</span><span class="b b-plan">depends · P3</span></div>
         </summary>
         <div class="body">
           <h4>산출물</h4><ul class="lst"><li>FfmpegProvider: FFMpegCore(MIT) + 영상(mp4/mkv/webm/mov/avi/gif)·오디오(mp3/aac/m4a/opus/flac/wav) N×M</li><li>바이너리 조달: ExternalToolDetector.TryFindFfmpeg + BtbN lgpl-shared 자동 다운로드(SHA256 검증), GlobalFFOptions 경로 고정</li><li>HW 인코더(nvenc/qsv/amf) 우선 + SW 폴백, NotifyOnProgress→IProgress 직결, CancellableThrough(ct)</li><li>배치 병렬화: ConvertManyAsync 순차 for-loop(57-70)를 Parallel.ForEachAsync로 교체(MaxDegreeOfParallelism)</li><li>PreviewService→IPreviewRenderer 추상화 + FFmpeg 프레임 추출 + 프리뷰 캐시</li><li>ImageMagick ResourceLimits 전역 설정(decompression bomb 방어) + NU190x 취약점 경고 재활성화</li></ul>
@@ -435,7 +435,7 @@ footer{border-top:1px solid var(--line2);margin-top:60px;padding:30px 0;color:va
         </div></details><details class="ph"><summary>
           <div class="pno">P5</div>
           <div class="pti"><b>AI 부가가치 레이어 — Codex OAuth + API</b><div class="pg">변환에 &#x27;AI가 더 좋게 만든다&#x27;는 해자를 얹는다. 기본은 API 키 + 공식 SDK, Codex CLI는 구독자용 opt-in. 키 없으면 AI 페어만 비활성, 기존 변환 무영향.</div></div>
-          <div class="pbadges"><span class="b b-plan">예정</span><span class="b b-l">L</span><span class="b b-high">RISK high</span><span class="b b-plan">depends · P3</span></div>
+          <div class="pbadges"><span class="b b-prog">진행중</span><span class="b b-l">L</span><span class="b b-high">RISK high</span><span class="b b-plan">depends · P3</span></div>
         </summary>
         <div class="body">
           <h4>산출물</h4><ul class="lst"><li>LlmProvider: Microsoft.Extensions.AI(IChatClient)로 OpenAI/Anthropic 공식 SDK 연결 + Codex CLI opt-in(codex exec --json --output-schema)</li><li>AI 매트릭스: 요약(pdf/docx/txt→txt/md), 번역(→대상언어), OCR교정(OcrProvider 출력 2단계 파이프), 이미지 캡션(png/jpg→txt 비전), 메타데이터(→json Structured Output)</li><li>키 관리: ISettingsStore DPAPI 암호화 + OPENAI_API_KEY/ANTHROPIC_API_KEY 환경변수 폴백, CheckAvailabilityAsync 게이트</li><li>UI: AI 출력 페어에 ✨AI 배지(종량과금·네트워크 명시) + 설정에서 백엔드/모델/키 입력</li><li>Codex 경로 SemaphoreSlim(1) 직렬화(auth.json refresh 토큰 race 방지) 또는 --ephemeral</li></ul>
@@ -455,7 +455,7 @@ footer{border-top:1px solid var(--line2);margin-top:60px;padding:30px 0;color:va
         </div></details><details class="ph"><summary>
           <div class="pno">P7</div>
           <div class="pti"><b>순수 .NET 카테고리 보강 + manifest 어댑터</b><div class="pg">EXE 번들 가능한 순수 관리 라이브러리로 빈 카테고리를 채우고, 단순 CLI 도구를 코드 없이 추가하는 좁은 manifest 어댑터를 도입한다.</div></div>
-          <div class="pbadges"><span class="b b-plan">예정</span><span class="b b-l">L</span><span class="b b-low">RISK low</span><span class="b b-plan">depends · P6</span></div>
+          <div class="pbadges"><span class="b b-prog">진행중</span><span class="b b-l">L</span><span class="b b-low">RISK low</span><span class="b b-plan">depends · P6</span></div>
         </summary>
         <div class="body">
           <h4>산출물</h4><ul class="lst"><li>ArchiveProvider(SharpCompress, 순수관리) — zip/7z/tar/gz/bz2</li><li>DataProvider(Parquet.Net/ClosedXML/CsvHelper) — csv↔json↔xlsx↔parquet</li><li>VectorProvider(Svg.Skia) — svg→png/jpg/webp/pdf, EPS는 Magick+Ghostscript</li><li>PandocProvider(외부 CLI) — md/rst/latex/ipynb/epub 마크업 매트릭스, LibreOffice 겹침은 Priority 라우팅</li><li>EbookProvider(Calibre ebook-convert, 외부) — epub↔mobi↔azw3↔pdf</li><li>manifest 어댑터(ExternalProcessRunner 위 인자 템플릿): qpdf/gs 같은 단순 CLI 코드 없이 추가</li></ul>

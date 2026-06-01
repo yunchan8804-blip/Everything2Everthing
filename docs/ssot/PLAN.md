@@ -135,7 +135,7 @@ Everything2Everything의 북극성은 "세상의 모든 변환을 원자(atomic)
 
 **Exit Criteria:** HWP/HWPX 파일을 DOCX/HTML/TXT/PDF로 변환 가능하고, md→docx 같은 멀티홉이 RouteAsync 없이 그래프 합성으로 동일하게 동작.
 
-### P3 · 외부 프로세스 통합 + 인터페이스 일반화  `effort:L` `risk:medium` `status:planned` · depends: P2
+### P3 · 외부 프로세스 통합 + 인터페이스 일반화  `effort:L` `risk:medium` `status:in_progress` · depends: P2
 **목표:** 3중 복제된 LibreOffice 호출을 단일 ExternalProcessRunner로 통합하고(타임아웃·stderr·Kill), IConverterProvider/ConvertResult를 일반화해 미디어·AI 엣지가 들어올 그릇을 판다.
 
 **산출물:**
@@ -154,7 +154,7 @@ Everything2Everything의 북극성은 "세상의 모든 변환을 원자(atomic)
 
 **Exit Criteria:** LibreOffice가 멈춰도 타임아웃으로 복구되고 stderr가 에러 메시지에 포함되며, 기존 변환이 일반화된 시그니처로 무중단 동작(회귀 테스트 통과).
 
-### P4 · 미디어 레이어 — 영상/오디오 코덱·압축  `effort:XL` `risk:high` `status:planned` · depends: P3
+### P4 · 미디어 레이어 — 영상/오디오 코덱·압축  `effort:XL` `risk:high` `status:in_progress` · depends: P3
 **목표:** FFmpeg로 카테고리를 '미디어 변환기'로 점프시킨다. 영상/오디오 N×M 코덱·압축을 라이선스 안전하게 통합하고 배치 병렬화로 트랜스코딩 병목을 해소.
 
 **산출물:**
@@ -174,7 +174,7 @@ Everything2Everything의 북극성은 "세상의 모든 변환을 원자(atomic)
 
 **Exit Criteria:** mp4→webm, wav→mp3 등 영상/오디오 변환이 HW 가속으로 동작하고 진행률·취소가 정확하며, 100개 배치가 멀티코어를 활용.
 
-### P5 · AI 부가가치 레이어 — Codex OAuth + API  `effort:L` `risk:high` `status:planned` · depends: P3
+### P5 · AI 부가가치 레이어 — Codex OAuth + API  `effort:L` `risk:high` `status:in_progress` · depends: P3
 **목표:** 변환에 'AI가 더 좋게 만든다'는 해자를 얹는다. 기본은 API 키 + 공식 SDK, Codex CLI는 구독자용 opt-in. 키 없으면 AI 페어만 비활성, 기존 변환 무영향.
 
 **산출물:**
@@ -210,7 +210,7 @@ Everything2Everything의 북극성은 "세상의 모든 변환을 원자(atomic)
 
 **Exit Criteria:** HWP 파일에서 PNG까지(멀티홉) 변환 가능하고, CLI가 WPF 창 없이 JSON 결과를 stdout으로 반환해 스크립트가 파싱 가능.
 
-### P7 · 순수 .NET 카테고리 보강 + manifest 어댑터  `effort:L` `risk:low` `status:planned` · depends: P6
+### P7 · 순수 .NET 카테고리 보강 + manifest 어댑터  `effort:L` `risk:low` `status:in_progress` · depends: P6
 **목표:** EXE 번들 가능한 순수 관리 라이브러리로 빈 카테고리를 채우고, 단순 CLI 도구를 코드 없이 추가하는 좁은 manifest 어댑터를 도입한다.
 
 **산출물:**

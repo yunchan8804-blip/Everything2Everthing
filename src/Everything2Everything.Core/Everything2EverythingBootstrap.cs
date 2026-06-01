@@ -24,6 +24,7 @@ public static class Everything2EverythingBootstrap
             new Converters.VectorProvider(),
             new Converters.ImageOptimProvider(),
             new Converters.LlmProvider(settings),
+            new Converters.FfmpegProvider(),
         };
         return new ConversionEngine(new ProviderRegistry(providers));
     }
