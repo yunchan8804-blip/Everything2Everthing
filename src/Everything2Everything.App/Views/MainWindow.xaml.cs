@@ -393,8 +393,10 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
             }
             else
             {
-                PreviewReasonText.Text = result.Reason ?? "미리보기를 생성하지 못했습니다.";
-                PreviewReason.Visibility = Visibility.Visible;
+                // 래스터 미리보기가 없는 형식(영상·오디오·문서·데이터 등)은 경고 대신 카테고리 글리프로 표현
+                ShowPreviewGlyph(
+                    System.IO.Path.GetExtension(sourcePath),
+                    result.Reason ?? "이 형식은 미리보기를 만들 수 없습니다. 변환은 정상 동작합니다.");
             }
 
             PreviewDimText.Text = result.Dimensions ?? "—";
@@ -431,6 +433,21 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         PreviewEmpty.Visibility = Visibility.Collapsed;
         PreviewImage.Visibility = Visibility.Collapsed;
         PreviewLoading.Visibility = Visibility.Collapsed;
+        PreviewGlyph.Visibility = Visibility.Collapsed;
+        PreviewWarnIcon.Visibility = Visibility.Visible;
+        PreviewReasonText.Text = reason;
+        PreviewReason.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>래스터 미리보기가 없는 형식은 경고 대신 카테고리 글리프로 안내한다.</summary>
+    private void ShowPreviewGlyph(string? extension, string reason)
+    {
+        PreviewEmpty.Visibility = Visibility.Collapsed;
+        PreviewImage.Visibility = Visibility.Collapsed;
+        PreviewLoading.Visibility = Visibility.Collapsed;
+        PreviewGlyph.Source = CategoryGlyphs.ForExtension(extension);
+        PreviewGlyph.Visibility = Visibility.Visible;
+        PreviewWarnIcon.Visibility = Visibility.Collapsed;
         PreviewReasonText.Text = reason;
         PreviewReason.Visibility = Visibility.Visible;
     }
@@ -1120,6 +1137,9 @@ public sealed class QueueItem : INotifyPropertyChanged
     public required string MetaLine { get; init; }
     public required long SourceSizeBytes { get; init; }
 
+    /// <summary>형식 카테고리 글리프(라벨 아이콘).</summary>
+    public System.Windows.Media.ImageSource GlyphSource => CategoryGlyphs.ForExtension(Path.GetExtension(SourcePath));
+
     public string StateText
     {
         get => _state;
@@ -1224,6 +1244,9 @@ public sealed record HistoryRow(
     long SavingsBytes = 0)
 {
     public string RevealPath => OutputPath ?? SourcePath;
+
+    /// <summary>형식 카테고리 글리프(라벨 아이콘).</summary>
+    public System.Windows.Media.ImageSource GlyphSource => CategoryGlyphs.ForExtension(Path.GetExtension(SourcePath));
 
     public static HistoryRow From(HistoryEntry e)
     {

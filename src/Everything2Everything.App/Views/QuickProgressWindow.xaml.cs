@@ -69,6 +69,12 @@ public partial class QuickProgressWindow : FluentWindow
             OpenInExplorer(_firstSuccessOutput);
             Close();
         }
+        else if (failed == 0 && success > 0)
+        {
+            // 전부 성공했지만 일부 건너뛰어 창이 남는 경우 — 완료 일러스트로 마무리
+            DoneIllustration.Visibility = Visibility.Visible;
+            Height = 360;
+        }
     }
 
     private void OnOpenFolderClick(object sender, RoutedEventArgs e)

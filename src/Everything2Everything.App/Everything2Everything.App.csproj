@@ -9,6 +9,7 @@
     <AssemblyName>Everything2Everything</AssemblyName>
     <RootNamespace>Everything2Everything.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>app.ico</ApplicationIcon>
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <NoWarn>$(NoWarn);NU1901;NU1902;NU1903;NU1904</NoWarn>
@@ -24,6 +25,11 @@
 
   <ItemGroup>
     <Using Include="System.IO" />
+  </ItemGroup>
+
+  <!-- 인앱 일러스트·글리프·브랜드 마크 (imagegen2 생성) -->
+  <ItemGroup>
+    <Resource Include="Assets\**\*.png" />
   </ItemGroup>
 
 </Project>
