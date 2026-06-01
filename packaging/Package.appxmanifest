@@ -166,6 +166,71 @@
             <desktop5:ItemType Type=".hwpx">
               <desktop5:Verb Id="Convert" Clsid="F1A2B3C4-D5E6-4789-9A01-2B3C4D5E6F70"/>
             </desktop5:ItemType>
+
+            <!-- 영상 -->
+            <desktop5:ItemType Type=".mp4">
+              <desktop5:Verb Id="Convert" Clsid="F1A2B3C4-D5E6-4789-9A01-2B3C4D5E6F70"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".webm">
+              <desktop5:Verb Id="Convert" Clsid="F1A2B3C4-D5E6-4789-9A01-2B3C4D5E6F70"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".mkv">
+              <desktop5:Verb Id="Convert" Clsid="F1A2B3C4-D5E6-4789-9A01-2B3C4D5E6F70"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".mov">
+              <desktop5:Verb Id="Convert" Clsid="F1A2B3C4-D5E6-4789-9A01-2B3C4D5E6F70"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".avi">
+              <desktop5:Verb Id="Convert" Clsid="F1A2B3C4-D5E6-4789-9A01-2B3C4D5E6F70"/>
+            </desktop5:ItemType>
+
+            <!-- 오디오 -->
+            <desktop5:ItemType Type=".mp3">
+              <desktop5:Verb Id="Convert" Clsid="F1A2B3C4-D5E6-4789-9A01-2B3C4D5E6F70"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".aac">
+              <desktop5:Verb Id="Convert" Clsid="F1A2B3C4-D5E6-4789-9A01-2B3C4D5E6F70"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".m4a">
+              <desktop5:Verb Id="Convert" Clsid="F1A2B3C4-D5E6-4789-9A01-2B3C4D5E6F70"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".opus">
+              <desktop5:Verb Id="Convert" Clsid="F1A2B3C4-D5E6-4789-9A01-2B3C4D5E6F70"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".ogg">
+              <desktop5:Verb Id="Convert" Clsid="F1A2B3C4-D5E6-4789-9A01-2B3C4D5E6F70"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".flac">
+              <desktop5:Verb Id="Convert" Clsid="F1A2B3C4-D5E6-4789-9A01-2B3C4D5E6F70"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".wav">
+              <desktop5:Verb Id="Convert" Clsid="F1A2B3C4-D5E6-4789-9A01-2B3C4D5E6F70"/>
+            </desktop5:ItemType>
+
+            <!-- 데이터 -->
+            <desktop5:ItemType Type=".csv">
+              <desktop5:Verb Id="Convert" Clsid="F1A2B3C4-D5E6-4789-9A01-2B3C4D5E6F70"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".json">
+              <desktop5:Verb Id="Convert" Clsid="F1A2B3C4-D5E6-4789-9A01-2B3C4D5E6F70"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".xlsx">
+              <desktop5:Verb Id="Convert" Clsid="F1A2B3C4-D5E6-4789-9A01-2B3C4D5E6F70"/>
+            </desktop5:ItemType>
+
+            <!-- 벡터 / 마크다운 / 텍스트 -->
+            <desktop5:ItemType Type=".svg">
+              <desktop5:Verb Id="Convert" Clsid="F1A2B3C4-D5E6-4789-9A01-2B3C4D5E6F70"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".md">
+              <desktop5:Verb Id="Convert" Clsid="F1A2B3C4-D5E6-4789-9A01-2B3C4D5E6F70"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".markdown">
+              <desktop5:Verb Id="Convert" Clsid="F1A2B3C4-D5E6-4789-9A01-2B3C4D5E6F70"/>
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".txt">
+              <desktop5:Verb Id="Convert" Clsid="F1A2B3C4-D5E6-4789-9A01-2B3C4D5E6F70"/>
+            </desktop5:ItemType>
           </desktop4:FileExplorerContextMenus>
         </desktop4:Extension>
       </Extensions>
