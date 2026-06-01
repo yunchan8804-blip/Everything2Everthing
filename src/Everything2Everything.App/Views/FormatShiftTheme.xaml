@@ -375,4 +375,82 @@
         <Setter Property="Height" Value="8"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
+
+    <!-- ============================================================
+         UX polish 스타일 (단계 1) — Linear/Geist 영감, 절제된 확장
+         ============================================================ -->
+
+    <!-- 숫자/통계용: 모노 + tabular 숫자 정렬(자리 흔들림 방지) -->
+    <Style x:Key="FsNumStyle" TargetType="TextBlock" BasedOn="{StaticResource FsMonoStyle}">
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
+        <Setter Property="Typography.NumeralStyle" Value="Lining"/>
+        <Setter Property="Foreground" Value="{StaticResource FsTextSecondary}"/>
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+    </Style>
+
+    <!-- 손실 등급 pill: Background는 코드에서 FsLoss*Bg 주입 -->
+    <Style x:Key="FsLossPillStyle" TargetType="Border">
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="6,1"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- 큐/이력 row 공통 컨테이너: 투명 → hover 시 surface, 부드러운 fade -->
+    <Style x:Key="FsListRowStyle" TargetType="Border">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{StaticResource FsBgSurfaceHover}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource FsBorderHairline}"/>
+                <Trigger.EnterActions>
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                             From="0.85" To="1" Duration="0:0:0.12"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </Trigger.EnterActions>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- 32x32 아이콘 버튼(설정 ⚙, 삭제 ×): 투명 → hover surface, radius 6 -->
+    <Style x:Key="FsIconButtonStyle" TargetType="Button">
+        <Setter Property="Width" Value="32"/>
+        <Setter Property="Height" Value="32"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource FsTextSecondary}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="PART_Bd"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="6">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          TextElement.Foreground="{TemplateBinding Foreground}"
+                                          TextElement.FontSize="{TemplateBinding FontSize}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="PART_Bd" Property="Background" Value="{StaticResource FsBgSurfaceHover}"/>
+                            <Setter Property="Foreground" Value="{StaticResource FsTextPrimary}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="PART_Bd" Property="Opacity" Value="0.4"/>
+                            <Setter Property="Cursor" Value="Arrow"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>

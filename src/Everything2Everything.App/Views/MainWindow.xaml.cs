@@ -258,6 +258,14 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         };
     }
 
+    private void OnAiTaskChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // 번역(인덱스 1)일 때만 대상 언어 입력을 표시
+        if (AiTargetLangPanel is null) return;
+        AiTargetLangPanel.Visibility =
+            (AiTaskCombo?.SelectedIndex == 1) ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private void OnPickOutputFolderClick(object sender, RoutedEventArgs e)
     {
         var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "출력 폴더 선택" };
@@ -285,6 +293,16 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         {
             opts.OutputLocation = OutputLocation.SubfolderBesideSource;
         }
+
+        // AI 작업 종류 (txt↔txt / md↔md 등 텍스트 변환 시 LlmProvider가 사용)
+        opts.Ai.Task = (AiTaskCombo?.SelectedIndex ?? 0) switch
+        {
+            1 => "translate",
+            2 => "proofread",
+            _ => "summarize",
+        };
+        var targetLang = AiTargetLangBox?.Text?.Trim();
+        opts.Ai.TargetLanguage = string.IsNullOrEmpty(targetLang) ? null : targetLang;
 
         return opts;
     }
