@@ -10,6 +10,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Everything2Everything.App.Shell;
 using Everything2Everything.Core;
+using LossClass = Everything2Everything.Core.Providers.LossClass;
 
 namespace Everything2Everything.App.Views;
 
@@ -857,6 +858,78 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         RefreshAvailableOutputFormats();
     }
 
+    // 드롭다운 항목: 형식 색 dot + 라벨 + 손실 등급 dot (변환 전에 색·손실을 한눈에)
+    private object BuildFormatItemContent(OutputFormatInfo f)
+    {
+        var panel = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+
+        panel.Children.Add(new System.Windows.Shapes.Ellipse
+        {
+            Width = 8,
+            Height = 8,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 9, 0),
+            Fill = ResBrush(f.ColorResource),
+        });
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = $"{f.DisplayName} ({f.Extension})",
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+
+        var loss = WorstLossForQueue(f.Extension);
+        if (loss is LossClass lc)
+        {
+            panel.Children.Add(new System.Windows.Shapes.Ellipse
+            {
+                Width = 6,
+                Height = 6,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(8, 1, 0, 0),
+                Fill = ResBrush(LossDotKey(lc)),
+                ToolTip = LossLabel(lc),
+            });
+        }
+        return panel;
+    }
+
+    private LossClass? WorstLossForQueue(string outputExt)
+    {
+        if (_activeQueue.Count == 0) return null;
+        var graph = ((App)Application.Current).Engine.Providers.Graph;
+        LossClass? worst = null;
+        foreach (var item in _activeQueue)
+        {
+            var inExt = Path.GetExtension(item.SourcePath);
+            var path = graph.FindBestPath(inExt, outputExt, 3);
+            if (path is null || path.Count == 0) continue;
+            var pw = path.Max(e => e.Loss);
+            if (worst is null || pw > worst.Value) worst = pw;
+        }
+        return worst;
+    }
+
+    private static Brush ResBrush(string key) => (Brush)Application.Current.Resources[key];
+
+    private static string LossDotKey(LossClass lc) => lc switch
+    {
+        LossClass.Lossless => "FsLossLosslessDot",
+        LossClass.Container => "FsLossContainerDot",
+        LossClass.Recode => "FsLossRecodeDot",
+        LossClass.Rasterize => "FsLossRasterizeDot",
+        _ => "FsLossContainerDot",
+    };
+
+    private static string LossLabel(LossClass lc) => lc switch
+    {
+        LossClass.Lossless => "무손실 — 픽셀·내용 보존",
+        LossClass.Container => "구조 변경 — 내용 보존",
+        LossClass.Recode => "재인코딩 — 약간의 품질 손실",
+        LossClass.Rasterize => "래스터화 — 편집성 상실 (단방향)",
+        _ => "",
+    };
+
     private void RefreshAvailableOutputFormats()
     {
         if (OutputFormatCombo is null) return;
@@ -897,7 +970,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
             {
                 OutputFormatCombo.Items.Add(new ComboBoxItem
                 {
-                    Content = $"{f.DisplayName} ({f.Extension})",
+                    Content = BuildFormatItemContent(f),
                     Tag = f.Extension,
                 });
             }
