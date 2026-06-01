@@ -66,6 +66,8 @@ public sealed class ConvertOptions
 
     public PdfCompressOptions PdfCompress { get; set; } = new();
 
+    public AiOptions Ai { get; set; } = new();
+
     public static ConvertOptions Quick() => new();
 }
 
@@ -139,4 +141,24 @@ public sealed class PdfCompressOptions
 {
     /// <summary>Light(구조 최적화·무손실) | Strong(렌더 재인코딩) | Max(Ghostscript). P1은 Light만 구현.</summary>
     public string Level { get; set; } = "Light";
+}
+
+public sealed class AiOptions
+{
+    /// <summary>auto | openai | anthropic. auto는 설정된 키 중 가용한 것을 선택.</summary>
+    public string Backend { get; set; } = "auto";
+
+    /// <summary>모델 ID. null이면 백엔드별 기본값.</summary>
+    public string? Model { get; set; }
+
+    /// <summary>summarize | translate | proofread | custom.</summary>
+    public string Task { get; set; } = "summarize";
+
+    /// <summary>translate 작업의 대상 언어 (예: "영어", "일본어").</summary>
+    public string? TargetLanguage { get; set; }
+
+    /// <summary>custom 작업의 사용자 지정 지시문.</summary>
+    public string? Instruction { get; set; }
+
+    public int MaxOutputTokens { get; set; } = 2000;
 }

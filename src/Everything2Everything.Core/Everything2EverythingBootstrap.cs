@@ -6,6 +6,7 @@ public static class Everything2EverythingBootstrap
 {
     public static ConversionEngine CreateDefault()
     {
+        var settings = new DpapiSettingsStore();
         var magick = new Converters.MagickProvider();
         var pdf = new Converters.PdfProvider();
         var providers = new IConverterProvider[]
@@ -22,6 +23,7 @@ public static class Everything2EverythingBootstrap
             new Converters.DataProvider(),
             new Converters.VectorProvider(),
             new Converters.ImageOptimProvider(),
+            new Converters.LlmProvider(settings),
         };
         return new ConversionEngine(new ProviderRegistry(providers));
     }

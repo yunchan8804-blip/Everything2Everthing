@@ -31,4 +31,8 @@
     <Using Include="System.IO" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Everything2Everything.Tests" />
+  </ItemGroup>
+
 </Project>
