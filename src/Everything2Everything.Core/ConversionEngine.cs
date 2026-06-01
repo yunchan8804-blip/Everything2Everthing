@@ -1,5 +1,4 @@
 using Everything2Everything.Core.Providers;
-using ImageMagick;
 
 namespace Everything2Everything.Core;
 
@@ -252,6 +251,10 @@ public sealed class ConversionEngine
         return true;
     }
 
+    /// <summary>
+    /// 결합(N→1)을 IMultiInputConverter에 위임한다. 엔진은 출력 디렉터리만 결정하고, 실제 이미지 라이브러리
+    /// 작업(파일명 해결·인코딩·쓰기)은 결합기 구현체가 수행한다 — 엔진은 ImageMagick에 의존하지 않는다.
+    /// </summary>
     private async Task<ConvertResult> CombineAsync(
         IReadOnlyList<string> sources,
         string outputExtension,
@@ -261,37 +264,19 @@ public sealed class ConversionEngine
     {
         var outExt = ConversionPair.Normalize(outputExtension);
         var firstSource = sources[0];
+
+        var combiner = _registry.All.OfType<IMultiInputConverter>().FirstOrDefault(c => c.CanCombineTo(outExt));
+        if (combiner is null)
+            return ConvertResult.Fail(firstSource, $"{outExt} 단일 파일 결합을 지원하는 변환기가 없습니다.");
+
         var outputDir = ResolveOutputDirectory(firstSource, outExt, options);
         Directory.CreateDirectory(outputDir);
 
-        var baseName = sources.Count == 1
-            ? Path.GetFileNameWithoutExtension(firstSource)
-            : $"combined_{sources.Count}files_{DateTime.Now:yyyyMMdd_HHmmss}";
-
-        var path = OutputPathHelper.ResolveOutputPath(outputDir, baseName, null, outExt, options.OnCollision);
-        if (OutputPathHelper.ShouldSkip(path, options.OnCollision))
-            return ConvertResult.Skip(firstSource, "기존 파일이 있어 건너뜁니다.");
-
         try
         {
-            await Task.Run(() =>
-            {
-                using var collection = new MagickImageCollection();
-                for (var i = 0; i < sources.Count; i++)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    progress?.Report(new ConvertProgress(i, sources.Count, sources[i], 0.5));
-                    var image = LoadImageForCombine(sources[i], outExt, options);
-                    collection.Add(image);
-                    progress?.Report(new ConvertProgress(i, sources.Count, sources[i], 1));
-                }
-
-                ApplyCombineEncoding(collection, outExt, options);
-                collection.Write(path);
-            }, cancellationToken).ConfigureAwait(false);
-
-            progress?.Report(new ConvertProgress(sources.Count, sources.Count, path, 1));
-            return ConvertResult.Ok(firstSource, new[] { path });
+            return await combiner
+                .CombineAsync(sources, outputDir, outExt, options, progress, cancellationToken)
+                .ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -300,50 +285,6 @@ public sealed class ConversionEngine
         catch (Exception ex)
         {
             return ConvertResult.Fail(firstSource, ex.Message, ex);
-        }
-    }
-
-    private static MagickImage LoadImageForCombine(string sourcePath, string outputExtension, ConvertOptions options)
-    {
-        var image = new MagickImage(sourcePath);
-        try { image.AutoOrient(); } catch { }
-
-        var alphaCapable = outputExtension is ".tif" or ".tiff";
-        if ((!alphaCapable || options.FlattenTransparency) && image.HasAlpha)
-        {
-            image.BackgroundColor = new MagickColor(options.TransparencyBackground);
-            image.Alpha(AlphaOption.Remove);
-            image.Alpha(AlphaOption.Off);
-        }
-
-        if (options.MaxLongEdgePixels is int maxLong && maxLong > 0
-            && (image.Width > (uint)maxLong || image.Height > (uint)maxLong))
-        {
-            image.Resize(new MagickGeometry((uint)maxLong, (uint)maxLong) { IgnoreAspectRatio = false });
-        }
-
-        return image;
-    }
-
-    private static void ApplyCombineEncoding(MagickImageCollection collection, string outputExtension, ConvertOptions options)
-    {
-        foreach (var image in collection)
-        {
-            switch (outputExtension)
-            {
-                case ".pdf":
-                    image.Format = MagickFormat.Pdf;
-                    break;
-                case ".tif":
-                case ".tiff":
-                    image.Format = MagickFormat.Tiff;
-                    if (!string.IsNullOrWhiteSpace(options.Tiff.Compression))
-                        image.Settings.SetDefine(MagickFormat.Tiff, "compression", options.Tiff.Compression);
-                    break;
-                case ".gif":
-                    image.Format = MagickFormat.Gif;
-                    break;
-            }
         }
     }
 

@@ -3,8 +3,14 @@ using ImageMagick;
 
 namespace Everything2Everything.Core.Converters;
 
-public sealed class MagickProvider : IConverterProvider
+public sealed class MagickProvider : IConverterProvider, IMultiInputConverter
 {
+    // 결합(N→1) 지원 매트릭스 — ConversionEngine에서 이주(추상화 누수 봉합).
+    private static readonly HashSet<string> CombinableOutputs = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".pdf", ".tif", ".tiff", ".gif",
+    };
+
     private static readonly string[] SingleFrameInputs =
     {
         ".png", ".bmp", ".jpg", ".jpeg", ".jpe", ".webp", ".avif", ".psd",
@@ -250,5 +256,102 @@ public sealed class MagickProvider : IConverterProvider
     {
         foreach (var img in collection)
             ApplySingleEncoding(img, format, outputExtension, options);
+    }
+
+    // ── IMultiInputConverter (결합 N→1) — ConversionEngine에서 이주한 구현 ─────────────────────────
+    public bool CanCombineTo(string outputExtension)
+        => CombinableOutputs.Contains(ConversionPair.Normalize(outputExtension));
+
+    public Task<ConvertResult> CombineAsync(
+        IReadOnlyList<string> sources,
+        string outputDirectory,
+        string outputExtension,
+        ConvertOptions options,
+        IProgress<ConvertProgress>? progress,
+        CancellationToken cancellationToken)
+    {
+        var outExt = ConversionPair.Normalize(outputExtension);
+        var firstSource = sources[0];
+        var baseName = sources.Count == 1
+            ? Path.GetFileNameWithoutExtension(firstSource)
+            : $"combined_{sources.Count}files_{DateTime.Now:yyyyMMdd_HHmmss}";
+
+        var path = OutputPathHelper.ResolveOutputPath(outputDirectory, baseName, null, outExt, options.OnCollision);
+        if (OutputPathHelper.ShouldSkip(path, options.OnCollision))
+            return Task.FromResult(ConvertResult.Skip(firstSource, "기존 파일이 있어 건너뜁니다."));
+
+        return Task.Run(() =>
+        {
+            try
+            {
+                using var collection = new MagickImageCollection();
+                for (var i = 0; i < sources.Count; i++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    progress?.Report(new ConvertProgress(i, sources.Count, sources[i], 0.5));
+                    var image = LoadImageForCombine(sources[i], outExt, options);
+                    collection.Add(image);
+                    progress?.Report(new ConvertProgress(i, sources.Count, sources[i], 1));
+                }
+
+                ApplyCombineEncoding(collection, outExt, options);
+                collection.Write(path);
+
+                progress?.Report(new ConvertProgress(sources.Count, sources.Count, path, 1));
+                return ConvertResult.Ok(firstSource, new[] { path });
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                return ConvertResult.Fail(firstSource, ex.Message, ex);
+            }
+        }, cancellationToken);
+    }
+
+    private static MagickImage LoadImageForCombine(string sourcePath, string outputExtension, ConvertOptions options)
+    {
+        var image = new MagickImage(sourcePath);
+        try { image.AutoOrient(); } catch { }
+
+        var alphaCapable = outputExtension is ".tif" or ".tiff";
+        if ((!alphaCapable || options.FlattenTransparency) && image.HasAlpha)
+        {
+            image.BackgroundColor = new MagickColor(options.TransparencyBackground);
+            image.Alpha(AlphaOption.Remove);
+            image.Alpha(AlphaOption.Off);
+        }
+
+        if (options.MaxLongEdgePixels is int maxLong && maxLong > 0
+            && (image.Width > (uint)maxLong || image.Height > (uint)maxLong))
+        {
+            image.Resize(new MagickGeometry((uint)maxLong, (uint)maxLong) { IgnoreAspectRatio = false });
+        }
+
+        return image;
+    }
+
+    private static void ApplyCombineEncoding(MagickImageCollection collection, string outputExtension, ConvertOptions options)
+    {
+        foreach (var image in collection)
+        {
+            switch (outputExtension)
+            {
+                case ".pdf":
+                    image.Format = MagickFormat.Pdf;
+                    break;
+                case ".tif":
+                case ".tiff":
+                    image.Format = MagickFormat.Tiff;
+                    if (!string.IsNullOrWhiteSpace(options.Tiff.Compression))
+                        image.Settings.SetDefine(MagickFormat.Tiff, "compression", options.Tiff.Compression);
+                    break;
+                case ".gif":
+                    image.Format = MagickFormat.Gif;
+                    break;
+            }
+        }
     }
 }

@@ -60,6 +60,20 @@ public class DependencyInjectionTests
     }
 
     [Fact]
+    public void MagickProvider_IsDiscoverableAsMultiInputCombiner()
+    {
+        // P3: 엔진은 결합을 _registry.All.OfType<IMultiInputConverter>()로 찾는다.
+        // 이 seam이 깨지면(MagickProvider가 인터페이스 미구현/Scrutor 미등록) 결합이 전부 실패한다.
+        var reg = Everything2EverythingBootstrap.CreateDefault().Providers;
+        var combiners = reg.All.OfType<IMultiInputConverter>().ToList();
+        Assert.NotEmpty(combiners);
+        Assert.Contains(combiners, c => c.CanCombineTo(".pdf"));
+        Assert.Contains(combiners, c => c.CanCombineTo(".tif"));
+        Assert.Contains(combiners, c => c.CanCombineTo(".gif"));
+        Assert.DoesNotContain(combiners, c => c.CanCombineTo(".png")); // png은 결합 출력이 아님
+    }
+
+    [Fact]
     public void CreateDefault_Facade_StillWorks()
     {
         // 파사드 하위호환: DI 내부전환 후에도 CreateDefault가 동일하게 엔진/그래프를 구성.
