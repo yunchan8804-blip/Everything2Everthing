@@ -334,6 +334,9 @@
 
                         <!-- Actions -->
                         <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <Button Content="⚙ 설정" Margin="0,0,8,0"
+                                    Style="{StaticResource FsSecondaryButtonStyle}"
+                                    Click="OnSettingsClick"/>
                             <Button Content="Register Menu" Margin="0,0,8,0"
                                     Style="{StaticResource FsSecondaryButtonStyle}"
                                     Click="OnRegisterClick"/>

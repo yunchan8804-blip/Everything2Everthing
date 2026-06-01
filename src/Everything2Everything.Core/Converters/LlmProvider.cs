@@ -22,7 +22,7 @@ public sealed class LlmProvider : IConverterProvider
             new ConversionPair(".md", ".md", LossClass.Recode),
         },
         Status: ProviderStatus.RequiresExternal,
-        Summary: "OpenAI 또는 Anthropic API로 텍스트를 요약·번역·교정합니다 (✨AI · 종량 과금 · 네트워크 필요). API 키가 없으면 비활성됩니다.",
+        Summary: "OpenAI/Anthropic API 또는 Codex CLI(ChatGPT 구독 OAuth, 키 불필요)로 텍스트를 요약·번역·교정합니다 (✨AI · 네트워크 필요). 키도 Codex도 없으면 비활성됩니다.",
         ExternalDependencies: new[]
         {
             new ExternalDependency(
@@ -96,10 +96,13 @@ public sealed class LlmProvider : IConverterProvider
             return openaiKey is null ? (null, "") : (new OpenAiChatClient(openaiKey), ai.Model ?? "gpt-4o-mini");
         if (backend == "anthropic")
             return anthropicKey is null ? (null, "") : (new AnthropicChatClient(anthropicKey), ai.Model ?? "claude-3-5-sonnet-latest");
+        if (backend == "codex")
+            return ExternalToolDetector.IsCodexAvailable() ? (new CodexChatClient(), ai.Model ?? "") : (null, "");
 
-        // auto: OpenAI 우선, 없으면 Anthropic
+        // auto: API 키 우선, 없으면 Codex CLI(ChatGPT 구독 OAuth)
         if (openaiKey is not null) return (new OpenAiChatClient(openaiKey), ai.Model ?? "gpt-4o-mini");
         if (anthropicKey is not null) return (new AnthropicChatClient(anthropicKey), ai.Model ?? "claude-3-5-sonnet-latest");
+        if (ExternalToolDetector.IsCodexAvailable()) return (new CodexChatClient(), ai.Model ?? "");
         return (null, "");
     }
 

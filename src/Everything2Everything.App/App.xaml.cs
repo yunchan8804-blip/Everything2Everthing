@@ -7,7 +7,15 @@ namespace Everything2Everything.App;
 
 public partial class App : Application
 {
-    public ConversionEngine Engine { get; } = Everything2EverythingBootstrap.CreateDefault();
+    /// <summary>App·LlmProvider가 공유하는 설정 저장소 (키 저장 즉시 변환에 반영).</summary>
+    public ISettingsStore Settings { get; } = new DpapiSettingsStore();
+
+    public ConversionEngine Engine { get; }
+
+    public App()
+    {
+        Engine = Everything2EverythingBootstrap.CreateDefault(Settings);
+    }
 
     protected override async void OnStartup(StartupEventArgs e)
     {

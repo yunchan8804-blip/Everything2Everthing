@@ -87,6 +87,14 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         CapabilityStatusText.Visibility = Visibility.Visible;
     }
 
+    private void OnSettingsClick(object sender, RoutedEventArgs e)
+    {
+        var win = new SettingsWindow(((App)Application.Current).Settings) { Owner = this };
+        win.ShowDialog();
+        _ = RefreshCapabilityStatusAsync();
+        RefreshAvailableOutputFormats();
+    }
+
     private void PickAndAddFiles()
     {
         var dlg = new Microsoft.Win32.OpenFileDialog

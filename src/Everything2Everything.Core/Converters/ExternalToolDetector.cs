@@ -2,7 +2,7 @@ using Microsoft.Win32;
 
 namespace Everything2Everything.Core.Converters;
 
-internal static class ExternalToolDetector
+public static class ExternalToolDetector
 {
     public static bool TryFindLibreOfficeSoffice(out string sofficePath)
     {
@@ -76,6 +76,34 @@ internal static class ExternalToolDetector
                     ffmpegDirectory = dir;
                     return true;
                 }
+            }
+            catch { /* 잘못된 경로 무시 */ }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// codex CLI(OpenAI Codex, ChatGPT 구독 OAuth 재사용) 설치 여부. npm 글로벌 + PATH에서
+    /// codex.cmd/codex.exe/codex.ps1을 탐지한다.
+    /// </summary>
+    public static bool IsCodexAvailable()
+    {
+        var names = new[] { "codex.cmd", "codex.exe", "codex.ps1" };
+        var dirs = new List<string>();
+
+        var appdata = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        if (!string.IsNullOrEmpty(appdata)) dirs.Add(Path.Combine(appdata, "npm"));
+
+        var pathEnv = Environment.GetEnvironmentVariable("PATH") ?? "";
+        foreach (var d in pathEnv.Split(Path.PathSeparator))
+            if (!string.IsNullOrWhiteSpace(d)) dirs.Add(d.Trim());
+
+        foreach (var dir in dirs.Distinct())
+        {
+            try
+            {
+                foreach (var n in names)
+                    if (File.Exists(Path.Combine(dir, n))) return true;
             }
             catch { /* 잘못된 경로 무시 */ }
         }

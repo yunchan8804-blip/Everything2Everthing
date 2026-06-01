@@ -19,7 +19,8 @@ public static class ExternalProcessRunner
         IEnumerable<string> arguments,
         TimeSpan? timeout = null,
         string? workingDirectory = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? stdinText = null)
     {
         var psi = new ProcessStartInfo
         {
@@ -28,7 +29,11 @@ public static class ExternalProcessRunner
             CreateNoWindow = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            RedirectStandardInput = stdinText is not null,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
         };
+        if (stdinText is not null) psi.StandardInputEncoding = new UTF8Encoding(false);
         foreach (var a in arguments) psi.ArgumentList.Add(a);
         if (!string.IsNullOrEmpty(workingDirectory)) psi.WorkingDirectory = workingDirectory;
 
@@ -43,6 +48,17 @@ public static class ExternalProcessRunner
 
         proc.BeginOutputReadLine();
         proc.BeginErrorReadLine();
+
+        // 프롬프트 등 긴 입력을 인자 이스케이프 없이 stdin으로 안전하게 전달
+        if (stdinText is not null)
+        {
+            try
+            {
+                await proc.StandardInput.WriteAsync(stdinText.AsMemory(), cancellationToken).ConfigureAwait(false);
+                proc.StandardInput.Close();
+            }
+            catch { /* 프로세스가 stdin을 안 읽고 종료한 경우 무시 */ }
+        }
 
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         if (timeout is { } t) linked.CancelAfter(t);

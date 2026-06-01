@@ -25,7 +25,8 @@ public class LlmProviderTests
     [Fact]
     public async Task NoKey_IsNotReady()
     {
-        if (EnvHasKey()) return; // 환경변수 키가 있으면 이 단언은 건너뜀
+        // 환경변수 키 또는 codex CLI(OAuth)가 있으면 AI가 활성화되므로 이 단언은 건너뜀
+        if (EnvHasKey() || ExternalToolDetector.IsCodexAvailable()) return;
         var p = new LlmProvider(new FakeStore());
         var a = await p.CheckAvailabilityAsync();
         Assert.False(a.IsReady);

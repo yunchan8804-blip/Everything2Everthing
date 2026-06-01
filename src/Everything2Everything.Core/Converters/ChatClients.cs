@@ -88,3 +88,52 @@ public sealed class AnthropicChatClient : IChatClient
 
     private static string Truncate(string s) => s.Length > 400 ? s[..400] : s;
 }
+
+/// <summary>
+/// OpenAI Codex CLI를 non-interactive로 호출하는 백엔드. ChatGPT 구독 OAuth(auth.json)를 그대로
+/// 재사용하므로 API 키 없이 동작한다. `codex exec --skip-git-repo-check --ephemeral -o &lt;file&gt; -`
+/// 형태로 프롬프트를 stdin으로 전달하고, 최종 메시지를 파일에서 읽는다.
+/// </summary>
+public sealed class CodexChatClient : IChatClient
+{
+    public string Name => "Codex CLI (OAuth)";
+
+    public async Task<string> CompleteAsync(string systemPrompt, string userPrompt, string model, int maxTokens, CancellationToken ct)
+    {
+        var prompt = string.IsNullOrWhiteSpace(systemPrompt) ? userPrompt : systemPrompt + "\n\n---\n\n" + userPrompt;
+        var outFile = Path.Combine(Path.GetTempPath(), "e2e_codex_" + Guid.NewGuid().ToString("N") + ".txt");
+
+        var args = new List<string> { "/c", "codex", "exec", "--skip-git-repo-check", "--ephemeral", "-o", outFile };
+        if (!string.IsNullOrWhiteSpace(model)) { args.Add("-m"); args.Add(model); }
+        args.Add("-"); // 프롬프트를 stdin으로 (인자 이스케이프 회피)
+
+        try
+        {
+            var r = await ExternalProcessRunner.RunAsync(
+                "cmd.exe", args, TimeSpan.FromMinutes(5), workingDirectory: null,
+                cancellationToken: ct, stdinText: prompt).ConfigureAwait(false);
+
+            if (r.TimedOut)
+                throw new InvalidOperationException("Codex CLI 응답이 시간 초과되었습니다 (5분).");
+
+            if (File.Exists(outFile))
+            {
+                var msg = await File.ReadAllTextAsync(outFile, ct).ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(msg)) return msg.Trim();
+            }
+
+            if (!r.Success)
+            {
+                var detail = !string.IsNullOrWhiteSpace(r.StdErr) ? r.StdErr : r.StdOut;
+                throw new InvalidOperationException($"Codex CLI 오류 (exit {r.ExitCode}): {Truncate(detail)}");
+            }
+            return r.StdOut.Trim();
+        }
+        finally
+        {
+            try { if (File.Exists(outFile)) File.Delete(outFile); } catch { }
+        }
+    }
+
+    private static string Truncate(string s) => s.Length > 400 ? s[..400] : s;
+}

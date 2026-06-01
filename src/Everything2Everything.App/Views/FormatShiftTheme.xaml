@@ -338,4 +338,41 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <!-- PasswordBox (API 키 입력) -->
+    <Style x:Key="FsPasswordInputStyle" TargetType="PasswordBox">
+        <Setter Property="Background" Value="{StaticResource FsBgInput}"/>
+        <Setter Property="Foreground" Value="{StaticResource FsTextPrimary}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource FsBorderSubtle}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="10,8"/>
+        <Setter Property="FontFamily" Value="{StaticResource FsFontMono}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="CaretBrush" Value="{StaticResource FsTextPrimary}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="PasswordBox">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ScrollViewer x:Name="PART_ContentHost"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsFocused" Value="True">
+                            <Setter Property="BorderBrush" Value="{StaticResource FsAccentBlue}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- 손실 등급 dot (8px 원) -->
+    <Style x:Key="FsLossDotStyle" TargetType="Ellipse">
+        <Setter Property="Width" Value="8"/>
+        <Setter Property="Height" Value="8"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
 </ResourceDictionary>

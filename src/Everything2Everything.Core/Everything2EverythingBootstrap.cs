@@ -4,9 +4,9 @@ namespace Everything2Everything.Core;
 
 public static class Everything2EverythingBootstrap
 {
-    public static ConversionEngine CreateDefault()
+    public static ConversionEngine CreateDefault(ISettingsStore? settings = null)
     {
-        var settings = new DpapiSettingsStore();
+        settings ??= new DpapiSettingsStore();
         var magick = new Converters.MagickProvider();
         var pdf = new Converters.PdfProvider();
         var providers = new IConverterProvider[]
