@@ -28,7 +28,7 @@ public sealed class OcrProvider : IConverterProvider
     public ProviderCapability Capability { get; } = new(
         Id: "ocr",
         DisplayName: "OCR (이미지/PDF → 텍스트·DOCX)",
-        SupportedConversions: ProviderCapability.PairsFromMatrix(OcrInputs, OcrOutputs),
+        SupportedConversions: ProviderCapability.PairsFromMatrix(OcrInputs, OcrOutputs, LossClass.Rasterize),
         Status: ProviderStatus.Available,
         Summary: "Windows OCR 엔진으로 이미지 또는 PDF 페이지에서 텍스트를 추출해 .txt 또는 .docx로 저장합니다.",
         ExternalDependencies: Array.Empty<ExternalDependency>(),

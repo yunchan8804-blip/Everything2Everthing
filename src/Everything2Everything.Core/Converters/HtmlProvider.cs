@@ -12,13 +12,14 @@ public sealed class HtmlProvider : IConverterProvider
 {
     private static readonly string[] HtmlInputs = { ".html", ".htm" };
 
-    private static readonly string[] HtmlOutputs =
-        { ".png", ".jpg", ".jpeg", ".webp", ".avif", ".bmp", ".tif", ".tiff", ".pdf" };
+    private static readonly string[] HtmlImageOutputs =
+        { ".png", ".jpg", ".jpeg", ".webp", ".avif", ".bmp", ".tif", ".tiff" };
 
     public ProviderCapability Capability { get; } = new(
         Id: "html",
         DisplayName: "HTML / 웹 페이지",
-        SupportedConversions: ProviderCapability.PairsFromMatrix(HtmlInputs, HtmlOutputs),
+        SupportedConversions: ProviderCapability.PairsFromMatrix(HtmlInputs, new[] { ".pdf" }, LossClass.Recode)
+            .Concat(ProviderCapability.PairsFromMatrix(HtmlInputs, HtmlImageOutputs, LossClass.Rasterize)).ToList(),
         Status: ProviderStatus.Available,
         Summary: "HTML/HTM을 WebView2로 헤드리스 렌더링하여 이미지 또는 PDF로 저장합니다.",
         ExternalDependencies: new[]

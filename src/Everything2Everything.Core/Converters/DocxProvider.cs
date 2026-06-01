@@ -7,8 +7,8 @@ public sealed class DocxProvider : IConverterProvider
 {
     private static readonly string[] DocxInputs = { ".docx", ".doc" };
 
-    private static readonly string[] DocxOutputs =
-        { ".pdf", ".png", ".jpg", ".jpeg", ".webp", ".avif", ".bmp", ".tif", ".tiff" };
+    private static readonly string[] DocxImageOutputs =
+        { ".png", ".jpg", ".jpeg", ".webp", ".avif", ".bmp", ".tif", ".tiff" };
 
     private readonly PdfProvider _pdfProvider;
 
@@ -20,7 +20,8 @@ public sealed class DocxProvider : IConverterProvider
     public ProviderCapability Capability { get; } = new(
         Id: "docx",
         DisplayName: "Word 문서 (DOCX)",
-        SupportedConversions: ProviderCapability.PairsFromMatrix(DocxInputs, DocxOutputs),
+        SupportedConversions: ProviderCapability.PairsFromMatrix(DocxInputs, new[] { ".pdf" }, LossClass.Recode)
+            .Concat(ProviderCapability.PairsFromMatrix(DocxInputs, DocxImageOutputs, LossClass.Rasterize)).ToList(),
         Status: ProviderStatus.RequiresExternal,
         Summary: "DOCX/DOC을 PDF로 변환하거나 페이지별 이미지로 렌더링합니다.",
         ExternalDependencies: new[]

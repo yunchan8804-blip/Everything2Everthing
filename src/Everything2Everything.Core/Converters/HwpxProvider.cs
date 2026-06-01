@@ -7,8 +7,8 @@ public sealed class HwpxProvider : IConverterProvider
 {
     private static readonly string[] HwpInputs = { ".hwp", ".hwpx" };
 
-    private static readonly string[] HwpOutputs =
-        { ".pdf", ".png", ".jpg", ".jpeg", ".webp", ".avif", ".bmp", ".tif", ".tiff" };
+    private static readonly string[] HwpImageOutputs =
+        { ".png", ".jpg", ".jpeg", ".webp", ".avif", ".bmp", ".tif", ".tiff" };
 
     private readonly PdfProvider _pdfProvider;
 
@@ -22,7 +22,8 @@ public sealed class HwpxProvider : IConverterProvider
     public ProviderCapability Capability { get; } = new(
         Id: "hwpx",
         DisplayName: "한글 문서 (HWP / HWPX)",
-        SupportedConversions: ProviderCapability.PairsFromMatrix(HwpInputs, HwpOutputs),
+        SupportedConversions: ProviderCapability.PairsFromMatrix(HwpInputs, new[] { ".pdf" }, LossClass.Recode)
+            .Concat(ProviderCapability.PairsFromMatrix(HwpInputs, HwpImageOutputs, LossClass.Rasterize)).ToList(),
         Status: ProviderStatus.RequiresExternal,
         Summary: "한글(HWP/HWPX) 문서를 LibreOffice + H2Orestart로 PDF 변환 후 PDF 또는 페이지별 이미지로 저장합니다.",
         ExternalDependencies: new[]

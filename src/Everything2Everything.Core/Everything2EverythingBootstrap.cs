@@ -19,6 +19,9 @@ public static class Everything2EverythingBootstrap
             new Converters.HwpxProvider(),
             new Converters.OcrProvider(pdf),
             new Converters.DocumentProvider(),
+            new Converters.DataProvider(),
+            new Converters.VectorProvider(),
+            new Converters.ImageOptimProvider(),
         };
         return new ConversionEngine(new ProviderRegistry(providers));
     }
