@@ -64,6 +64,9 @@ public sealed class ConvertOptions
     /// <summary>래스터화 같은 큰 손실 엣지를 회피한다.</summary>
     public bool AvoidLossy { get; set; } = false;
 
+    /// <summary>영상 인코딩 시 GPU 하드웨어 가속(NVENC)을 우선 시도하고, 실패하면 CPU로 자동 폴백한다.</summary>
+    public bool VideoPreferGpu { get; set; } = true;
+
     public PdfCompressOptions PdfCompress { get; set; } = new();
 
     public AiOptions Ai { get; set; } = new();

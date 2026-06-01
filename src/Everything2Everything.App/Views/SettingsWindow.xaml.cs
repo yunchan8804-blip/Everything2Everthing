@@ -35,6 +35,8 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
 
         SetKeyStatus(OpenAiDot, OpenAiStatus, _settings.Contains("openai.apikey"), HasEnv("OPENAI_API_KEY"));
         SetKeyStatus(AnthropicDot, AnthropicStatus, _settings.Contains("anthropic.apikey"), HasEnv("ANTHROPIC_API_KEY"));
+
+        GpuToggle.IsChecked = _settings.Get("video.gpu") != "false"; // 기본 켜짐
     }
 
     private static bool HasEnv(string name) => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(name));
@@ -126,6 +128,7 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
         if (string.IsNullOrEmpty(model)) _settings.Remove("ai.model");
         else _settings.Set("ai.model", model);
 
+        _settings.Set("video.gpu", GpuToggle.IsChecked == true ? "true" : "false");
         if (OpenAiKeyBox.Password.Length > 0) _settings.Set("openai.apikey", OpenAiKeyBox.Password);
         if (AnthropicKeyBox.Password.Length > 0) _settings.Set("anthropic.apikey", AnthropicKeyBox.Password);
 

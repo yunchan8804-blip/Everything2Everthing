@@ -94,12 +94,13 @@ public partial class App : Application
         log.AppendLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Quick start → {outputExtension}, {files.Count} file(s)");
         foreach (var f in files) log.AppendLine($"  src: {f}");
 
-        var progress = new QuickProgressWindow(files.Count);
+        var progress = new QuickProgressWindow(files.Count, outputExtension);
         progress.Show();
 
         try
         {
             var options = ConvertOptions.Quick();
+            options.VideoPreferGpu = Settings.Get("video.gpu") != "false";
             var reporter = new Progress<ConvertProgress>(p => progress.Report(p));
             var results = await Engine.ConvertManyAsync(files, outputExtension, options, reporter);
 

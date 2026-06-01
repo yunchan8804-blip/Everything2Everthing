@@ -304,6 +304,8 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         var targetLang = AiTargetLangBox?.Text?.Trim();
         opts.Ai.TargetLanguage = string.IsNullOrEmpty(targetLang) ? null : targetLang;
 
+        opts.VideoPreferGpu = ((App)Application.Current).Settings.Get("video.gpu") != "false";
+
         return opts;
     }
 

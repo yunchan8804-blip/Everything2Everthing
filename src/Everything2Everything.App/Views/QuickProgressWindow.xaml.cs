@@ -9,10 +9,17 @@ public partial class QuickProgressWindow : FluentWindow
     private readonly int _total;
     private string? _firstSuccessOutput;
 
-    public QuickProgressWindow(int total)
+    public QuickProgressWindow(int total, string? outputExtension = null)
     {
         _total = total;
         InitializeComponent();
+
+        var label = string.IsNullOrWhiteSpace(outputExtension)
+            ? "빠른 변환"
+            : $"{outputExtension.TrimStart('.').ToUpperInvariant()}(으)로 변환";
+        Title = label;
+        WindowTitleBar.Title = label;
+
         StatusText.Text = $"0 / {_total}";
     }
 
@@ -20,7 +27,11 @@ public partial class QuickProgressWindow : FluentWindow
     {
         if (!CheckAccess()) { Dispatcher.Invoke(() => Report(p)); return; }
         var overall = _total == 0 ? 0 : (p.Index + p.FileProgress) / _total;
-        OverallProgress.Value = Math.Clamp(overall, 0, 1);
+        var clamped = Math.Clamp(overall, 0, 1);
+        OverallProgress.Value = clamped;
+        // 진행률이 멈춘 듯 보이지 않도록 % 표시 (영상 트랜스코딩처럼 오래 걸려도 단계 진행이 보이게)
+        OverallProgress.IsIndeterminate = clamped <= 0;
+        PercentText.Text = clamped <= 0 ? "처리 중…" : $"{(int)Math.Round(clamped * 100)}%";
         StatusText.Text = $"{Math.Min(p.Index + 1, _total)} / {_total} — {Path.GetFileName(p.CurrentPath)}";
     }
 
@@ -33,7 +44,9 @@ public partial class QuickProgressWindow : FluentWindow
         var failed = results.Count(r => r.Status == ConvertStatus.Failed);
         var outputs = results.Sum(r => r.OutputPaths.Count);
 
+        OverallProgress.IsIndeterminate = false;
         OverallProgress.Value = 1;
+        PercentText.Text = failed > 0 ? "완료(일부 실패)" : "100%";
         StatusText.Text = $"성공 {success}개 (출력 {outputs}), 건너뜀 {skipped}, 실패 {failed}";
         CloseButton.IsEnabled = true;
 

@@ -102,7 +102,9 @@
                     <StackPanel>
                         <TextBlock Text="외부 도구" Style="{StaticResource FsBodyStyle}" FontWeight="SemiBold" FontSize="15"/>
                         <TextBlock Text="설치하면 영상/오디오·한글/Word 변환이 자동 활성화됩니다."
-                                   Style="{StaticResource FsCaptionStyle}" TextWrapping="Wrap" Margin="0,4,0,16"/>
+                                   Style="{StaticResource FsCaptionStyle}" TextWrapping="Wrap" Margin="0,4,0,12"/>
+                        <CheckBox x:Name="GpuToggle" Content="영상 변환 시 GPU 가속(NVENC) 시도 — 없으면 CPU 자동 전환"
+                                  Foreground="{StaticResource FsTextSecondary}" IsChecked="True" Margin="0,0,0,16"/>
 
                         <!-- FFmpeg -->
                         <Grid Margin="0,0,0,14">
