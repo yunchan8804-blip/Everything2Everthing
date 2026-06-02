@@ -223,4 +223,26 @@ public class RegistryGraphIntegrationTests
         Assert.Contains(".jpg", svgOut);    // 멀티홉 svg→png→jpg
         Assert.Contains(".pdf", svgOut);    // 직접
     }
+
+    [Fact]
+    public void AvailableOutputsForFiles_EmptyReturnsAllOutputs()
+    {
+        var reg = Everything2EverythingBootstrap.CreateDefault().Providers;
+        var all = reg.AvailableOutputsForFiles(System.Array.Empty<string>());
+        Assert.Equal(reg.AllOutputExtensions.Count, all.Count);
+    }
+
+    [Fact]
+    public void AvailableOutputsForFiles_IntersectsAcrossInputs()
+    {
+        var reg = Everything2EverythingBootstrap.CreateDefault().Providers;
+
+        // png 단독: jpg 등 이미지 출력 가능
+        var pngOnly = reg.AvailableOutputsForFiles(new[] { "a.png" });
+        Assert.Contains(".jpg", pngOnly);
+
+        // png + csv 혼합: csv는 jpg로 못 가므로 교집합에서 jpg가 빠진다(UI 매트릭스 자동 필터 핵심).
+        var mixed = reg.AvailableOutputsForFiles(new[] { "a.png", "b.csv" });
+        Assert.DoesNotContain(".jpg", mixed);
+    }
 }

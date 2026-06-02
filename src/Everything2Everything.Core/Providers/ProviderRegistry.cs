@@ -79,6 +79,25 @@ public sealed class ProviderRegistry
     public IReadOnlyList<string> OutputsForFile(string sourcePath)
         => OutputsForInput(Path.GetExtension(sourcePath));
 
+    /// <summary>
+    /// 여러 입력 파일이 '공통으로' 변환 가능한 출력 확장자(교집합). UI 매트릭스 자동 필터링의 핵심 —
+    /// 큐의 모든 파일을 같은 형식으로 변환할 수 있는 출력만 노출한다. 비어 있으면 전체 출력 확장자.
+    /// (MainWindow.RefreshAvailableOutputFormats에서 추출 — 순수 쿼리라 헤드리스 테스트 가능.)
+    /// </summary>
+    public IReadOnlyCollection<string> AvailableOutputsForFiles(IReadOnlyCollection<string> sourcePaths)
+    {
+        if (sourcePaths.Count == 0) return AllOutputExtensions;
+
+        HashSet<string>? intersection = null;
+        foreach (var path in sourcePaths)
+        {
+            var outs = new HashSet<string>(OutputsForFile(path), StringComparer.OrdinalIgnoreCase);
+            if (intersection is null) intersection = outs;
+            else intersection.IntersectWith(outs);
+        }
+        return intersection ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    }
+
     public IReadOnlyCollection<string> AllInputExtensions => _allInputs;
 
     public IReadOnlyCollection<string> AllOutputExtensions => _allOutputs;

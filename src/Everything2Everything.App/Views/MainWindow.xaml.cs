@@ -952,25 +952,8 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     {
         if (OutputFormatCombo is null) return;
 
-        var engine = _engine;
-        IReadOnlyCollection<string> available;
-
-        if (_activeQueue.Count == 0)
-        {
-            available = engine.Providers.AllOutputExtensions;
-        }
-        else
-        {
-            HashSet<string>? intersection = null;
-            foreach (var item in _activeQueue)
-            {
-                var outs = engine.Providers.OutputsForFile(item.SourcePath);
-                var outSet = new HashSet<string>(outs, StringComparer.OrdinalIgnoreCase);
-                if (intersection is null) intersection = outSet;
-                else intersection.IntersectWith(outSet);
-            }
-            available = intersection ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        }
+        var available = _engine.Providers.AvailableOutputsForFiles(
+            _activeQueue.Select(q => q.SourcePath).ToList());
 
         var visible = AllFormats.Where(f => available.Contains(f.Extension)).ToList();
         if (visible.Count == 0)
