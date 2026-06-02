@@ -27,6 +27,9 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
     public string? SelectedOutputExtension { get; set; } = ".jpg";
 
+    /// <summary>옵션 패널 XAML이 TwoWay 바인딩하는 옵션 뷰모델(품질·출력폴더).</summary>
+    public OptionsViewModel Options => _options;
+
     public ICommand AddFilesCommand { get; }
     public ICommand ProcessQueueCommand { get; }
     public ICommand CloseCommand { get; }
@@ -280,9 +283,8 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
     private ConvertOptions BuildOptions()
     {
-        // 뷰의 컨트롤 값을 OptionsViewModel에 반영한 뒤, 불변 ConvertOptions 구성은 VM의 순수 메서드에 위임한다.
-        _options.Quality = (int)QualitySlider.Value;
-        _options.CustomOutputDirectory = OutputPathTextBox.Text?.Trim();
+        // Quality/CustomOutputDirectory는 옵션 패널 XAML이 _options에 TwoWay 바인딩(선언적).
+        // 충돌 규칙(세그먼트 토글)·AI(콤보 상호작용)·GPU(설정)는 상호작용 로직이 있어 코드비하인드에서 반영.
         _options.ConflictRule = _conflictRule;
         _options.AiTaskIndex = AiTaskCombo?.SelectedIndex ?? 0;
         _options.TargetLanguage = AiTargetLangBox?.Text?.Trim();

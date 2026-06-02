@@ -134,7 +134,8 @@
                                 </Grid>
                                 <Slider x:Name="QualitySlider" Margin="0,12,0,0"
                                         Style="{StaticResource FsSliderStyle}"
-                                        Minimum="1" Maximum="100" Value="85"
+                                        Minimum="1" Maximum="100"
+                                        Value="{Binding Options.Quality, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"
                                         ValueChanged="OnQualityChanged"/>
                                 <Grid Margin="0,4,0,0">
                                     <Grid.ColumnDefinitions>
@@ -156,6 +157,7 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBox x:Name="OutputPathTextBox"
                                              Style="{StaticResource FsPathInputStyle}"
+                                             Text="{Binding Options.CustomOutputDirectory, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                              ToolTip="비워두면 원본 폴더 옆 서브폴더에 저장"/>
                                     <Button Grid.Column="1" Margin="8,0,0,0" Width="36"
                                             Content="…" Style="{StaticResource FsSecondaryButtonStyle}"
