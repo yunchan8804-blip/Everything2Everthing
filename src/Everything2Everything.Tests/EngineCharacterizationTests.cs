@@ -270,6 +270,34 @@ public class EngineCharacterizationTests
         Assert.True(img.HasAlpha); // png self-edge 최적화는 alpha 채널을 보존해야 한다
     }
 
+    // ── 시나리오 11: Independent 배치 병렬 변환 — 순서 보존 + 전수 변환 (P6) ──────────────────────
+    [Fact]
+    public async Task IndependentBatch_Parallel_PreservesOrderAndConvertsAll()
+    {
+        var dir = TempDir();
+        var colors = new[]
+        {
+            MagickColors.Red, MagickColors.Lime, MagickColors.Blue, MagickColors.Yellow,
+            MagickColors.Cyan, MagickColors.Magenta, MagickColors.White, MagickColors.Black,
+        };
+        var sources = new List<string>();
+        for (var i = 0; i < colors.Length; i++)
+            sources.Add(MakeSolidPng(dir, $"c{i}.png", colors[i], 24, 24));
+
+        var engine = Everything2EverythingBootstrap.CreateDefault();
+        var results = await engine.ConvertManyAsync(sources, ".jpg", CustomOut(dir), batchMode: BatchMode.Independent);
+
+        Assert.Equal(sources.Count, results.Count);
+        for (var i = 0; i < sources.Count; i++)
+        {
+            // 병렬이어도 results[i]는 sources[i]의 결과여야 한다(인덱스 고정 순서 보존).
+            Assert.Equal(ConvertStatus.Success, results[i].Status);
+            Assert.Equal(sources[i], results[i].SourcePath);
+            Assert.Single(results[i].OutputPaths);
+            Assert.True(File.Exists(results[i].OutputPaths[0]));
+        }
+    }
+
     /// <summary>combine→pdf 경로로 2페이지 PDF를 만든다(순수 .NET, Ghostscript 불필요).</summary>
     private static async Task<string> BuildTwoPagePdf(string dir)
     {

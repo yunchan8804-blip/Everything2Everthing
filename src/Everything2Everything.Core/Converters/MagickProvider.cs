@@ -11,6 +11,13 @@ public sealed class MagickProvider : IConverterProvider, IMultiInputConverter
         ".pdf", ".tif", ".tiff", ".gif",
     };
 
+    static MagickProvider()
+    {
+        // 병렬 배치(P6)에서 동시 MagickImage가 늘어날 때 OOM/temp 스래싱을 막기 위해 메모리 상한 설정
+        // (초과분은 디스크로 스필 — 출력 바이트에는 영향 없음). 환경에 따라 미지원이면 무시.
+        try { ResourceLimits.LimitMemory(new Percentage(60)); } catch { }
+    }
+
     private static readonly string[] SingleFrameInputs =
     {
         ".png", ".bmp", ".jpg", ".jpeg", ".jpe", ".webp", ".avif", ".psd",

@@ -52,21 +52,43 @@ public sealed class ConversionEngine
             return new[] { ConvertResult.Fail(sourceList[0], unsupportedReason ?? "단일 파일 결합을 지원하지 않습니다.") };
         }
 
-        var results = new List<ConvertResult>(sourceList.Count);
-        for (var i = 0; i < sourceList.Count; i++)
+        // 결과는 입력 인덱스로 고정해 병렬 실행에도 순서를 보존한다.
+        var results = new ConvertResult[sourceList.Count];
+
+        // 독립(Independent) 배치는 코어 수만큼 병렬화 — ConvertOptions가 불변(P4)이라 공유 읽기가 안전하다.
+        var dop = Math.Clamp(options.BatchParallelism, 1, sourceList.Count);
+
+        if (dop <= 1)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var source = sourceList[i];
-            progress?.Report(new ConvertProgress(i, sourceList.Count, source, 0));
-
-            var result = await ConvertOneAsync(source, outputExtension, options,
-                new Progress<double>(p => progress?.Report(new ConvertProgress(i, sourceList.Count, source, p))),
-                cancellationToken).ConfigureAwait(false);
-
-            results.Add(result);
-            progress?.Report(new ConvertProgress(i + 1, sourceList.Count, source, 1));
+            // 단일 파일/순차 경로 — 기존 동작과 동일(파일별 세부 진행률 보존).
+            for (var i = 0; i < sourceList.Count; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var source = sourceList[i];
+                progress?.Report(new ConvertProgress(i, sourceList.Count, source, 0));
+                results[i] = await ConvertOneAsync(source, outputExtension, options,
+                    new Progress<double>(p => progress?.Report(new ConvertProgress(i, sourceList.Count, source, p))),
+                    cancellationToken).ConfigureAwait(false);
+                progress?.Report(new ConvertProgress(i + 1, sourceList.Count, source, 1));
+            }
+            return results;
         }
+
+        // 병렬 경로 — 파일별 분수 진행률은 동시 실행에서 의미가 흐려지므로 완료 건수(Interlocked)로 보고한다.
+        var completed = 0;
+        var parallelOptions = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = dop,
+            CancellationToken = cancellationToken,
+        };
+
+        await Parallel.ForEachAsync(Enumerable.Range(0, sourceList.Count), parallelOptions, async (i, ct) =>
+        {
+            var source = sourceList[i];
+            results[i] = await ConvertOneAsync(source, outputExtension, options, null, ct).ConfigureAwait(false);
+            var done = Interlocked.Increment(ref completed);
+            progress?.Report(new ConvertProgress(done - 1, sourceList.Count, source, 1));
+        }).ConfigureAwait(false);
 
         return results;
     }

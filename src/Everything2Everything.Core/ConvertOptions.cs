@@ -68,6 +68,9 @@ public sealed record ConvertOptions
     /// <summary>래스터화 같은 큰 손실 엣지를 회피한다.</summary>
     public bool AvoidLossy { get; init; } = false;
 
+    /// <summary>독립(Independent) 배치 변환의 최대 병렬 수. 기본 = 논리 코어 수. 미디어(FFmpeg) 위주 배치는 낮춰 오버서브스크립션 회피.</summary>
+    public int BatchParallelism { get; init; } = Environment.ProcessorCount;
+
     /// <summary>영상 인코딩 시 GPU 하드웨어 가속(NVENC)을 우선 시도하고, 실패하면 CPU로 자동 폴백한다.</summary>
     public bool VideoPreferGpu { get; init; } = true;
 
