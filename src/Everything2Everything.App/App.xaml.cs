@@ -97,19 +97,34 @@ public partial class App : Application
 
     private async Task RunQuickAsync(IReadOnlyList<string> files, string outputExtension)
     {
+        // 빠른 변환 전, 출력 형식에 맞춘 간단 옵션 팝업.
+        // '자세히 옵션…'이면 풀 UI(MainWindow)로 전환, '취소'면 종료, '변환'이면 선택 옵션으로 진행.
+        var optWin = new QuickOptionsWindow(outputExtension, files.Count, Settings);
+        var confirmed = optWin.ShowDialog();
+        if (optWin.OpenFullUi) { ShowConvertDialog(files); return; }
+        if (confirmed != true) { Shutdown(0); return; }
+
+        // 변환 경로 동안은 명시적 종료 모드 — 진행 창을 닫아도 변환을 취소(ffmpeg 종료)한 '뒤' 앱을 종료한다.
+        // (기본 OnLastWindowClose면 창 닫는 즉시 종료가 시작돼 ffmpeg가 고아로 백그라운드에 남는다.)
+        ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown;
+
         var logPath = Path.Combine(Path.GetTempPath(), "Everything2Everything_quick.log");
         var log = new System.Text.StringBuilder();
         log.AppendLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Quick start → {outputExtension}, {files.Count} file(s)");
         foreach (var f in files) log.AppendLine($"  src: {f}");
 
-        var progress = new QuickProgressWindow(files.Count, outputExtension);
+        using var cts = new CancellationTokenSource();
+        var progress = new QuickProgressWindow(files.Count, cts, outputExtension);
+        var closed = new TaskCompletionSource();
+        progress.Closed += (_, _) => closed.TrySetResult();
         progress.Show();
 
         try
         {
-            var options = ConvertOptions.Quick() with { VideoPreferGpu = Settings.Get("video.gpu") != "false" };
+            var options = optWin.Options.ToConvertOptions();
             var reporter = new Progress<ConvertProgress>(p => progress.Report(p));
-            var results = await Engine.ConvertManyAsync(files, outputExtension, options, reporter);
+            var results = await Engine.ConvertManyAsync(
+                files, outputExtension, options, reporter, BatchMode.Independent, cts.Token);
 
             foreach (var r in results)
             {
@@ -120,6 +135,13 @@ public partial class App : Application
             }
 
             progress.Finish(results);
+            await closed.Task; // 결과 창을 사용자가 닫을 때까지 대기(성공 경로)
+        }
+        catch (OperationCanceledException)
+        {
+            // 사용자가 취소(취소 버튼/창 닫기) — ffmpeg는 이미 중단된 뒤 여기에 도달. 진행 창 닫고 종료.
+            log.AppendLine("  CANCELLED by user");
+            try { progress.Close(); } catch { }
         }
         catch (Exception ex)
         {
@@ -132,6 +154,7 @@ public partial class App : Application
         finally
         {
             try { File.WriteAllText(logPath, log.ToString()); } catch { }
+            Shutdown(0); // 모든 경로에서 명시적 종료(백그라운드 잔류·고아 프로세스 방지)
         }
     }
 

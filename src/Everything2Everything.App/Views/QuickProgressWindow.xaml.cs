@@ -7,11 +7,14 @@ namespace Everything2Everything.App.Views;
 public partial class QuickProgressWindow : FluentWindow
 {
     private readonly int _total;
+    private readonly CancellationTokenSource _cts;
+    private bool _finished;
     private string? _firstSuccessOutput;
 
-    public QuickProgressWindow(int total, string? outputExtension = null)
+    public QuickProgressWindow(int total, CancellationTokenSource cts, string? outputExtension = null)
     {
         _total = total;
+        _cts = cts;
         InitializeComponent();
 
         var label = string.IsNullOrWhiteSpace(outputExtension)
@@ -38,6 +41,9 @@ public partial class QuickProgressWindow : FluentWindow
     public void Finish(IReadOnlyList<ConvertResult> results)
     {
         if (!CheckAccess()) { Dispatcher.Invoke(() => Finish(results)); return; }
+
+        _finished = true;
+        CancelButton.Visibility = Visibility.Collapsed;
 
         var success = results.Count(r => r.Status == ConvertStatus.Success);
         var skipped = results.Count(r => r.Status == ConvertStatus.Skipped);
@@ -91,6 +97,23 @@ public partial class QuickProgressWindow : FluentWindow
     }
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
+
+    private void OnCancelClick(object sender, RoutedEventArgs e)
+    {
+        try { _cts.Cancel(); } catch { }
+        CancelButton.IsEnabled = false;
+        CancelButton.Content = "취소 중…";
+        StatusText.Text = "취소 중…";
+    }
+
+    /// <summary>변환 중에 창을 닫으면 변환을 취소한다(백그라운드 잔류·고아 ffmpeg 방지).</summary>
+    private void OnWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (!_finished)
+        {
+            try { _cts.Cancel(); } catch { }
+        }
+    }
 
     private static void OpenInExplorer(string path)
     {

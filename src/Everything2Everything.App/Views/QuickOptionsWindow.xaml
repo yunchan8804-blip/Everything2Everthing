@@ -1,0 +1,92 @@
+<ui:FluentWindow x:Class="Everything2Everything.App.Views.QuickOptionsWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 Title="빠른 변환"
+                 Width="380" SizeToContent="Height"
+                 ResizeMode="NoResize"
+                 ExtendsContentIntoTitleBar="True"
+                 WindowBackdropType="None"
+                 WindowCornerPreference="Round"
+                 WindowStartupLocation="CenterScreen"
+                 UseLayoutRounding="True">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="FormatShiftTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Background="{StaticResource FsBgBase}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="" ShowMaximize="False" ShowMinimize="False"/>
+
+        <StackPanel Grid.Row="1" Margin="24,4,24,20">
+            <TextBlock x:Name="HeaderText" FontSize="16" FontWeight="SemiBold"
+                       Foreground="{StaticResource FsTextPrimary}"
+                       FontFamily="{StaticResource FsFontSans}" Text="변환"/>
+            <TextBlock Margin="0,4,0,0" Style="{StaticResource FsCaptionStyle}"
+                       Text="필요한 옵션만 빠르게 고르고 변환하세요."/>
+
+            <!-- 이미지 품질 (jpg/webp/avif) -->
+            <StackPanel x:Name="ImageQualityPanel" Margin="0,18,0,0" Visibility="Collapsed">
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Text="품질" Style="{StaticResource FsCaptionStyle}"/>
+                    <TextBlock Grid.Column="1" FontFamily="{StaticResource FsFontMono}" FontSize="12"
+                               Foreground="{StaticResource FsAccentBlue}"
+                               Text="{Binding Quality, StringFormat={}{0}%}"/>
+                </Grid>
+                <Slider Minimum="1" Maximum="100" Margin="0,4,0,0" Value="{Binding Quality, Mode=TwoWay}"/>
+            </StackPanel>
+
+            <!-- 영상 (간단) -->
+            <StackPanel x:Name="VideoQuickPanel" Margin="0,18,0,0" Visibility="Collapsed">
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Text="품질 (CRF) — 낮을수록 고화질" Style="{StaticResource FsCaptionStyle}"/>
+                    <TextBlock Grid.Column="1" FontFamily="{StaticResource FsFontMono}" FontSize="12"
+                               Foreground="{StaticResource FsAccentBlue}" Text="{Binding Crf}"/>
+                </Grid>
+                <Slider Minimum="0" Maximum="51" Margin="0,4,0,0" Value="{Binding Crf, Mode=TwoWay}"/>
+
+                <TextBlock Text="해상도" Style="{StaticResource FsCaptionStyle}" Margin="0,12,0,4"/>
+                <ComboBox SelectedIndex="{Binding ResolutionIndex, Mode=TwoWay}">
+                    <ComboBoxItem Content="원본"/><ComboBoxItem Content="2160p (4K)"/><ComboBoxItem Content="1440p"/>
+                    <ComboBoxItem Content="1080p"/><ComboBoxItem Content="720p"/><ComboBoxItem Content="480p"/>
+                </ComboBox>
+
+                <CheckBox Margin="0,12,0,0" Content="GPU 하드웨어 가속" IsChecked="{Binding VideoPreferGpu, Mode=TwoWay}"/>
+            </StackPanel>
+
+            <!-- 오디오 (간단) -->
+            <StackPanel x:Name="AudioQuickPanel" Margin="0,18,0,0" Visibility="Collapsed">
+                <TextBlock x:Name="AudioPanelLabel" Text="오디오 비트레이트" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
+                <ComboBox SelectedIndex="{Binding AudioBitrateIndex, Mode=TwoWay}">
+                    <ComboBoxItem Content="96 kbps"/><ComboBoxItem Content="128 kbps"/><ComboBoxItem Content="192 kbps"/>
+                    <ComboBoxItem Content="256 kbps"/><ComboBoxItem Content="320 kbps"/>
+                </ComboBox>
+            </StackPanel>
+
+            <!-- 버튼 -->
+            <Grid Margin="0,22,0,0">
+                <Button HorizontalAlignment="Left" Content="자세히 옵션…"
+                        Style="{StaticResource FsSecondaryButtonStyle}"
+                        Click="OnMoreClick"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="취소" Margin="0,0,8,0"
+                            Style="{StaticResource FsSecondaryButtonStyle}"
+                            Click="OnCancelClick"/>
+                    <Button Content="변환" Padding="20,6"
+                            Style="{StaticResource FsPrimaryButtonStyle}"
+                            Click="OnConvertClick"/>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </Grid>
+</ui:FluentWindow>
