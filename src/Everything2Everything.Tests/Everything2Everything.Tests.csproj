@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Everything2Everything.Core\Everything2Everything.Core.csproj" />
+    <ProjectReference Include="..\Everything2Everything.App\Everything2Everything.App.csproj" />
   </ItemGroup>
 
 </Project>

@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Everything2Everything.App.Shell;
+using Everything2Everything.App.ViewModels;
 using Everything2Everything.Core;
 using LossClass = Everything2Everything.Core.Providers.LossClass;
 
@@ -18,6 +19,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 {
     private readonly ConversionEngine _engine;
     private readonly ISettingsStore _settings;
+    private readonly OptionsViewModel _options = new();
     private readonly ObservableCollection<QueueItem> _activeQueue = new();
     private readonly ObservableCollection<DateGroup> _pastResults = new();
     private CancellationTokenSource? _cts;
@@ -278,35 +280,14 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
     private ConvertOptions BuildOptions()
     {
-        var q = (int)QualitySlider.Value;
-
-        var custom = OutputPathTextBox.Text?.Trim();
-        var hasCustom = !string.IsNullOrEmpty(custom);
-
-        // AI 작업 종류 (txt↔txt / md↔md 등 텍스트 변환 시 LlmProvider가 사용)
-        var aiTask = (AiTaskCombo?.SelectedIndex ?? 0) switch
-        {
-            1 => "translate",
-            2 => "proofread",
-            _ => "summarize",
-        };
-        var targetLang = AiTargetLangBox?.Text?.Trim();
-
-        return new ConvertOptions
-        {
-            OnCollision = _conflictRule,
-            OutputLocation = hasCustom ? OutputLocation.Custom : OutputLocation.SubfolderBesideSource,
-            CustomOutputDirectory = hasCustom ? custom : null,
-            Jpeg = new JpegEncodingOptions { Quality = q },
-            Webp = new WebpEncodingOptions { Quality = q },
-            Avif = new AvifEncodingOptions { Quality = Math.Clamp(q - 30, 1, 100) },
-            Ai = new AiOptions
-            {
-                Task = aiTask,
-                TargetLanguage = string.IsNullOrEmpty(targetLang) ? null : targetLang,
-            },
-            VideoPreferGpu = _settings.Get("video.gpu") != "false",
-        };
+        // 뷰의 컨트롤 값을 OptionsViewModel에 반영한 뒤, 불변 ConvertOptions 구성은 VM의 순수 메서드에 위임한다.
+        _options.Quality = (int)QualitySlider.Value;
+        _options.CustomOutputDirectory = OutputPathTextBox.Text?.Trim();
+        _options.ConflictRule = _conflictRule;
+        _options.AiTaskIndex = AiTaskCombo?.SelectedIndex ?? 0;
+        _options.TargetLanguage = AiTargetLangBox?.Text?.Trim();
+        _options.VideoPreferGpu = _settings.Get("video.gpu") != "false";
+        return _options.ToConvertOptions();
     }
 
     // ============== Process queue ==============

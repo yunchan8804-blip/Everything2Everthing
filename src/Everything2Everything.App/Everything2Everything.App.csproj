@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <PackageReference Include="WPF-UI" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
   </ItemGroup>
 
   <ItemGroup>
