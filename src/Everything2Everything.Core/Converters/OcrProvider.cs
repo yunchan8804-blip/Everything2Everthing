@@ -179,8 +179,8 @@ public sealed class OcrProvider : IConverterProvider
             OutputLocation = OutputLocation.Custom,
             CustomOutputDirectory = tempDir,
             OnCollision = NameCollision.Overwrite,
+            PdfRender = new PdfRenderOptions { Dpi = Math.Max(150, options.PdfRender.Dpi) },
         };
-        renderOptions.PdfRender.Dpi = Math.Max(150, options.PdfRender.Dpi);
 
         var inner = new Progress<double>(p => progress?.Report(p * 0.4));
         var result = _pdfProvider.ConvertCore(pdfPath, tempDir, ".png", renderOptions, inner, cancellationToken);

@@ -14,154 +14,158 @@ public enum NameCollision
     Skip
 }
 
-public sealed class ConvertOptions
+/// <summary>
+/// 변환 옵션. 불변(record + init-only) — 구성된 뒤에는 변경되지 않으므로 배치 병렬 변환에서 안전하게 공유된다.
+/// 변경이 필요하면 with 식으로 새 인스턴스를 만든다. (P4: mutable God Object → immutable record)
+/// </summary>
+public sealed record ConvertOptions
 {
-    public OutputLocation OutputLocation { get; set; } = OutputLocation.SubfolderBesideSource;
+    public OutputLocation OutputLocation { get; init; } = OutputLocation.SubfolderBesideSource;
 
-    public string SubfolderSuffix { get; set; } = "_converted";
+    public string SubfolderSuffix { get; init; } = "_converted";
 
-    public string? CustomOutputDirectory { get; set; }
+    public string? CustomOutputDirectory { get; init; }
 
-    public NameCollision OnCollision { get; set; } = NameCollision.AppendNumber;
+    public NameCollision OnCollision { get; init; } = NameCollision.AppendNumber;
 
-    public int? MaxLongEdgePixels { get; set; }
+    public int? MaxLongEdgePixels { get; init; }
 
-    public bool KeepExifWhenPossible { get; set; } = true;
+    public bool KeepExifWhenPossible { get; init; } = true;
 
-    public bool FlattenTransparency { get; set; } = false;
+    public bool FlattenTransparency { get; init; } = false;
 
-    public string TransparencyBackground { get; set; } = "#FFFFFF";
+    public string TransparencyBackground { get; init; } = "#FFFFFF";
 
-    public JpegEncodingOptions Jpeg { get; set; } = new();
+    public JpegEncodingOptions Jpeg { get; init; } = new();
 
-    public PngEncodingOptions Png { get; set; } = new();
+    public PngEncodingOptions Png { get; init; } = new();
 
-    public WebpEncodingOptions Webp { get; set; } = new();
+    public WebpEncodingOptions Webp { get; init; } = new();
 
-    public AvifEncodingOptions Avif { get; set; } = new();
+    public AvifEncodingOptions Avif { get; init; } = new();
 
-    public TiffEncodingOptions Tiff { get; set; } = new();
+    public TiffEncodingOptions Tiff { get; init; } = new();
 
-    public BmpEncodingOptions Bmp { get; set; } = new();
+    public BmpEncodingOptions Bmp { get; init; } = new();
 
-    public GifEncodingOptions Gif { get; set; } = new();
+    public GifEncodingOptions Gif { get; init; } = new();
 
-    public PdfRenderOptions PdfRender { get; set; } = new();
+    public PdfRenderOptions PdfRender { get; init; } = new();
 
-    public PdfBuildOptions PdfBuild { get; set; } = new();
+    public PdfBuildOptions PdfBuild { get; init; } = new();
 
-    public HtmlRenderOptions HtmlRender { get; set; } = new();
+    public HtmlRenderOptions HtmlRender { get; init; } = new();
 
-    public OcrOptions Ocr { get; set; } = new();
+    public OcrOptions Ocr { get; init; } = new();
 
     // --- 변환 그래프 경로 옵션 (P1) ---
     /// <summary>멀티홉 경로 자동 합성 허용. false면 직접(1홉) 변환만.</summary>
-    public bool AllowMultiHop { get; set; } = true;
+    public bool AllowMultiHop { get; init; } = true;
 
     /// <summary>멀티홉 최대 홉 수.</summary>
-    public int MaxHops { get; set; } = 3;
+    public int MaxHops { get; init; } = 3;
 
     /// <summary>래스터화 같은 큰 손실 엣지를 회피한다.</summary>
-    public bool AvoidLossy { get; set; } = false;
+    public bool AvoidLossy { get; init; } = false;
 
     /// <summary>영상 인코딩 시 GPU 하드웨어 가속(NVENC)을 우선 시도하고, 실패하면 CPU로 자동 폴백한다.</summary>
-    public bool VideoPreferGpu { get; set; } = true;
+    public bool VideoPreferGpu { get; init; } = true;
 
-    public PdfCompressOptions PdfCompress { get; set; } = new();
+    public PdfCompressOptions PdfCompress { get; init; } = new();
 
-    public AiOptions Ai { get; set; } = new();
+    public AiOptions Ai { get; init; } = new();
 
     public static ConvertOptions Quick() => new();
 }
 
-public sealed class JpegEncodingOptions
+public sealed record JpegEncodingOptions
 {
-    public int Quality { get; set; } = 92;
-    public bool Progressive { get; set; } = false;
+    public int Quality { get; init; } = 92;
+    public bool Progressive { get; init; } = false;
 }
 
-public sealed class PngEncodingOptions
+public sealed record PngEncodingOptions
 {
-    public int Compression { get; set; } = 7;
-    public bool Interlace { get; set; } = false;
+    public int Compression { get; init; } = 7;
+    public bool Interlace { get; init; } = false;
 }
 
-public sealed class WebpEncodingOptions
+public sealed record WebpEncodingOptions
 {
-    public int Quality { get; set; } = 90;
-    public bool Lossless { get; set; } = false;
+    public int Quality { get; init; } = 90;
+    public bool Lossless { get; init; } = false;
 }
 
-public sealed class AvifEncodingOptions
+public sealed record AvifEncodingOptions
 {
-    public int Quality { get; set; } = 60;
-    public int Speed { get; set; } = 6;
+    public int Quality { get; init; } = 60;
+    public int Speed { get; init; } = 6;
 }
 
-public sealed class TiffEncodingOptions
+public sealed record TiffEncodingOptions
 {
-    public string Compression { get; set; } = "lzw";
+    public string Compression { get; init; } = "lzw";
 }
 
-public sealed class BmpEncodingOptions
-{
-}
-
-public sealed class GifEncodingOptions
+public sealed record BmpEncodingOptions
 {
 }
 
-public sealed class PdfRenderOptions
+public sealed record GifEncodingOptions
 {
-    public int Dpi { get; set; } = 200;
-    public bool WithAnnotations { get; set; } = true;
-    public bool WithFormFill { get; set; } = true;
 }
 
-public sealed class PdfBuildOptions
+public sealed record PdfRenderOptions
 {
-    public string PageSize { get; set; } = "Auto";
-    public int MarginPoints { get; set; } = 24;
-    public bool FitToPage { get; set; } = true;
+    public int Dpi { get; init; } = 200;
+    public bool WithAnnotations { get; init; } = true;
+    public bool WithFormFill { get; init; } = true;
 }
 
-public sealed class HtmlRenderOptions
+public sealed record PdfBuildOptions
 {
-    public int ViewportWidth { get; set; } = 1280;
-    public int? ViewportHeight { get; set; }
-    public int WaitMilliseconds { get; set; } = 2000;
-    public bool FullPage { get; set; } = true;
+    public string PageSize { get; init; } = "Auto";
+    public int MarginPoints { get; init; } = 24;
+    public bool FitToPage { get; init; } = true;
 }
 
-public sealed class OcrOptions
+public sealed record HtmlRenderOptions
 {
-    public string Language { get; set; } = "ko+en";
-    public bool PreserveLayout { get; set; } = true;
-    public string Backend { get; set; } = "auto";
+    public int ViewportWidth { get; init; } = 1280;
+    public int? ViewportHeight { get; init; }
+    public int WaitMilliseconds { get; init; } = 2000;
+    public bool FullPage { get; init; } = true;
 }
 
-public sealed class PdfCompressOptions
+public sealed record OcrOptions
+{
+    public string Language { get; init; } = "ko+en";
+    public bool PreserveLayout { get; init; } = true;
+    public string Backend { get; init; } = "auto";
+}
+
+public sealed record PdfCompressOptions
 {
     /// <summary>Light(구조 최적화·무손실) | Strong(렌더 재인코딩) | Max(Ghostscript). P1은 Light만 구현.</summary>
-    public string Level { get; set; } = "Light";
+    public string Level { get; init; } = "Light";
 }
 
-public sealed class AiOptions
+public sealed record AiOptions
 {
     /// <summary>auto | openai | anthropic. auto는 설정된 키 중 가용한 것을 선택.</summary>
-    public string Backend { get; set; } = "auto";
+    public string Backend { get; init; } = "auto";
 
     /// <summary>모델 ID. null이면 백엔드별 기본값.</summary>
-    public string? Model { get; set; }
+    public string? Model { get; init; }
 
     /// <summary>summarize | translate | proofread | custom.</summary>
-    public string Task { get; set; } = "summarize";
+    public string Task { get; init; } = "summarize";
 
     /// <summary>translate 작업의 대상 언어 (예: "영어", "일본어").</summary>
-    public string? TargetLanguage { get; set; }
+    public string? TargetLanguage { get; init; }
 
     /// <summary>custom 작업의 사용자 지정 지시문.</summary>
-    public string? Instruction { get; set; }
+    public string? Instruction { get; init; }
 
-    public int MaxOutputTokens { get; set; } = 2000;
+    public int MaxOutputTokens { get; init; } = 2000;
 }

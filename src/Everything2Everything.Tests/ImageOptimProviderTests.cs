@@ -39,8 +39,7 @@ public class ImageOptimProviderTests
         using (var img = new MagickImage(MagickColors.SteelBlue, 256, 256)) img.Write(jpg);
 
         var p = new ImageOptimProvider();
-        var options = new ConvertOptions();
-        options.Jpeg.Quality = 30;
+        var options = new ConvertOptions { Jpeg = new JpegEncodingOptions { Quality = 30 } };
         var r = await p.ConvertAsync(jpg, dir, ".jpg", options, null, CancellationToken.None);
         Assert.Equal(ConvertStatus.Success, r.Status);
         Assert.True(File.Exists(r.OutputPaths[0]));

@@ -278,38 +278,35 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
     private ConvertOptions BuildOptions()
     {
-        var opts = new ConvertOptions
-        {
-            OnCollision = _conflictRule,
-        };
-        opts.Jpeg.Quality = (int)QualitySlider.Value;
-        opts.Webp.Quality = (int)QualitySlider.Value;
-        opts.Avif.Quality = Math.Clamp((int)QualitySlider.Value - 30, 1, 100);
+        var q = (int)QualitySlider.Value;
 
         var custom = OutputPathTextBox.Text?.Trim();
-        if (!string.IsNullOrEmpty(custom))
-        {
-            opts.OutputLocation = OutputLocation.Custom;
-            opts.CustomOutputDirectory = custom;
-        }
-        else
-        {
-            opts.OutputLocation = OutputLocation.SubfolderBesideSource;
-        }
+        var hasCustom = !string.IsNullOrEmpty(custom);
 
         // AI 작업 종류 (txt↔txt / md↔md 등 텍스트 변환 시 LlmProvider가 사용)
-        opts.Ai.Task = (AiTaskCombo?.SelectedIndex ?? 0) switch
+        var aiTask = (AiTaskCombo?.SelectedIndex ?? 0) switch
         {
             1 => "translate",
             2 => "proofread",
             _ => "summarize",
         };
         var targetLang = AiTargetLangBox?.Text?.Trim();
-        opts.Ai.TargetLanguage = string.IsNullOrEmpty(targetLang) ? null : targetLang;
 
-        opts.VideoPreferGpu = _settings.Get("video.gpu") != "false";
-
-        return opts;
+        return new ConvertOptions
+        {
+            OnCollision = _conflictRule,
+            OutputLocation = hasCustom ? OutputLocation.Custom : OutputLocation.SubfolderBesideSource,
+            CustomOutputDirectory = hasCustom ? custom : null,
+            Jpeg = new JpegEncodingOptions { Quality = q },
+            Webp = new WebpEncodingOptions { Quality = q },
+            Avif = new AvifEncodingOptions { Quality = Math.Clamp(q - 30, 1, 100) },
+            Ai = new AiOptions
+            {
+                Task = aiTask,
+                TargetLanguage = string.IsNullOrEmpty(targetLang) ? null : targetLang,
+            },
+            VideoPreferGpu = _settings.Get("video.gpu") != "false",
+        };
     }
 
     // ============== Process queue ==============

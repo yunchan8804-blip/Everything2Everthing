@@ -107,8 +107,7 @@ public partial class App : Application
 
         try
         {
-            var options = ConvertOptions.Quick();
-            options.VideoPreferGpu = Settings.Get("video.gpu") != "false";
+            var options = ConvertOptions.Quick() with { VideoPreferGpu = Settings.Get("video.gpu") != "false" };
             var reporter = new Progress<ConvertProgress>(p => progress.Report(p));
             var results = await Engine.ConvertManyAsync(files, outputExtension, options, reporter);
 

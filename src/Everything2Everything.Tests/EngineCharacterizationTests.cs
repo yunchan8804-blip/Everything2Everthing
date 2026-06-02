@@ -213,8 +213,7 @@ public class EngineCharacterizationTests
         Assert.Equal(ConvertStatus.Success, first.Status);
 
         // 2차: 동일 출력이 존재 + OnCollision=Skip → 마지막 홉(png→jpg)이 Skip을 반환, 엔진은 Skip으로 존중
-        var skipOpts = CustomOut(dir);
-        skipOpts.OnCollision = NameCollision.Skip;
+        var skipOpts = CustomOut(dir) with { OnCollision = NameCollision.Skip };
         var second = await engine.ConvertOneAsync(svg, ".jpg", skipOpts);
         Assert.Equal(ConvertStatus.Skipped, second.Status);
     }
@@ -230,8 +229,7 @@ public class EngineCharacterizationTests
         var first = await engine.ConvertOneAsync(png, ".jpg", CustomOut(dir));
         Assert.Equal(ConvertStatus.Success, first.Status);
 
-        var skipOpts = CustomOut(dir);
-        skipOpts.OnCollision = NameCollision.Skip;
+        var skipOpts = CustomOut(dir) with { OnCollision = NameCollision.Skip };
         var second = await engine.ConvertOneAsync(png, ".jpg", skipOpts);
         Assert.Equal(ConvertStatus.Skipped, second.Status);
     }
