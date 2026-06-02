@@ -53,6 +53,12 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     public ICommand TabCommand { get; }
     public ICommand ConflictRuleCommand { get; }
     public ICommand CombineToggleCommand { get; }
+    public ICommand OutputFormatChangedCommand { get; }
+    public ICommand DragOverCommand { get; }
+    public ICommand DragLeaveCommand { get; }
+    public ICommand DropCommand { get; }
+    public ICommand QueueRowCommand { get; }
+    public ICommand PastRowCommand { get; }
 
     public MainWindow(ConversionEngine engine, ISettingsStore settings, IReadOnlyList<string>? initialFiles = null)
     {
@@ -78,6 +84,12 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         TabCommand = new RelayCommand(p => ShowTab(p as string ?? "Past"));
         ConflictRuleCommand = new RelayCommand(p => SetConflictRule(p as string));
         CombineToggleCommand = new RelayCommand(_ => UpdateCombineState(SelectedOutputExtension));
+        OutputFormatChangedCommand = new RelayCommand(_ => OnOutputFormatSelected());
+        DragOverCommand = new RelayCommand(p => HandleDragOver(p as DragEventArgs));
+        DragLeaveCommand = new RelayCommand(_ => DropHintOverlay.Visibility = Visibility.Collapsed);
+        DropCommand = new RelayCommand(p => HandleFilesDropped(p as DragEventArgs));
+        QueueRowCommand = new RelayCommand(p => HandleQueueRowClick(p as MouseButtonEventArgs));
+        PastRowCommand = new RelayCommand(p => HandlePastRowClick(p as MouseButtonEventArgs));
 
         InitializeComponent();
 
@@ -164,8 +176,9 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
     // ============== Drag & Drop ==============
 
-    private void OnDragOver(object sender, DragEventArgs e)
+    private void HandleDragOver(DragEventArgs? e)
     {
+        if (e is null) return;
         e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop)
             ? DragDropEffects.Copy : DragDropEffects.None;
         DropHintOverlay.Visibility = e.Effects == DragDropEffects.Copy
@@ -173,15 +186,10 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         e.Handled = true;
     }
 
-    private void OnDragLeave(object sender, DragEventArgs e)
+    private void HandleFilesDropped(DragEventArgs? e)
     {
         DropHintOverlay.Visibility = Visibility.Collapsed;
-    }
-
-    private void OnFilesDropped(object sender, DragEventArgs e)
-    {
-        DropHintOverlay.Visibility = Visibility.Collapsed;
-        if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+        if (e is null || !e.Data.GetDataPresent(DataFormats.FileDrop)) return;
         if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths) return;
 
         AddToQueue(ExpandPaths(paths));
@@ -308,20 +316,22 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     private string? _selectedPreviewPath;
     private CancellationTokenSource? _previewCts;
 
-    private async void OnQueueRowClick(object sender, MouseButtonEventArgs e)
+    private async void HandleQueueRowClick(MouseButtonEventArgs? e)
     {
+        if (e is null) return;
         if (e.OriginalSource is DependencyObject src && IsInsideButton(src)) return;
-        if (sender is not FrameworkElement fe || fe.Tag is not QueueItem item) return;
+        if ((e.OriginalSource as FrameworkElement)?.DataContext is not QueueItem item) return;
 
         _selectedPreviewItem = item;
         await LoadPreviewAsync(item);
         e.Handled = true;
     }
 
-    private async void OnPastRowClick(object sender, MouseButtonEventArgs e)
+    private async void HandlePastRowClick(MouseButtonEventArgs? e)
     {
+        if (e is null) return;
         if (e.OriginalSource is DependencyObject src && IsInsideButton(src)) return;
-        if (sender is not FrameworkElement fe || fe.Tag is not HistoryRow row) return;
+        if ((e.OriginalSource as FrameworkElement)?.DataContext is not HistoryRow row) return;
 
         if (row.SourcePath == "<demo>")
         {
@@ -1036,7 +1046,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         };
     }
 
-    private void OnOutputFormatChanged(object sender, SelectionChangedEventArgs e)
+    private void OnOutputFormatSelected()
     {
         if (_suppressFormatChanged) return;
         if (OutputFormatCombo.SelectedItem is ComboBoxItem item && item.Tag is string ext)
