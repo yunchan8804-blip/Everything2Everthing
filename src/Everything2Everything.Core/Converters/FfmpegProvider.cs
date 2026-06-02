@@ -99,46 +99,114 @@ public sealed class FfmpegProvider : IConverterProvider
             }
             catch { /* 분석 실패 시 진행률·코덱은 기본값 사용 */ }
 
-            // H.264는 4096px 초과(>4K, 예: 8K 7680px)를 인코딩하지 못해 "encoder를 열 수 없음"으로 즉시 실패한다.
-            // → 고해상도 입력은 8K까지 지원하는 HEVC(H.265)로 인코딩한다.
-            var highRes = videoWidth > 4096;
-            var h264Container = outExt is ".mp4" or ".mkv" or ".mov";
-            // GPU(NVENC) 가속은 mp4/mkv/mov 컨테이너에만 적용 시도하고, 실패하면 CPU로 폴백
-            var tryGpu = options.VideoPreferGpu && h264Container;
+            var v = options.Video;
+            var isAudioOut = FfmpegArgBuilder.IsAudioContainer(outExt);
+            var resolvedCodec = FfmpegArgBuilder.ResolveVideoCodec(v.Codec, outExt, videoWidth);
 
-            async Task<bool> RunAsync(bool gpu)
+            // 입력측 트림(시킹) 적용 — VideoEncodeOptions.TrimStart/TrimEnd는 영상·오디오 출력 공통.
+            void AddInput(FFMpegArgumentOptions inOpt)
             {
+                if (v.TrimStart is TimeSpan ss && ss > TimeSpan.Zero) inOpt.Seek(ss);
+            }
+            void AddDuration(FFMpegArgumentOptions o)
+            {
+                if (v.TrimEnd is TimeSpan en && en > TimeSpan.Zero)
+                {
+                    var start = v.TrimStart ?? TimeSpan.Zero;
+                    if (en > start) o.WithDuration(en - start);
+                }
+            }
+
+            // 한 계층(인코더)으로 단일 패스 실행. 인자는 FfmpegArgBuilder가 계층별로 생성.
+            async Task<bool> RunSingleAsync(EncoderTier tier)
+            {
+                var outputArgs = FfmpegArgBuilder.BuildOutputArguments(options, outExt, tier, videoWidth);
                 var processor = FFMpegArguments
-                    .FromFileInput(sourcePath)
-                    .OutputToFile(outPath, overwrite: true, o =>
-                    {
-                        if (gpu) o.WithVideoCodec(highRes ? "hevc_nvenc" : "h264_nvenc");
-                        else if (h264Container) o.WithVideoCodec(highRes ? "libx265" : "libx264");
-                        // webm/avi/gif 등 비(非) H.264/HEVC 컨테이너는 컨테이너 기본 코덱(vp9 등)을 사용
-                    })
+                    .FromFileInput(sourcePath, true, AddInput)
+                    .OutputToFile(outPath, overwrite: true, o => { o.WithCustomArgument(outputArgs); AddDuration(o); })
                     .CancellableThrough(cancellationToken);
                 if (total > TimeSpan.Zero)
-                    processor = processor.NotifyOnProgress(
-                        percent => progress?.Report(Math.Clamp(percent / 100.0, 0, 1)), total);
+                    processor = processor.NotifyOnProgress(p => progress?.Report(Math.Clamp(p / 100.0, 0, 1)), total);
                 return await processor.ProcessAsynchronously(throwOnError: true, ffOptions).ConfigureAwait(false);
             }
 
-            bool ok;
-            try
+            // 2패스(목표 비트레이트 최고 품질) — ffmpeg 2회 호출, passlog는 임시 경로로 격리.
+            async Task<bool> RunTwoPassAsync()
             {
-                ok = await RunAsync(tryGpu).ConfigureAwait(false);
+                var passLog = Path.Combine(Path.GetTempPath(), "e2e_2pass_" + Guid.NewGuid().ToString("N"));
+                try
+                {
+                    var args = FfmpegArgBuilder.BuildOutputArguments(options, outExt, EncoderTier.Cpu, videoWidth);
+                    await FFMpegArguments
+                        .FromFileInput(sourcePath, true, AddInput)
+                        .OutputToFile("NUL", overwrite: true, o =>
+                        {
+                            o.WithCustomArgument(args);
+                            o.WithCustomArgument($"-pass 1 -passlogfile \"{passLog}\" -an -f null");
+                            AddDuration(o);
+                        })
+                        .CancellableThrough(cancellationToken)
+                        .ProcessAsynchronously(throwOnError: true, ffOptions).ConfigureAwait(false);
+                    progress?.Report(0.5);
+
+                    var proc2 = FFMpegArguments
+                        .FromFileInput(sourcePath, true, AddInput)
+                        .OutputToFile(outPath, overwrite: true, o =>
+                        {
+                            o.WithCustomArgument(args);
+                            o.WithCustomArgument($"-pass 2 -passlogfile \"{passLog}\"");
+                            AddDuration(o);
+                        })
+                        .CancellableThrough(cancellationToken);
+                    if (total > TimeSpan.Zero)
+                        proc2 = proc2.NotifyOnProgress(p => progress?.Report(Math.Clamp(0.5 + p / 200.0, 0, 1)), total);
+                    return await proc2.ProcessAsynchronously(throwOnError: true, ffOptions).ConfigureAwait(false);
+                }
+                finally
+                {
+                    try
+                    {
+                        foreach (var f in Directory.GetFiles(Path.GetTempPath(), Path.GetFileName(passLog) + "*"))
+                            File.Delete(f);
+                    }
+                    catch { /* 임시 로그 정리 실패 무시 */ }
+                }
             }
-            catch when (tryGpu && !cancellationToken.IsCancellationRequested)
+
+            var twoPass = !isAudioOut && v.RateControl == RateControlMode.TwoPass && v.VideoBitrateKbps is > 0;
+
+            // 시도할 인코더 계층: GPU 적용 가능하면 NVENC→QSV→AMF→CPU, 아니면 CPU만.
+            var gpuOk = !isAudioOut && options.VideoPreferGpu
+                        && FfmpegArgBuilder.GpuApplicable(v, resolvedCodec, outExt) && !twoPass;
+            var tiers = gpuOk
+                ? new[] { EncoderTier.Nvenc, EncoderTier.Qsv, EncoderTier.Amf, EncoderTier.Cpu }
+                : new[] { EncoderTier.Cpu };
+
+            bool ok = false;
+            Exception? lastEx = null;
+            for (var i = 0; i < tiers.Length; i++)
             {
-                // NVENC 미지원(GPU 없음 등) → CPU 인코더로 폴백
-                progress?.Report(0.05);
-                ok = await RunAsync(false).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    ok = twoPass ? await RunTwoPassAsync().ConfigureAwait(false)
+                                 : await RunSingleAsync(tiers[i]).ConfigureAwait(false);
+                    if (ok) break;
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) when (i < tiers.Length - 1)
+                {
+                    // 이 계층(예: NVENC GPU 없음)이 실패하면 다음 계층으로 폴백하며 인자를 재생성.
+                    lastEx = ex;
+                    progress?.Report(0.05);
+                }
             }
 
             progress?.Report(1.0);
-            return ok && File.Exists(outPath)
-                ? ConvertResult.Ok(sourcePath, new[] { outPath })
-                : ConvertResult.Fail(sourcePath, "FFmpeg 변환에 실패했습니다.");
+            if (ok && File.Exists(outPath))
+                return ConvertResult.Ok(sourcePath, new[] { outPath });
+            return ConvertResult.Fail(sourcePath,
+                lastEx is null ? "FFmpeg 변환에 실패했습니다." : $"FFmpeg 변환 실패: {lastEx.Message}", lastEx);
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)

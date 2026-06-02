@@ -78,6 +78,12 @@ public sealed record ConvertOptions
 
     public AiOptions Ai { get; init; } = new();
 
+    /// <summary>영상 인코딩 상세 옵션(FfmpegProvider). 출력이 영상 컨테이너일 때 적용.</summary>
+    public VideoEncodeOptions Video { get; init; } = new();
+
+    /// <summary>오디오 인코딩 상세 옵션(FfmpegProvider). 영상의 오디오 트랙 + 오디오 전용 출력에 적용.</summary>
+    public AudioEncodeOptions Audio { get; init; } = new();
+
     public static ConvertOptions Quick() => new();
 }
 
@@ -171,4 +177,134 @@ public sealed record AiOptions
     public string? Instruction { get; init; }
 
     public int MaxOutputTokens { get; init; } = 2000;
+}
+
+// ── 영상·오디오 인코딩 옵션 (FfmpegProvider) ──────────────────────────────────────────────
+
+public enum VideoCodec { Auto, H264, H265, Vp9, Av1, Copy }
+public enum AudioCodec { Auto, Aac, Mp3, Opus, Vorbis, Flac, Pcm, Copy }
+
+/// <summary>레이트 컨트롤(품질/용량 통제) 모드.</summary>
+public enum RateControlMode
+{
+    /// <summary>상수 품질(CRF) — 품질만 정하고 용량은 가변. 가장 일반적.</summary>
+    Crf,
+    /// <summary>평균 비트레이트(ABR) — 목표 비트레이트 1패스.</summary>
+    AverageBitrate,
+    /// <summary>제약된 CRF — CRF 품질 + 최대 비트레이트 상한(스트리밍).</summary>
+    ConstrainedCrf,
+    /// <summary>고정 비트레이트(CBR) — 방송/스트리밍.</summary>
+    Cbr,
+    /// <summary>2패스 — 목표 비트레이트에서 최고 품질(2회 인코딩).</summary>
+    TwoPass,
+}
+
+public enum AudioRateMode { Bitrate, Vbr }
+
+public enum VideoSpeedPreset { UltraFast, SuperFast, VeryFast, Faster, Fast, Medium, Slow, Slower, VerySlow }
+
+public enum RotateMode { None, Cw90, Ccw90, Rotate180, FlipH, FlipV }
+
+public enum DeinterlaceMode { Off, Yadif, Bwdif }
+
+/// <summary>영상 인코딩 상세 옵션. 모두 불변(get;init). 출력이 영상 컨테이너(mp4/mkv/webm/mov/avi)일 때만 적용.</summary>
+public sealed record VideoEncodeOptions
+{
+    public VideoCodec Codec { get; init; } = VideoCodec.Auto;
+    public RateControlMode RateControl { get; init; } = RateControlMode.Crf;
+
+    /// <summary>CRF 값(낮을수록 고화질). x264/x265 0~51, vp9/av1 0~63.</summary>
+    public int Crf { get; init; } = 23;
+
+    /// <summary>비트레이트 모드의 목표 비디오 비트레이트(kbps).</summary>
+    public int? VideoBitrateKbps { get; init; }
+
+    /// <summary>VBV 최대 비트레이트 상한(kbps). ConstrainedCrf/제약 시. bufsize는 2배 자동.</summary>
+    public int? VideoMaxrateKbps { get; init; }
+
+    public VideoSpeedPreset Preset { get; init; } = VideoSpeedPreset.Medium;
+
+    /// <summary>x264/x265: film/animation/grain/zerolatency 등. av1: 0|1|2.</summary>
+    public string? Tune { get; init; }
+
+    /// <summary>x264: baseline/main/high/high10 …, x265: main/main10 …. null=자동.</summary>
+    public string? Profile { get; init; }
+
+    /// <summary>예: 4.0 / 5.1. null=자동.</summary>
+    public string? Level { get; init; }
+
+    /// <summary>yuv420p(8bit·최대호환), yuv420p10le(10bit), yuv444p …</summary>
+    public string PixelFormat { get; init; } = "yuv420p";
+
+    /// <summary>키프레임 간격(GOP, 프레임 수). null=인코더 자동.</summary>
+    public int? GopSize { get; init; }
+
+    /// <summary>B-프레임 수(CPU 코덱). null=자동.</summary>
+    public int? BFrames { get; init; }
+
+    public bool Lossless { get; init; }
+
+    /// <summary>출력 가로 해상도(px). null=원본 유지. 높이는 종횡비 자동(-2).</summary>
+    public int? ScaleWidth { get; init; }
+
+    /// <summary>입력이 더 클 때만 축소(업스케일 방지).</summary>
+    public bool DownscaleOnly { get; init; } = true;
+
+    public double? Fps { get; init; }
+
+    /// <summary>crop=w:h:x:y (x/y 생략 시 중앙). null=없음.</summary>
+    public string? Crop { get; init; }
+
+    public RotateMode Rotate { get; init; } = RotateMode.None;
+    public DeinterlaceMode Deinterlace { get; init; } = DeinterlaceMode.Off;
+
+    /// <summary>hqdn3d | nlmeans. null=없음.</summary>
+    public string? Denoise { get; init; }
+
+    /// <summary>mp4/mov 웹 스트리밍 최적화(moov atom 앞으로).</summary>
+    public bool FastStart { get; init; } = true;
+
+    /// <summary>GPU(NVENC 등) 적응형 양자화로 화질 향상.</summary>
+    public bool SpatialAq { get; init; } = true;
+
+    public TimeSpan? TrimStart { get; init; }
+    public TimeSpan? TrimEnd { get; init; }
+
+    /// <summary>미노출 옵션을 위한 원시 ffmpeg 출력 인자(예: "-x265-params no-sao=1").</summary>
+    public string? RawArgs { get; init; }
+}
+
+/// <summary>오디오 인코딩 상세 옵션. 영상의 오디오 트랙 + 오디오 전용 출력에 적용.</summary>
+public sealed record AudioEncodeOptions
+{
+    public AudioCodec Codec { get; init; } = AudioCodec.Auto;
+    public AudioRateMode RateMode { get; init; } = AudioRateMode.Bitrate;
+
+    public int AudioBitrateKbps { get; init; } = 192;
+
+    /// <summary>MP3(LAME) VBR 품질 0~9 (낮을수록 고품질).</summary>
+    public int Mp3VbrQuality { get; init; } = 2;
+
+    /// <summary>OGG Vorbis VBR 품질 -1~10 (높을수록 고품질).</summary>
+    public double VorbisVbrQuality { get; init; } = 5.0;
+
+    /// <summary>FLAC 압축 레벨 0~12 (무손실, 크기/속도만 변화).</summary>
+    public int FlacCompressionLevel { get; init; } = 5;
+
+    /// <summary>WAV PCM 포맷: pcm_s16le(16bit) / pcm_s24le(24bit) / pcm_f32le(32bit float).</summary>
+    public string PcmFormat { get; init; } = "pcm_s16le";
+
+    public int? SampleRate { get; init; }
+
+    /// <summary>채널 수: 1(모노)/2(스테레오)/6(5.1)/8(7.1). null=원본.</summary>
+    public int? Channels { get; init; }
+
+    /// <summary>EBU R128 음량 정규화(loudnorm).</summary>
+    public bool Loudnorm { get; init; }
+
+    /// <summary>단순 음량 배수(Loudnorm과 상호배타).</summary>
+    public double? VolumeGain { get; init; }
+
+    /// <summary>오디오 원본 무손실 패스스루(영상만 재인코딩 — 속도↑).</summary>
+    public bool Copy { get; init; }
 }
