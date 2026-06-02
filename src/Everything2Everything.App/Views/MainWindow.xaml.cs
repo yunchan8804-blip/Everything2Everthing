@@ -50,6 +50,9 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     public ICommand PreviewOpenFolderCommand { get; }
     public ICommand RemoveQueueItemCommand { get; }
     public ICommand OpenFolderCommand { get; }
+    public ICommand TabCommand { get; }
+    public ICommand ConflictRuleCommand { get; }
+    public ICommand CombineToggleCommand { get; }
 
     public MainWindow(ConversionEngine engine, ISettingsStore settings, IReadOnlyList<string>? initialFiles = null)
     {
@@ -72,6 +75,9 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         PreviewOpenFolderCommand = new RelayCommand(_ => OnPreviewOpenFolder(this, new RoutedEventArgs()));
         RemoveQueueItemCommand = new RelayCommand(p => RemoveQueueItem(p as QueueItem));
         OpenFolderCommand = new RelayCommand(p => OpenFolderForPath(p as string));
+        TabCommand = new RelayCommand(p => ShowTab(p as string ?? "Past"));
+        ConflictRuleCommand = new RelayCommand(p => SetConflictRule(p as string));
+        CombineToggleCommand = new RelayCommand(_ => UpdateCombineState(SelectedOutputExtension));
 
         InitializeComponent();
 
@@ -146,14 +152,6 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     }
 
     // ============== Tabs ==============
-
-    private void OnTabClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is ToggleButton tb && tb.Tag is string tag)
-        {
-            ShowTab(tag);
-        }
-    }
 
     private void ShowTab(string tag)
     {
@@ -270,32 +268,18 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
     // ============== Sidebar inputs ==============
 
-    private void OnQualityChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    private void SetConflictRule(string? tag)
     {
-        if (QualityValueText is null) return;
-        QualityValueText.Text = $"{(int)e.NewValue}%";
-    }
-
-    private void OnConflictSegmentClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is not ToggleButton clicked) return;
-        ConflictSkipBtn.IsChecked = clicked == ConflictSkipBtn;
-        ConflictRenameBtn.IsChecked = clicked == ConflictRenameBtn;
-        ConflictReplaceBtn.IsChecked = clicked == ConflictReplaceBtn;
-        _conflictRule = (clicked.Tag as string) switch
+        _conflictRule = tag switch
         {
             "Skip" => NameCollision.Skip,
             "Replace" => NameCollision.Overwrite,
             _ => NameCollision.AppendNumber,
         };
-    }
-
-    private void OnAiTaskChanged(object sender, SelectionChangedEventArgs e)
-    {
-        // 번역(인덱스 1)일 때만 대상 언어 입력을 표시
-        if (AiTargetLangPanel is null) return;
-        AiTargetLangPanel.Visibility =
-            (AiTaskCombo?.SelectedIndex == 1) ? Visibility.Visible : Visibility.Collapsed;
+        // 세그먼트 토글 그룹의 상호배제(하나만 체크).
+        ConflictSkipBtn.IsChecked = tag == "Skip";
+        ConflictRenameBtn.IsChecked = tag == "Rename";
+        ConflictReplaceBtn.IsChecked = tag == "Replace";
     }
 
     private void OnPickOutputFolderClick(object sender, RoutedEventArgs e)
@@ -1050,11 +1034,6 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
             (true, _) when !allInputsCombinable => "결합은 이미지 입력만 지원합니다 (PDF/DOCX 등 제외)",
             _ => $"체크 시 큐의 {_activeQueue.Count}개 이미지를 단일 {ext.TrimStart('.').ToUpperInvariant()}로 결합",
         };
-    }
-
-    private void OnCombineToggleChanged(object sender, RoutedEventArgs e)
-    {
-        UpdateCombineState(SelectedOutputExtension);
     }
 
     private void OnOutputFormatChanged(object sender, SelectionChangedEventArgs e)

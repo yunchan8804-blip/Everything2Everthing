@@ -107,8 +107,7 @@
                                           Margin="0,12,0,0"
                                           Content="단일 파일로 결합 (큐 전체 → 한 파일)"
                                           IsEnabled="False"
-                                          Checked="OnCombineToggleChanged"
-                                          Unchecked="OnCombineToggleChanged"/>
+                                          Command="{Binding CombineToggleCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
                                 <TextBlock x:Name="CombineHint" Margin="0,4,0,0"
                                            Style="{StaticResource FsCaptionStyle}"
                                            Text="PDF/TIFF/GIF 출력에 한해 큐의 이미지들을 한 파일로 결합합니다"/>
@@ -129,14 +128,13 @@
                                         <TextBlock x:Name="QualityValueText"
                                                    FontFamily="{StaticResource FsFontMono}" FontSize="12"
                                                    Foreground="{StaticResource FsAccentBlue}"
-                                                   Text="85%"/>
+                                                   Text="{Binding Options.Quality, RelativeSource={RelativeSource AncestorType=Window}, StringFormat={}{0}%}"/>
                                     </Border>
                                 </Grid>
                                 <Slider x:Name="QualitySlider" Margin="0,12,0,0"
                                         Style="{StaticResource FsSliderStyle}"
                                         Minimum="1" Maximum="100"
-                                        Value="{Binding Options.Quality, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"
-                                        ValueChanged="OnQualityChanged"/>
+                                        Value="{Binding Options.Quality, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
                                 <Grid Margin="0,4,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -178,17 +176,17 @@
                                     <UniformGrid Rows="1" Columns="3">
                                         <ToggleButton x:Name="ConflictSkipBtn" Content="Skip"
                                                       Style="{StaticResource FsSegmentStyle}"
-                                                      Click="OnConflictSegmentClick"
-                                                      Tag="Skip"/>
+                                                      Command="{Binding ConflictRuleCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      CommandParameter="Skip"/>
                                         <ToggleButton x:Name="ConflictRenameBtn" Content="Rename"
                                                       Style="{StaticResource FsSegmentStyle}"
                                                       IsChecked="True"
-                                                      Click="OnConflictSegmentClick"
-                                                      Tag="Rename"/>
+                                                      Command="{Binding ConflictRuleCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      CommandParameter="Rename"/>
                                         <ToggleButton x:Name="ConflictReplaceBtn" Content="Replace"
                                                       Style="{StaticResource FsSegmentStyle}"
-                                                      Click="OnConflictSegmentClick"
-                                                      Tag="Replace"/>
+                                                      Command="{Binding ConflictRuleCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      CommandParameter="Replace"/>
                                     </UniformGrid>
                                 </Border>
                             </StackPanel>
@@ -202,8 +200,7 @@
                                     <TextBlock Text="AI 작업" Style="{StaticResource FsLabelStyle}" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <ComboBox x:Name="AiTaskCombo" Margin="0,8,0,0"
-                                          SelectedIndex="0"
-                                          SelectionChanged="OnAiTaskChanged">
+                                          SelectedIndex="0">
                                     <ComboBoxItem Content="요약"/>
                                     <ComboBoxItem Content="번역"/>
                                     <ComboBoxItem Content="교정"/>
@@ -211,8 +208,18 @@
                                 <TextBlock x:Name="AiTaskHint" Margin="0,6,0,0"
                                            Style="{StaticResource FsCaptionStyle}"
                                            Text="텍스트(txt·md·docx) 출력 시 LLM이 적용합니다"/>
-                                <StackPanel x:Name="AiTargetLangPanel" Margin="0,10,0,0"
-                                            Visibility="Collapsed">
+                                <StackPanel x:Name="AiTargetLangPanel" Margin="0,10,0,0">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <!-- 번역(인덱스 1)일 때만 대상 언어 입력 표시 -->
+                                                <DataTrigger Binding="{Binding SelectedIndex, ElementName=AiTaskCombo}" Value="1">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
                                     <TextBlock Text="대상 언어" Style="{StaticResource FsCaptionStyle}"
                                                Margin="0,0,0,4"/>
                                     <TextBox x:Name="AiTargetLangBox"
@@ -338,7 +345,8 @@
                             <StackPanel Orientation="Horizontal">
                                 <ToggleButton x:Name="TabActiveBtn"
                                               Style="{StaticResource FsTabPillStyle}"
-                                              Click="OnTabClick" Tag="Active">
+                                              Command="{Binding TabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                              CommandParameter="Active">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="Active Queue" VerticalAlignment="Center"/>
                                         <Border Margin="8,0,0,0" Style="{StaticResource FsTabBadgeStyle}">
@@ -351,7 +359,8 @@
                                 <ToggleButton x:Name="TabPastBtn" Margin="8,0,0,0"
                                               IsChecked="True"
                                               Style="{StaticResource FsTabPillStyle}"
-                                              Click="OnTabClick" Tag="Past">
+                                              Command="{Binding TabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                              CommandParameter="Past">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="Past Results" VerticalAlignment="Center"/>
                                         <Border Margin="8,0,0,0" Style="{StaticResource FsTabBadgeStyle}">
