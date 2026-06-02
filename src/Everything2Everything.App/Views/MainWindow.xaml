@@ -438,7 +438,8 @@
                         </Grid>
                         <ScrollViewer x:Name="ActiveQueueScroll" VerticalScrollBarVisibility="Auto"
                                       Padding="24" Visibility="Collapsed">
-                            <ItemsControl x:Name="ActiveQueueList">
+                            <ItemsControl x:Name="ActiveQueueList"
+                                          ItemsSource="{Binding ActiveQueue, RelativeSource={RelativeSource AncestorType=Window}}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <!-- row hover: FsListRowStyle 느낌(투명→surface hover, hairline 보더) + 좌측 형식색 accent bar -->
@@ -527,7 +528,8 @@
                     <!-- Past Results view (default) -->
                     <ScrollViewer x:Name="PastResultsView" VerticalScrollBarVisibility="Auto"
                                   Padding="24">
-                        <ItemsControl x:Name="PastResultsList">
+                        <ItemsControl x:Name="PastResultsList"
+                                      ItemsSource="{Binding PastResults, RelativeSource={RelativeSource AncestorType=Window}}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Margin="0,0,0,40">

@@ -30,6 +30,10 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     /// <summary>옵션 패널 XAML이 TwoWay 바인딩하는 옵션 뷰모델(품질·출력폴더).</summary>
     public OptionsViewModel Options => _options;
 
+    /// <summary>Active Queue / Past Results 리스트가 XAML에서 ItemsSource로 바인딩하는 컬렉션.</summary>
+    public ObservableCollection<QueueItem> ActiveQueue => _activeQueue;
+    public ObservableCollection<DateGroup> PastResults => _pastResults;
+
     public ICommand AddFilesCommand { get; }
     public ICommand ProcessQueueCommand { get; }
     public ICommand CloseCommand { get; }
@@ -48,8 +52,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
         InitializeComponent();
 
-        ActiveQueueList.ItemsSource = _activeQueue;
-        PastResultsList.ItemsSource = _pastResults;
+        // ActiveQueueList/PastResultsList의 ItemsSource는 XAML이 ActiveQueue/PastResults에 바인딩(선언적).
 
         InitializeOutputFormats();
         LoadHistory();
