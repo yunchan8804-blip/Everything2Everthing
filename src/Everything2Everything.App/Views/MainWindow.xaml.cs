@@ -39,6 +39,18 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     public ICommand CloseCommand { get; }
     public ICommand RefreshCommand { get; }
 
+    // 상단바·액션 버튼 커맨드 (P5b: Click 핸들러 → 커맨드 바인딩)
+    public ICommand SettingsCommand { get; }
+    public ICommand RegisterCommand { get; }
+    public ICommand DiagnoseCommand { get; }
+    public ICommand ExportLogCommand { get; }
+    public ICommand ClearAllCommand { get; }
+    public ICommand PickOutputFolderCommand { get; }
+    public ICommand CancelProcessingCommand { get; }
+    public ICommand PreviewOpenFolderCommand { get; }
+    public ICommand RemoveQueueItemCommand { get; }
+    public ICommand OpenFolderCommand { get; }
+
     public MainWindow(ConversionEngine engine, ISettingsStore settings, IReadOnlyList<string>? initialFiles = null)
     {
         _engine = engine;
@@ -49,6 +61,17 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
             _ => _activeQueue.Count > 0 && _cts is null);
         CloseCommand = new RelayCommand(_ => Close());
         RefreshCommand = new RelayCommand(_ => ApplyAppDataStats());
+
+        SettingsCommand = new RelayCommand(_ => OnSettingsClick(this, new RoutedEventArgs()));
+        RegisterCommand = new RelayCommand(_ => OnRegisterClick(this, new RoutedEventArgs()));
+        DiagnoseCommand = new RelayCommand(_ => OnDiagnoseClick(this, new RoutedEventArgs()));
+        ExportLogCommand = new RelayCommand(_ => OnExportLogClick(this, new RoutedEventArgs()));
+        ClearAllCommand = new RelayCommand(_ => OnClearAllClick(this, new RoutedEventArgs()));
+        PickOutputFolderCommand = new RelayCommand(_ => OnPickOutputFolderClick(this, new RoutedEventArgs()));
+        CancelProcessingCommand = new RelayCommand(_ => OnCancelProcessingClick(this, new RoutedEventArgs()));
+        PreviewOpenFolderCommand = new RelayCommand(_ => OnPreviewOpenFolder(this, new RoutedEventArgs()));
+        RemoveQueueItemCommand = new RelayCommand(p => RemoveQueueItem(p as QueueItem));
+        OpenFolderCommand = new RelayCommand(p => OpenFolderForPath(p as string));
 
         InitializeComponent();
 
@@ -201,16 +224,14 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         }
     }
 
-    private void OnRemoveQueueItem(object sender, RoutedEventArgs e)
+    private void RemoveQueueItem(QueueItem? item)
     {
-        if (sender is FrameworkElement fe && fe.Tag is QueueItem item)
-        {
-            _activeQueue.Remove(item);
-            UpdateBadges();
-            UpdateProcessQueueButton();
-            UpdateActiveQueueVisibility();
-            RefreshAvailableOutputFormats();
-        }
+        if (item is null) return;
+        _activeQueue.Remove(item);
+        UpdateBadges();
+        UpdateProcessQueueButton();
+        UpdateActiveQueueVisibility();
+        RefreshAvailableOutputFormats();
     }
 
     private void UpdateActiveQueueVisibility()
@@ -811,21 +832,19 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         ApplyAppDataStats();
     }
 
-    private void OnOpenFolderClick(object sender, RoutedEventArgs e)
+    private static void OpenFolderForPath(string? path)
     {
-        if (sender is FrameworkElement fe && fe.Tag is string path && File.Exists(path))
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
+        try
         {
-            try
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "explorer.exe",
-                    Arguments = $"/select,\"{path}\"",
-                    UseShellExecute = true,
-                });
-            }
-            catch { }
+                FileName = "explorer.exe",
+                Arguments = $"/select,\"{path}\"",
+                UseShellExecute = true,
+            });
         }
+        catch { }
     }
 
     public static string HumanizeBytes(long bytes)
