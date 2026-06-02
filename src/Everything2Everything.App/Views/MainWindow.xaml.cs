@@ -16,6 +16,8 @@ namespace Everything2Everything.App.Views;
 
 public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 {
+    private readonly ConversionEngine _engine;
+    private readonly ISettingsStore _settings;
     private readonly ObservableCollection<QueueItem> _activeQueue = new();
     private readonly ObservableCollection<DateGroup> _pastResults = new();
     private CancellationTokenSource? _cts;
@@ -28,10 +30,11 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     public ICommand CloseCommand { get; }
     public ICommand RefreshCommand { get; }
 
-    public MainWindow() : this(null) { }
-
-    public MainWindow(IReadOnlyList<string>? initialFiles)
+    public MainWindow(ConversionEngine engine, ISettingsStore settings, IReadOnlyList<string>? initialFiles = null)
     {
+        _engine = engine;
+        _settings = settings;
+
         AddFilesCommand = new RelayCommand(_ => PickAndAddFiles());
         ProcessQueueCommand = new RelayCommand(_ => OnProcessQueueClick(this, new RoutedEventArgs()),
             _ => _activeQueue.Count > 0 && _cts is null);
@@ -66,7 +69,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
     private async Task RefreshCapabilityStatusAsync()
     {
-        var engine = ((App)Application.Current).Engine;
+        var engine = _engine;
         var notReady = new List<string>();
         foreach (var p in engine.Providers.All)
         {
@@ -90,7 +93,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
     private void OnSettingsClick(object sender, RoutedEventArgs e)
     {
-        var win = new SettingsWindow(((App)Application.Current).Settings) { Owner = this };
+        var win = new SettingsWindow(_settings) { Owner = this };
         win.ShowDialog();
         _ = RefreshCapabilityStatusAsync();
         RefreshAvailableOutputFormats();
@@ -304,7 +307,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         var targetLang = AiTargetLangBox?.Text?.Trim();
         opts.Ai.TargetLanguage = string.IsNullOrEmpty(targetLang) ? null : targetLang;
 
-        opts.VideoPreferGpu = ((App)Application.Current).Settings.Get("video.gpu") != "false";
+        opts.VideoPreferGpu = _settings.Get("video.gpu") != "false";
 
         return opts;
     }
@@ -563,7 +566,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         UpdateProcessQueueButton();
         ShowProcessingProgress(snapshot.Count);
 
-        var engine = ((App)Application.Current).Engine;
+        var engine = _engine;
         var options = BuildOptions();
 
         var reporter = new Progress<ConvertProgress>(p =>
@@ -780,7 +783,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     {
         try
         {
-            ContextMenuRegistrar.Register(((App)Application.Current).Engine);
+            ContextMenuRegistrar.Register(_engine);
             MessageBox.Show(this,
                 "컨텍스트 메뉴를 등록했습니다.\n파일 우클릭 → \"추가 옵션 표시\" 또는 \"JPEG로 빠른 변환/변환…\".",
                 "Everything2Everything", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -794,7 +797,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
     private void OnDiagnoseClick(object sender, RoutedEventArgs e)
     {
-        var window = new DiagnoseWindow(((App)Application.Current).Engine) { Owner = this };
+        var window = new DiagnoseWindow(_engine) { Owner = this };
         window.ShowDialog();
     }
 
@@ -934,7 +937,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     private LossClass? WorstLossForQueue(string outputExt)
     {
         if (_activeQueue.Count == 0) return null;
-        var graph = ((App)Application.Current).Engine.Providers.Graph;
+        var graph = _engine.Providers.Graph;
         LossClass? worst = null;
         foreach (var item in _activeQueue)
         {
@@ -971,7 +974,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     {
         if (OutputFormatCombo is null) return;
 
-        var engine = ((App)Application.Current).Engine;
+        var engine = _engine;
         IReadOnlyCollection<string> available;
 
         if (_activeQueue.Count == 0)

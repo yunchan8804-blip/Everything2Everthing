@@ -2,19 +2,27 @@ using System.Windows;
 using Everything2Everything.App.Cli;
 using Everything2Everything.App.Views;
 using Everything2Everything.Core;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Everything2Everything.App;
 
 public partial class App : Application
 {
-    /// <summary>App·LlmProvider가 공유하는 설정 저장소 (키 저장 즉시 변환에 반영).</summary>
-    public ISettingsStore Settings { get; } = new DpapiSettingsStore();
+    private readonly IServiceProvider _services;
+
+    /// <summary>App·LlmProvider가 공유하는 설정 저장소 (키 저장 즉시 변환에 반영). DI 컨테이너 단일 싱글턴.</summary>
+    public ISettingsStore Settings { get; }
 
     public ConversionEngine Engine { get; }
 
     public App()
     {
-        Engine = Everything2EverythingBootstrap.CreateDefault(Settings);
+        // 컴포지션 루트 — Core의 DI 확장(Scrutor 자동등록)으로 Provider/Registry/Engine/Settings를 구성.
+        var services = new ServiceCollection();
+        services.AddEverything2Everything();
+        _services = services.BuildServiceProvider();
+        Settings = _services.GetRequiredService<ISettingsStore>();
+        Engine = _services.GetRequiredService<ConversionEngine>();
     }
 
     protected override async void OnStartup(StartupEventArgs e)
@@ -68,14 +76,14 @@ public partial class App : Application
 
     private void ShowMainWindow()
     {
-        var window = new MainWindow();
+        var window = new MainWindow(Engine, Settings);
         MainWindow = window;
         window.Show();
     }
 
     private void ShowConvertDialog(IReadOnlyList<string> files)
     {
-        var window = new Views.MainWindow(files);
+        var window = new Views.MainWindow(Engine, Settings, files);
         MainWindow = window;
         window.Show();
     }
