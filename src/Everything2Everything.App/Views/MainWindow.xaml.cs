@@ -1084,6 +1084,20 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
             ".avif" => "AVIF QUALITY",
             _ => "ENCODING QUALITY",
         };
+
+        UpdateMediaPanelForFormat(extension);
+    }
+
+    /// <summary>출력이 영상/오디오일 때만 영상·오디오 인코딩 패널을 노출(영상이면 영상+오디오, 오디오면 오디오만).</summary>
+    private void UpdateMediaPanelForFormat(string? extension)
+    {
+        if (MediaPanel is null) return;
+        var ext = (extension ?? string.Empty).ToLowerInvariant();
+        var isVideo = ext is ".mp4" or ".mkv" or ".webm" or ".mov" or ".avi";
+        var isAudio = ext is ".mp3" or ".aac" or ".m4a" or ".opus" or ".ogg" or ".flac" or ".wav";
+        MediaPanel.Visibility = (isVideo || isAudio) ? Visibility.Visible : Visibility.Collapsed;
+        VideoSubPanel.Visibility = isVideo ? Visibility.Visible : Visibility.Collapsed;
+        AudioSubPanel.Visibility = (isVideo || isAudio) ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void UpdateOutputDestHint(string? extension)
