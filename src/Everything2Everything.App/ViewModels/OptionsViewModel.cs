@@ -13,6 +13,26 @@ public partial class OptionsViewModel : ObservableObject
     /// <summary>JPEG/WebP 품질(1~100). AVIF는 -30 보정.</summary>
     [ObservableProperty] private int _quality = 85;
 
+    /// <summary>EXIF 및 메타데이터 제거 여부.</summary>
+    [ObservableProperty] private bool _stripMetadata;
+
+    public int ImageQuality { get => Quality; set => Quality = value; }
+    public int VideoCrf { get => Crf; set => Crf = value; }
+    public int AudioBitrateKbps
+    {
+        get => AudioBitrateIndex switch { 0 => 96, 1 => 128, 3 => 256, 4 => 320, _ => 192 };
+        set => AudioBitrateIndex = value switch { <= 96 => 0, <= 128 => 1, <= 192 => 2, <= 256 => 3, _ => 4 };
+    }
+    public string VideoPreset
+    {
+        get => ((VideoSpeedPreset)PresetIndex).ToString().ToLowerInvariant();
+        set => PresetIndex = value switch
+        {
+            "ultrafast" => 0, "superfast" => 1, "veryfast" => 2, "faster" => 3,
+            "fast" => 4, "medium" => 5, "slow" => 6, "slower" => 7, "veryslow" => 8, _ => 5
+        };
+    }
+
     /// <summary>비우면 원본 옆 서브폴더. 값이 있으면 사용자 지정 출력 폴더.</summary>
     [ObservableProperty] private string? _customOutputDirectory;
 
@@ -62,6 +82,7 @@ public partial class OptionsViewModel : ObservableObject
             OnCollision = ConflictRule,
             OutputLocation = hasCustom ? OutputLocation.Custom : OutputLocation.SubfolderBesideSource,
             CustomOutputDirectory = hasCustom ? CustomOutputDirectory!.Trim() : null,
+            KeepExifWhenPossible = !StripMetadata,
             Jpeg = new JpegEncodingOptions { Quality = Quality },
             Webp = new WebpEncodingOptions { Quality = Quality },
             Avif = new AvifEncodingOptions { Quality = Math.Clamp(Quality - 30, 1, 100) },

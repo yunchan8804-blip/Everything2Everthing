@@ -11,6 +11,9 @@ using System.Windows.Media.Imaging;
 using Everything2Everything.App.Shell;
 using Everything2Everything.App.ViewModels;
 using Everything2Everything.Core;
+using Everything2Everything.Core.Filters;
+using Everything2Everything.Core.Inspector;
+using Everything2Everything.Core.Presets;
 using LossClass = Everything2Everything.Core.Providers.LossClass;
 
 namespace Everything2Everything.App.Views;
@@ -48,6 +51,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     public ICommand PickOutputFolderCommand { get; }
     public ICommand CancelProcessingCommand { get; }
     public ICommand PreviewOpenFolderCommand { get; }
+    public ICommand PreviewOpenFileCommand { get; }
     public ICommand RemoveQueueItemCommand { get; }
     public ICommand OpenFolderCommand { get; }
     public ICommand TabCommand { get; }
@@ -59,6 +63,41 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     public ICommand DropCommand { get; }
     public ICommand QueueRowCommand { get; }
     public ICommand PastRowCommand { get; }
+
+    // 신규 프리셋, 필터, 일괄 작업 커맨드
+    public ICommand PresetCommand { get; }
+    public ICommand FilterCategoryCommand { get; }
+    public ICommand BatchSelectAllCommand { get; }
+    public ICommand BatchRemoveSelectedCommand { get; }
+    public ICommand BatchClearCompletedCommand { get; }
+
+    private string _searchText = "";
+    public string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            if (_searchText != value)
+            {
+                _searchText = value;
+                ApplyQueueFilters();
+            }
+        }
+    }
+
+    private FilterCategory _selectedCategory = FilterCategory.All;
+    public FilterCategory SelectedCategory
+    {
+        get => _selectedCategory;
+        set
+        {
+            if (_selectedCategory != value)
+            {
+                _selectedCategory = value;
+                ApplyQueueFilters();
+            }
+        }
+    }
 
     public MainWindow(ConversionEngine engine, ISettingsStore settings, IReadOnlyList<string>? initialFiles = null)
     {
@@ -79,6 +118,12 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         PickOutputFolderCommand = new RelayCommand(_ => OnPickOutputFolderClick(this, new RoutedEventArgs()));
         CancelProcessingCommand = new RelayCommand(_ => OnCancelProcessingClick(this, new RoutedEventArgs()));
         PreviewOpenFolderCommand = new RelayCommand(_ => OnPreviewOpenFolder(this, new RoutedEventArgs()));
+        PreviewOpenFileCommand = new RelayCommand(_ => OnPreviewOpenFile(this, new RoutedEventArgs()));
+        PresetCommand = new RelayCommand(p => ApplyPreset(p?.ToString()));
+        FilterCategoryCommand = new RelayCommand(p => ApplyFilterCategory(p?.ToString()));
+        BatchSelectAllCommand = new RelayCommand(p => BatchSelectAll(p));
+        BatchRemoveSelectedCommand = new RelayCommand(_ => BatchRemoveSelected());
+        BatchClearCompletedCommand = new RelayCommand(_ => BatchClearCompleted());
         RemoveQueueItemCommand = new RelayCommand(p => RemoveQueueItem(p as QueueItem));
         OpenFolderCommand = new RelayCommand(p => OpenFolderForPath(p as string));
         TabCommand = new RelayCommand(p => ShowTab(p as string ?? "Past"));
@@ -246,6 +291,10 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         var hasItems = _activeQueue.Count > 0;
         DropZoneEmpty.Visibility = hasItems ? Visibility.Collapsed : Visibility.Visible;
         ActiveQueueScroll.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
+        if (FindName("BatchActionBar") is UIElement batchBar)
+        {
+            batchBar.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
+        }
     }
 
     private void UpdatePastResultsVisibility()
@@ -422,12 +471,13 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
     private void SetPreviewMeta(string fileName, string filePath, string formatLabel, string sizeText)
     {
-        PreviewFileName.Text = fileName;
-        PreviewFilePath.Text = filePath;
-        PreviewFormatText.Text = formatLabel;
-        PreviewSizeText.Text = sizeText;
-        PreviewDimText.Text = "—";
-        PreviewPageText.Text = "—";
+        var info = FileInspectorBuilder.Build(filePath);
+        PreviewFileName.Text = string.IsNullOrEmpty(fileName) ? info.FileName : fileName;
+        PreviewFilePath.Text = string.IsNullOrEmpty(filePath) ? info.FullPath : filePath;
+        PreviewFormatText.Text = string.IsNullOrEmpty(formatLabel) || formatLabel == "—" ? info.Extension.TrimStart('.').ToUpperInvariant() : formatLabel;
+        PreviewSizeText.Text = string.IsNullOrEmpty(sizeText) || sizeText == "—" ? info.FormattedSize : sizeText;
+        PreviewDimText.Text = info.DimensionsOrMeta;
+        PreviewPageText.Text = info.Category.ToString();
     }
 
     private void ShowPreviewLoading()
@@ -476,6 +526,97 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
             });
         }
         catch { }
+    }
+
+    private void OnPreviewOpenFile(object sender, RoutedEventArgs e)
+    {
+        var path = _selectedPreviewPath ?? _selectedPreviewItem?.SourcePath;
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path)
+            {
+                UseShellExecute = true,
+            });
+        }
+        catch { }
+    }
+
+    private void ApplyPreset(string? presetName)
+    {
+        if (Enum.TryParse<PresetType>(presetName, true, out var type))
+        {
+            var firstItem = _activeQueue.FirstOrDefault()?.SourcePath;
+            var ext = !string.IsNullOrEmpty(firstItem) ? Path.GetExtension(firstItem) : ".png";
+            var recommended = ConversionPreset.Apply(type, _options, ext);
+
+            for (int i = 0; i < OutputFormatCombo.Items.Count; i++)
+            {
+                if (OutputFormatCombo.Items[i] is OutputFormatInfo info &&
+                    info.Extension.Equals(recommended, StringComparison.OrdinalIgnoreCase))
+                {
+                    OutputFormatCombo.SelectedIndex = i;
+                    break;
+                }
+            }
+
+            var targets = _activeQueue.Where(q => q.IsSelected).ToList();
+            if (targets.Count == 0) targets = _activeQueue.ToList();
+            foreach (var item in targets)
+            {
+                item.SelectedOutputExtension = recommended;
+            }
+
+            QualitySlider.Value = _options.Quality;
+            QualityValueText.Text = _options.Quality.ToString(CultureInfo.InvariantCulture);
+        }
+    }
+
+    private void ApplyFilterCategory(string? categoryName)
+    {
+        if (Enum.TryParse<FilterCategory>(categoryName, true, out var cat))
+        {
+            SelectedCategory = cat;
+        }
+    }
+
+    private void ApplyQueueFilters()
+    {
+        var view = System.Windows.Data.CollectionViewSource.GetDefaultView(_activeQueue);
+        if (view != null)
+        {
+            view.Filter = item =>
+            {
+                if (item is QueueItem q)
+                {
+                    return QueueFilterMatcher.Matches(q.FileName, _searchText, _selectedCategory);
+                }
+                return true;
+            };
+            view.Refresh();
+        }
+    }
+
+    private void BatchSelectAll(object? parameter)
+    {
+        bool select = parameter is true;
+        BatchQueueService.SetSelectionAll(_activeQueue, select);
+    }
+
+    private void BatchRemoveSelected()
+    {
+        BatchQueueService.RemoveSelected(_activeQueue);
+        UpdateBadges();
+        UpdateProcessQueueButton();
+        UpdateActiveQueueVisibility();
+    }
+
+    private void BatchClearCompleted()
+    {
+        BatchQueueService.ClearCompleted(_activeQueue);
+        UpdateBadges();
+        UpdateProcessQueueButton();
+        UpdateActiveQueueVisibility();
     }
 
     // ============== Export Log ==============
@@ -1132,14 +1273,30 @@ public sealed class QueueItem : INotifyPropertyChanged
     private string _state = "queued";
     private double _progressValue;
     private Visibility _progressVisibility = Visibility.Collapsed;
+    private bool _isSelected;
+    private string? _selectedOutputExtension;
 
-    public required string SourcePath { get; init; }
-    public required string FileName { get; init; }
-    public required string FormatLabel { get; init; }
-    public required Brush FormatBrush { get; init; }
-    public required string SizeText { get; init; }
-    public required string MetaLine { get; init; }
-    public required long SourceSizeBytes { get; init; }
+    public string SourcePath { get; init; } = "";
+    public string FileName { get; init; } = "";
+    public string FormatLabel { get; init; } = "";
+    public Brush FormatBrush { get; init; } = Brushes.Gray;
+    public string SizeText { get; init; } = "";
+    public string MetaLine { get; init; } = "";
+    public long SourceSizeBytes { get; init; }
+
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set { _isSelected = value; Raise(nameof(IsSelected)); }
+    }
+
+    public string? SelectedOutputExtension
+    {
+        get => _selectedOutputExtension;
+        set { _selectedOutputExtension = value; Raise(nameof(SelectedOutputExtension)); }
+    }
+
+    public bool IsDone => _state == "done";
 
     /// <summary>형식 카테고리 글리프(라벨 아이콘).</summary>
     public System.Windows.Media.ImageSource GlyphSource => CategoryGlyphs.ForExtension(Path.GetExtension(SourcePath));
@@ -1147,14 +1304,14 @@ public sealed class QueueItem : INotifyPropertyChanged
     public string StateText
     {
         get => _state;
-        set { _state = value; Raise(nameof(StateText)); }
+        set { _state = value; Raise(nameof(StateText)); Raise(nameof(IsDone)); }
     }
 
     public Brush StateBrush => _state switch
     {
-        "queued" => (Brush)Application.Current.FindResource("FsTextTertiary"),
-        "done" => (Brush)Application.Current.FindResource("FsAccentGreen"),
-        _ => (Brush)Application.Current.FindResource("FsAccentBlue"),
+        "queued" => (Application.Current?.TryFindResource("FsTextTertiary") as Brush) ?? Brushes.Gray,
+        "done" => (Application.Current?.TryFindResource("FsAccentGreen") as Brush) ?? Brushes.LightGreen,
+        _ => (Application.Current?.TryFindResource("FsAccentBlue") as Brush) ?? Brushes.DodgerBlue,
     };
 
     public double ProgressValue
@@ -1198,12 +1355,15 @@ public sealed class QueueItem : INotifyPropertyChanged
         long size = 0;
         try { size = new FileInfo(path).Length; } catch { }
 
+        var brush = (Application.Current?.TryFindResource(brushKey) as Brush)
+                    ?? new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81));
+
         return new QueueItem
         {
             SourcePath = path,
             FileName = Path.GetFileName(path),
             FormatLabel = label,
-            FormatBrush = (Brush)Application.Current.FindResource(brushKey),
+            FormatBrush = brush,
             SizeText = MainWindow.HumanizeBytes(size),
             MetaLine = $"{ext.ToUpperInvariant()} • {MainWindow.HumanizeBytes(size)}",
             SourceSizeBytes = size,

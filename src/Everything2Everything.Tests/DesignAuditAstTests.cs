@@ -227,4 +227,36 @@ public class DesignAuditAstTests
         Assert.True(paddings.Count == 1,
             $"SettingsWindow 푸터 버튼들의 패딩이 서로 다릅니다 (동일 위계 버튼은 패딩 통일 필수): {string.Join(", ", paddings)}");
     }
+
+    [Fact]
+    public void MainWindow_MustHave_Presets_Search_Batch_And_Inspector_Elements()
+    {
+        var mainFile = Path.Combine(ViewsDir, "MainWindow.xaml");
+        var doc = XDocument.Parse(File.ReadAllText(mainFile));
+
+        // 1. Quick Presets (PresetCommand 바인딩 버튼 존재)
+        var presetButtons = doc.Descendants()
+            .Where(e => (e.Name.LocalName == "Button" || e.Name.LocalName == "ToggleButton") &&
+                        e.Attribute("Command")?.Value.Contains("PresetCommand") == true)
+            .ToList();
+        Assert.True(presetButtons.Count >= 4, "빠른 최적화 프리셋 버튼 4개(웹/고화질/문서/모바일)가 MainWindow.xaml에 선언되어야 합니다.");
+
+        // 2. SearchBox (검색창 존재)
+        var searchBox = doc.Descendants()
+            .FirstOrDefault(e => e.Name.LocalName == "TextBox" &&
+                                 e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "SearchBox");
+        Assert.NotNull(searchBox);
+
+        // 3. BatchActionBar (일괄 작업 툴바 존재)
+        var batchBar = doc.Descendants()
+            .FirstOrDefault(e => e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "BatchActionBar");
+        Assert.NotNull(batchBar);
+
+        // 4. Right Inspector Open Button (PreviewOpenFileCommand)
+        var openButtons = doc.Descendants()
+            .Where(e => e.Name.LocalName == "Button" &&
+                        e.Attribute("Command")?.Value.Contains("PreviewOpenFileCommand") == true)
+            .ToList();
+        Assert.NotEmpty(openButtons);
+    }
 }

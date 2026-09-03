@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 # MSIX 빌드 파이프라인.
 # 1) .NET App publish (framework-dependent)
 # 2) C++ Shell DLL 빌드
@@ -27,6 +27,48 @@ $assetsSrc = Join-Path $packagingDir 'Assets'
 
 $appProj = Join-Path $repoRoot 'src\Everything2Everything.App\Everything2Everything.App.csproj'
 $shellProj = Join-Path $repoRoot 'src\Everything2Everything.Shell\Everything2Everything.Shell.vcxproj'
+
+function Import-EnvFile {
+    param([string]$Path)
+    if (Test-Path $Path) {
+        Get-Content $Path | Where-Object { $_ -match '^\s*([^#=\s]+)\s*=\s*(.*)$' } | ForEach-Object {
+            $key = $matches[1].Trim()
+            $val = $matches[2].Trim().Trim('"').Trim("'")
+            if (-not [string]::IsNullOrEmpty($key) -and -not [Environment]::GetEnvironmentVariable($key)) {
+                [Environment]::SetEnvironmentVariable($key, $val, 'Process')
+            }
+        }
+    }
+}
+
+Import-EnvFile (Join-Path $repoRoot '.env')
+Import-EnvFile (Join-Path $packagingDir '.env')
+
+# 환경변수 기반 코드 사이닝 옵션 자동 보정
+if (-not $CertThumbprint -and $env:CODE_SIGN_THUMBPRINT) {
+    $CertThumbprint = $env:CODE_SIGN_THUMBPRINT
+}
+if (-not $PfxPath -and $env:CODE_SIGN_PFX_PATH) {
+    $PfxPath = if ([System.IO.Path]::IsPathRooted($env:CODE_SIGN_PFX_PATH)) { $env:CODE_SIGN_PFX_PATH } else { Join-Path $repoRoot $env:CODE_SIGN_PFX_PATH }
+}
+if (-not $PfxPassword -and $env:CODE_SIGN_PFX_PASSWORD) {
+    $PfxPassword = ConvertTo-SecureString -String $env:CODE_SIGN_PFX_PASSWORD -AsPlainText -Force
+}
+
+# 기본 DevCert 감지 및 자동 서명 활성화
+$devCertPfx = Join-Path $packagingDir 'Everything2Everything-DevCert.pfx'
+if (-not $PfxPath -and -not $CertThumbprint -and (Test-Path $devCertPfx)) {
+    $PfxPath = $devCertPfx
+    if (-not $PfxPassword) {
+        $PfxPassword = ConvertTo-SecureString -String 'Everything2EverythingDev' -AsPlainText -Force
+    }
+}
+
+if (-not $PSBoundParameters.ContainsKey('Sign')) {
+    if ($PfxPath -or $CertThumbprint) {
+        $Sign = $true
+    }
+}
 
 function Find-WindowsSdkTool {
     param([string]$ToolName)
@@ -132,12 +174,15 @@ if (Test-Path $msixPath) { Remove-Item $msixPath -Force }
 if ($LASTEXITCODE -ne 0) { throw 'makeappx pack 실패' }
 Write-Host "✅ MSIX 산출: $msixPath"
 
-# ---- 5) (선택) sign ----
+# ---- 5) sign ----
 if ($Sign) {
     Write-Host ''
-    Write-Host '[5/5] signtool sign'
+    Write-Host '[5/5] signtool sign (MSIX 디지털 서명)'
+    $timestampUrl = if ($env:TIMESTAMP_SERVER_URL) { $env:TIMESTAMP_SERVER_URL } else { 'http://timestamp.digicert.com' }
+    $plain = $null
+
     if ($CertThumbprint) {
-        & $signtool sign /fd SHA256 /sha1 $CertThumbprint /tr 'http://timestamp.digicert.com' /td SHA256 $msixPath | Out-Host
+        & $signtool sign /fd SHA256 /sha1 $CertThumbprint /tr $timestampUrl /td SHA256 $msixPath | Out-Host
     } elseif ($PfxPath) {
         if (-not $PfxPassword) {
             $PfxPassword = Read-Host -AsSecureString -Prompt 'PFX 비밀번호'
@@ -145,7 +190,7 @@ if ($Sign) {
         $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($PfxPassword)
         try {
             $plain = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
-            & $signtool sign /fd SHA256 /a /f $PfxPath /p $plain /tr 'http://timestamp.digicert.com' /td SHA256 $msixPath | Out-Host
+            & $signtool sign /fd SHA256 /a /f $PfxPath /p $plain /tr $timestampUrl /td SHA256 $msixPath | Out-Host
         } finally {
             [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
         }
@@ -154,6 +199,32 @@ if ($Sign) {
     }
     if ($LASTEXITCODE -ne 0) { throw 'signtool sign 실패' }
     Write-Host '✅ 서명 완료'
+
+    # 공개 인증서 (.cer) 내보내기 (신뢰 등록용)
+    $cerPath = Join-Path $distDir "Everything2Everything-DevCert.cer"
+    try {
+        if ($PfxPath -and (Test-Path $PfxPath) -and $plain) {
+            $certObj = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($PfxPath, $plain)
+            [System.IO.File]::WriteAllBytes($cerPath, $certObj.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert))
+            Write-Host "✅ 공개 인증서(.cer) 내보냄: $cerPath" -ForegroundColor Green
+        } elseif ($CertThumbprint) {
+            $certObj = Get-Item "Cert:\CurrentUser\My\$CertThumbprint" -ErrorAction SilentlyContinue
+            if (-not $certObj) { $certObj = Get-Item "Cert:\LocalMachine\My\$CertThumbprint" -ErrorAction SilentlyContinue }
+            if ($certObj) {
+                [System.IO.File]::WriteAllBytes($cerPath, $certObj.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert))
+                Write-Host "✅ 공개 인증서(.cer) 내보냄: $cerPath" -ForegroundColor Green
+            }
+        }
+    } catch {
+        Write-Warning "공개 인증서 내보내기 경고: $_"
+    }
+
+    # 1-클릭 설치기 스크립트 복사
+    $installCmdSrc = Join-Path $packagingDir 'Install.cmd'
+    if (Test-Path $installCmdSrc) {
+        Copy-Item $installCmdSrc -Destination (Join-Path $distDir 'Install.cmd') -Force
+        Write-Host "✅ 1-클릭 설치기 복사 완료: dist\Install.cmd" -ForegroundColor Green
+    }
 } else {
     Write-Host ''
     Write-Host '[5/5] 서명 건너뜀 (-Sign 미지정). 사이드로드 시 인증서 필요.'

@@ -34,6 +34,20 @@ $RootDir = Split-Path -Parent $ScriptDir
 $Tag = "v$Version"
 $FourPartVersion = "$Version.0"
 
+function Import-EnvFile {
+    param([string]$Path)
+    if (Test-Path $Path) {
+        Get-Content $Path | Where-Object { $_ -match '^\s*([^#=\s]+)\s*=\s*(.*)$' } | ForEach-Object {
+            $key = $matches[1].Trim()
+            $val = $matches[2].Trim().Trim('"').Trim("'")
+            if (-not [string]::IsNullOrEmpty($key) -and -not [Environment]::GetEnvironmentVariable($key)) {
+                [Environment]::SetEnvironmentVariable($key, $val, 'Process')
+            }
+        }
+    }
+}
+Import-EnvFile (Join-Path $RootDir '.env')
+
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host "  Everything2Everything 릴리즈 파이프라인" -ForegroundColor Cyan
 Write-Host "  버전: $Version (Tag: $Tag, Manifest: $FourPartVersion)" -ForegroundColor Cyan
@@ -107,12 +121,40 @@ if (-not $DryRun) {
     Compress-Archive -Path "$publishDir\*" -DestinationPath $portableZip
     Write-Host "  - Portable ZIP 생성: $portableZip" -ForegroundColor Gray
 
-    # 3. MSIX 패키징
+    # 3. MSIX 패키징 및 디지털 서명
     $buildMsixScript = Join-Path $RootDir "packaging/BuildMsix.ps1"
     if (Test-Path $buildMsixScript) {
-        Write-Host "  - MSIX 패키징 실행..." -ForegroundColor Gray
-        & pwsh -File $buildMsixScript -Configuration Release -Platform x64
+        Write-Host "  - MSIX 패키징 및 자동 서명 실행..." -ForegroundColor Gray
+        & pwsh -File $buildMsixScript -Configuration Release -Platform x64 -Sign
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "MSIX 패키징 및 서명 실패!"
+            exit 1
+        }
     }
+
+    # 서명 무결성 검증 (0x800B010A 방지 게이트)
+    $msixFile = Join-Path $distDir "Everything2Everything-x64.msix"
+    if (Test-Path $msixFile) {
+        $sig = Get-AuthenticodeSignature $msixFile
+        if ($sig.Status -ne 'Valid') {
+            Write-Error "MSIX 서명 검증 실패 (Status: $($sig.Status))! 미서명 패키지는 배포할 수 없습니다."
+            exit 1
+        }
+        Write-Host "  - MSIX 디지털 서명 검증 통과 (Status: Valid, Signer: $($sig.SignerCertificate.Subject))" -ForegroundColor Green
+    }
+
+    # 4. 1-클릭 설치 번들 ZIP 생성 (MSIX + .cer + Install.cmd)
+    $setupZip = Join-Path $distDir "Everything2Everything-$Version-Setup.zip"
+    $cerFile = Join-Path $distDir "Everything2Everything-DevCert.cer"
+    $installCmd = Join-Path $distDir "Install.cmd"
+
+    $bundleFiles = @($msixFile)
+    if (Test-Path $cerFile) { $bundleFiles += $cerFile }
+    if (Test-Path $installCmd) { $bundleFiles += $installCmd }
+
+    if (Test-Path $setupZip) { Remove-Item $setupZip -Force }
+    Compress-Archive -Path $bundleFiles -DestinationPath $setupZip
+    Write-Host "  - 1-클릭 설치 번들 ZIP 생성: $setupZip" -ForegroundColor Gray
 } else {
     Write-Host "  (DryRun: 빌드 단계 건너뜀)" -ForegroundColor DarkGray
 }
@@ -198,6 +240,18 @@ $ReleaseNotes
             Write-Host "  - MSIX 패키지 업로드 중..." -ForegroundColor Gray
             curl.exe -s -u "yunchan:ONVI2v4J#y" -X POST "$uploadUrl`?name=Everything2Everything-x64.msix" -F "attachment=@$msixFile" | Out-Null
             Write-Host "    -> MSIX 업로드 완료!" -ForegroundColor Gray
+        }
+
+        if (Test-Path $setupZip) {
+            Write-Host "  - 1-클릭 설치 번들 ZIP 업로드 중..." -ForegroundColor Gray
+            curl.exe -s -u "yunchan:ONVI2v4J#y" -X POST "$uploadUrl`?name=Everything2Everything-$Version-Setup.zip" -F "attachment=@$setupZip" | Out-Null
+            Write-Host "    -> 1-클릭 설치 번들 ZIP 업로드 완료!" -ForegroundColor Gray
+        }
+
+        if (Test-Path $cerFile) {
+            Write-Host "  - 공개 개발자 인증서(.cer) 업로드 중..." -ForegroundColor Gray
+            curl.exe -s -u "yunchan:ONVI2v4J#y" -X POST "$uploadUrl`?name=Everything2Everything-DevCert.cer" -F "attachment=@$cerFile" | Out-Null
+            Write-Host "    -> 공개 개발자 인증서 업로드 완료!" -ForegroundColor Gray
         }
     } catch {
         Write-Warning "Forgejo 릴리즈 API 호출 중 경고: $_"
