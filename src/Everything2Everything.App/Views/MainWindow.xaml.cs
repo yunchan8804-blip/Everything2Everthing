@@ -710,29 +710,33 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         var entries = HistoryStorage.Load();
         if (entries.Count == 0)
         {
-            // 첫 실행: 데모 데이터로 시각적 가이드 제공
-            SeedDemoHistory();
+            UpdatePastResultsVisibility();
             return;
         }
 
         // 가장 오래된 것부터 추가 (Insert(0)이 누적)
         foreach (var e in entries.OrderBy(e => e.Timestamp))
             AddToHistoryGroups(e);
+
+        UpdatePastResultsVisibility();
     }
+
+    private Brush SafeBrush(string key) =>
+        (TryFindResource(key) as Brush) ?? (Application.Current?.TryFindResource(key) as Brush) ?? new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81));
 
     private void SeedDemoHistory()
     {
         var today = FormatDateLabel(DateOnly.FromDateTime(DateTime.Today));
         var todayGroup = new DateGroup(today);
         todayGroup.Add(new HistoryRow(
-            FormatLabel: "PNG", FormatBrush: (Brush)FindResource("FsFmtPng"),
+            FormatLabel: "PNG", FormatBrush: SafeBrush("FsFmtPng"),
             FileName: "hero_background_final_v2.png",
             MetaLine: "08:42:12 • 3200x1800",
             SizeText: "14.2 MB",
             SavingsText: "↓ 1.1 MB",
             SourcePath: "<demo>"));
         todayGroup.Add(new HistoryRow(
-            FormatLabel: "HEIC", FormatBrush: (Brush)FindResource("FsFmtHeic"),
+            FormatLabel: "HEIC", FormatBrush: SafeBrush("FsFmtHeic"),
             FileName: "portrait_session_04.heic",
             MetaLine: "08:35:45 • 4032x3024",
             SizeText: "6.8 MB",
@@ -744,14 +748,14 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         var yesterday = FormatDateLabel(DateOnly.FromDateTime(DateTime.Today.AddDays(-1)));
         var yGroup = new DateGroup(yesterday);
         yGroup.Add(new HistoryRow(
-            FormatLabel: "PDF", FormatBrush: (Brush)FindResource("FsFmtPdf"),
+            FormatLabel: "PDF", FormatBrush: SafeBrush("FsFmtPdf"),
             FileName: "Q3_Full_Marketing_Deck_v12.pdf",
             MetaLine: "17:22:10 • 124 Pages",
             SizeText: "245.4 MB",
             SavingsText: "↓ 12.8 MB",
             SourcePath: "<demo>"));
-        yGroup.Add(new HistoryRow(
-            FormatLabel: "PNG", FormatBrush: (Brush)FindResource("FsFmtPng"),
+        todayGroup.Add(new HistoryRow(
+            FormatLabel: "PNG", FormatBrush: SafeBrush("FsFmtPng"),
             FileName: "asset_bundle_archive_raw.png",
             MetaLine: "16:45:33 • 8000x8000",
             SizeText: "82.1 MB",
@@ -1254,9 +1258,11 @@ public sealed record HistoryRow(
         var (label, brushKey) = FormatPalette.For(ext);
         var saved = e.SavingsBytes;
         var arrow = saved >= 0 ? "↓" : "↑";
+        var brush = (Application.Current?.TryFindResource(brushKey) as Brush) 
+                    ?? new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81));
         return new HistoryRow(
             FormatLabel: label,
-            FormatBrush: (Brush)Application.Current.FindResource(brushKey),
+            FormatBrush: brush,
             FileName: Path.GetFileName(e.SourcePath),
             MetaLine: $"{e.Timestamp:HH:mm:ss} • {e.OutputCount} output(s)",
             SizeText: MainWindow.HumanizeBytes(e.SourceSizeBytes),

@@ -190,15 +190,14 @@ $ReleaseNotes
 
         if (Test-Path $portableZip) {
             Write-Host "  - Portable ZIP 업로드 중..." -ForegroundColor Gray
-            # Forgejo asset upload API 호출
-            curl -s -u "yunchan:ONVI2v4J#y" -X POST "$uploadUrl`?name=Everything2Everything-$Version-win-x64-portable.zip" -H "Content-Type: application/zip" --data-binary "@$portableZip" | Out-Null
-            Write-Host "    -> 업로드 완료!" -ForegroundColor Gray
+            curl.exe -s -u "yunchan:ONVI2v4J#y" -X POST "$uploadUrl`?name=Everything2Everything-$Version-win-x64-portable.zip" -F "attachment=@$portableZip" | Out-Null
+            Write-Host "    -> Portable ZIP 업로드 완료!" -ForegroundColor Gray
         }
 
         if (Test-Path $msixFile) {
             Write-Host "  - MSIX 패키지 업로드 중..." -ForegroundColor Gray
-            curl -s -u "yunchan:ONVI2v4J#y" -X POST "$uploadUrl`?name=Everything2Everything-x64.msix" -H "Content-Type: application/octet-stream" --data-binary "@$msixFile" | Out-Null
-            Write-Host "    -> 업로드 완료!" -ForegroundColor Gray
+            curl.exe -s -u "yunchan:ONVI2v4J#y" -X POST "$uploadUrl`?name=Everything2Everything-x64.msix" -F "attachment=@$msixFile" | Out-Null
+            Write-Host "    -> MSIX 업로드 완료!" -ForegroundColor Gray
         }
     } catch {
         Write-Warning "Forgejo 릴리즈 API 호출 중 경고: $_"

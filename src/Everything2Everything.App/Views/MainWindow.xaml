@@ -4,7 +4,7 @@
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
                  xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
                  Title="FormatShift Utility"
-                 Icon="pack://application:,,,/Assets/app-icon.png"
+                 Icon="pack://application:,,,/Everything2Everything;component/Assets/app-icon.png"
                  Width="1280" Height="960"
                  MinWidth="1080" MinHeight="640"
                  ExtendsContentIntoTitleBar="True"
@@ -75,7 +75,7 @@
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Image Width="22" Height="22"
                                    RenderOptions.BitmapScalingMode="HighQuality"
-                                   Source="pack://application:,,,/Assets/logo-mark.png"/>
+                                   Source="pack://application:,,,/Everything2Everything;component/Assets/logo-mark.png"/>
                             <TextBlock Margin="9,0,0,0" FontSize="14" FontWeight="SemiBold"
                                        Foreground="{StaticResource FsTextPrimary}"
                                        FontFamily="{StaticResource FsFontSans}">
@@ -211,7 +211,7 @@
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <Image Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,6,0"
                                            RenderOptions.BitmapScalingMode="HighQuality"
-                                           Source="pack://application:,,,/Assets/glyph-ai.png"/>
+                                           Source="pack://application:,,,/Everything2Everything;component/Assets/glyph-ai.png"/>
                                     <TextBlock Text="AI 작업" Style="{StaticResource FsLabelStyle}" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <ComboBox x:Name="AiTaskCombo" Margin="0,8,0,0"
@@ -611,7 +611,7 @@
                                         <Image Width="128" Height="128"
                                                HorizontalAlignment="Center"
                                                RenderOptions.BitmapScalingMode="HighQuality"
-                                               Source="pack://application:,,,/Assets/illus-empty.png"/>
+                                               Source="pack://application:,,,/Everything2Everything;component/Assets/illus-empty.png"/>
                                         <TextBlock Margin="0,16,0,0" FontSize="16" FontWeight="SemiBold"
                                                    Foreground="{StaticResource FsTextPrimary}"
                                                    HorizontalAlignment="Center"

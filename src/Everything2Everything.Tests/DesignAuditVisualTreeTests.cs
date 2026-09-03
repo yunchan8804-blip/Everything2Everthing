@@ -54,6 +54,28 @@ public class DesignAuditVisualTreeTests
     }
 
     [Fact]
+    public void MainWindow_MeasureAndArrange_HasValidLayoutBounds()
+    {
+        RunOnSta(() =>
+        {
+            var engine = Everything2EverythingBootstrap.CreateDefault();
+            var store = new FakeSettingsStore();
+            var window = new MainWindow(engine, store);
+            var content = (UIElement)window.Content;
+            content.Measure(new Size(1200, 800));
+            content.Arrange(new Rect(0, 0, 1200, 800));
+
+            Assert.False(double.IsNaN(content.DesiredSize.Width));
+            Assert.False(double.IsNaN(content.DesiredSize.Height));
+            Assert.True(content.DesiredSize.Width > 0);
+            Assert.True(content.DesiredSize.Height > 0);
+
+            var buttons = FindLogicalChildren<ButtonBase>(window).ToList();
+            Assert.NotEmpty(buttons);
+        });
+    }
+
+    [Fact]
     public void DiagnoseWindow_MeasureAndArrange_HasValidLayoutBounds()
     {
         RunOnSta(() =>
