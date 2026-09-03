@@ -1,3 +1,5 @@
+using Everything2Everything.Core.Filters;
+
 namespace Everything2Everything.Core.Providers;
 
 /// <summary>
@@ -55,7 +57,7 @@ public sealed class ConversionGraph
             foreach (var e in EdgesFrom(node))
             {
                 if (!allowLossy && e.Loss == LossClass.Rasterize) continue;
-                if (!string.Equals(e.To, start, StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(e.To, start, StringComparison.OrdinalIgnoreCase) && MediaConversionNegotiator.CanConvert(start, e.To))
                     result.Add(e.To);
                 var next = (e.To, hop + 1);
                 if (visited.Add(next))
@@ -74,6 +76,9 @@ public sealed class ConversionGraph
         var start = ConversionPair.Normalize(inputExt);
         var goal = ConversionPair.Normalize(outputExt);
         if (maxHops < 1) maxHops = 1;
+
+        if (!MediaConversionNegotiator.CanConvert(start, goal))
+            return null;
 
         if (string.Equals(start, goal, StringComparison.OrdinalIgnoreCase))
         {

@@ -4,7 +4,7 @@ using Microsoft.Win32;
 
 namespace Everything2Everything.App.Shell;
 
-internal static class ContextMenuRegistrar
+public static class ContextMenuRegistrar
 {
     private const string MainVerb = "Everything2Everything";
     private const string MainLabel = "Everything2Everything으로 변환";
@@ -25,7 +25,21 @@ internal static class ContextMenuRegistrar
         (".gif",  "GIF (.gif)",      "10"),
         (".tif",  "TIFF (.tif)",     "11"),
         (".bmp",  "BMP (.bmp)",      "12"),
+        (".mp4",  "MP4 (.mp4)",      "13"),
+        (".mp3",  "MP3 (.mp3)",      "14"),
+        (".xlsx", "Excel (.xlsx)",   "15"),
     };
+
+    public static IReadOnlyList<(string Ext, string Label, string SortPrefix)> GetAvailableOutputs(ConversionEngine engine, string ext)
+    {
+        var outputs = engine.Providers.OutputsForInput(ext)
+            .Select(o => o.ToLowerInvariant())
+            .ToHashSet();
+
+        return PopularOutputs
+            .Where(p => outputs.Contains(p.Ext) && !string.Equals(p.Ext, ext, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
 
     public static void Register(ConversionEngine engine)
     {
@@ -34,14 +48,7 @@ internal static class ContextMenuRegistrar
 
         foreach (var ext in CollectInputExtensions(engine))
         {
-            var outputs = engine.Providers.OutputsForInput(ext)
-                .Select(o => o.ToLowerInvariant())
-                .ToHashSet();
-
-            var availableOutputs = PopularOutputs
-                .Where(p => outputs.Contains(p.Ext) && !string.Equals(p.Ext, ext, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
+            var availableOutputs = GetAvailableOutputs(engine, ext);
             if (availableOutputs.Count == 0) continue;
 
             WriteCascade(ext, exe, icon, availableOutputs);

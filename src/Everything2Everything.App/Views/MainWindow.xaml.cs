@@ -325,6 +325,11 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
             ProcessQueueButton.Content = "Idle — drop files to begin";
             ProcessQueueButton.IsEnabled = false;
         }
+        else if (string.IsNullOrEmpty(SelectedOutputExtension))
+        {
+            ProcessQueueButton.Content = "변환 불가 (공통 형식 없음)";
+            ProcessQueueButton.IsEnabled = false;
+        }
         else
         {
             ProcessQueueButton.Content = $"Process Queue ({count})";
@@ -1128,33 +1133,49 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
             _activeQueue.Select(q => q.SourcePath).ToList());
 
         var visible = AllFormats.Where(f => available.Contains(f.Extension)).ToList();
-        if (visible.Count == 0)
-            visible = AllFormats.Where(f => f.Extension == ".jpg").ToList();
+        var hasCommonFormats = visible.Count > 0;
 
-        var keepExt = SelectedOutputExtension;
-        if (keepExt is null || !visible.Any(v => string.Equals(v.Extension, keepExt, StringComparison.OrdinalIgnoreCase)))
-            keepExt = visible[0].Extension;
+        string? keepExt = null;
+        if (hasCommonFormats)
+        {
+            keepExt = SelectedOutputExtension;
+            if (keepExt is null || !visible.Any(v => string.Equals(v.Extension, keepExt, StringComparison.OrdinalIgnoreCase)))
+                keepExt = visible[0].Extension;
+        }
 
         _suppressFormatChanged = true;
         try
         {
             OutputFormatCombo.Items.Clear();
-            foreach (var f in visible)
+            if (hasCommonFormats)
+            {
+                foreach (var f in visible)
+                {
+                    OutputFormatCombo.Items.Add(new ComboBoxItem
+                    {
+                        Content = BuildFormatItemContent(f),
+                        Tag = f.Extension,
+                    });
+                }
+                for (var i = 0; i < OutputFormatCombo.Items.Count; i++)
+                {
+                    if (((ComboBoxItem)OutputFormatCombo.Items[i]!).Tag is string tag
+                        && string.Equals(tag, keepExt, StringComparison.OrdinalIgnoreCase))
+                    {
+                        OutputFormatCombo.SelectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            else if (_activeQueue.Count > 0)
             {
                 OutputFormatCombo.Items.Add(new ComboBoxItem
                 {
-                    Content = BuildFormatItemContent(f),
-                    Tag = f.Extension,
+                    Content = "(공통 변환 형식 없음)",
+                    Tag = string.Empty,
+                    IsEnabled = false,
                 });
-            }
-            for (var i = 0; i < OutputFormatCombo.Items.Count; i++)
-            {
-                if (((ComboBoxItem)OutputFormatCombo.Items[i]!).Tag is string tag
-                    && string.Equals(tag, keepExt, StringComparison.OrdinalIgnoreCase))
-                {
-                    OutputFormatCombo.SelectedIndex = i;
-                    break;
-                }
+                OutputFormatCombo.SelectedIndex = 0;
             }
         }
         finally
@@ -1167,12 +1188,15 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         UpdateQualityPanelForFormat(keepExt);
         UpdateOutputDestHint(keepExt);
         UpdateCombineState(keepExt);
+        UpdateProcessQueueButton();
 
         if (OutputFormatHint is not null)
         {
             OutputFormatHint.Text = _activeQueue.Count == 0
                 ? "큐에 파일을 추가하면 변환 가능한 형식으로 자동 필터링됩니다"
-                : $"큐의 모든 파일이 변환 가능한 형식 ({visible.Count}개)";
+                : hasCommonFormats
+                    ? $"큐의 모든 파일이 변환 가능한 형식 ({visible.Count}개)"
+                    : "선택된 파일들의 공통 변환 형식이 없습니다 (서로 다른 미디어)";
         }
     }
 
@@ -1215,9 +1239,15 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     private void UpdateOutputFormatBadge(string? extension)
     {
         if (OutputFormatBadge is null || OutputFormatBadgeText is null) return;
+
         var info = AllFormats.FirstOrDefault(f =>
             string.Equals(f.Extension, extension, StringComparison.OrdinalIgnoreCase));
-        if (info is null) return;
+        if (info is null)
+        {
+            OutputFormatBadgeText.Text = "—";
+            OutputFormatBadge.Background = System.Windows.Media.Brushes.Gray;
+            return;
+        }
 
         OutputFormatBadgeText.Text = info.BadgeText;
         var resource = TryFindResource(info.ColorResource);

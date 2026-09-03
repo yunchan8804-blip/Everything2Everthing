@@ -1,3 +1,4 @@
+using Everything2Everything.Core.Filters;
 using Everything2Everything.Core.Providers;
 
 namespace Everything2Everything.Core;
@@ -105,6 +106,11 @@ public sealed class ConversionEngine
 
         var output = ConversionPair.Normalize(outputExtension);
         var inputExt = ConversionPair.Normalize(Path.GetExtension(sourcePath));
+
+        if (!MediaConversionNegotiator.CanConvert(inputExt, output))
+        {
+            return ConvertResult.Fail(sourcePath, $"{inputExt} → {output} 변환은 지원하지 않는 미디어 전환입니다.");
+        }
 
         // 그래프 경로 탐색: 직접 엣지가 있으면 1홉, 없으면 손실 가중치 기반 멀티홉을 자동 합성.
         var maxHops = options.AllowMultiHop ? Math.Max(1, options.MaxHops) : 1;
