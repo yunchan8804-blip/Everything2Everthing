@@ -79,6 +79,7 @@ public partial class App : Application
         var window = new MainWindow(Engine, Settings);
         MainWindow = window;
         window.Show();
+        window.Activate();
     }
 
     private void ShowConvertDialog(IReadOnlyList<string> files)
@@ -86,6 +87,7 @@ public partial class App : Application
         var window = new Views.MainWindow(Engine, Settings, files);
         MainWindow = window;
         window.Show();
+        window.Activate();
     }
 
     private void ShowDiagnoseWindow()
@@ -93,6 +95,7 @@ public partial class App : Application
         var window = new DiagnoseWindow(Engine);
         MainWindow = window;
         window.Show();
+        window.Activate();
     }
 
     private async Task RunQuickAsync(IReadOnlyList<string> files, string outputExtension)

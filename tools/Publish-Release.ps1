@@ -227,8 +227,14 @@ $ReleaseNotes
 
     try {
         $releaseUrl = "$ForgejoHost/api/v1/repos/$ForgejoOwner/$ForgejoRepo/releases"
-        $releaseResponse = Invoke-RestMethod -Uri $releaseUrl -Method Post -Headers $authHeader -Body $releaseBody
-        Write-Host "✅ Forgejo 정식 릴리즈 생성 완료: $($releaseResponse.html_url)" -ForegroundColor Green
+        $existingReleases = Invoke-RestMethod -Uri $releaseUrl -Method Get -Headers $authHeader
+        $releaseResponse = $existingReleases | Where-Object { $_.tag_name -eq $Tag } | Select-Object -First 1
+        if (-not $releaseResponse) {
+            $releaseResponse = Invoke-RestMethod -Uri $releaseUrl -Method Post -Headers $authHeader -Body $releaseBody
+            Write-Host "✅ Forgejo 정식 릴리즈 생성 완료: $($releaseResponse.html_url)" -ForegroundColor Green
+        } else {
+            Write-Host "ℹ️ 기존 릴리즈 확인됨 (ID: $($releaseResponse.id)): $($releaseResponse.html_url)" -ForegroundColor Cyan
+        }
 
         # 첨부 파일 업로드
         $uploadUrl = "$ForgejoHost/api/v1/repos/$ForgejoOwner/$ForgejoRepo/releases/$($releaseResponse.id)/assets"
