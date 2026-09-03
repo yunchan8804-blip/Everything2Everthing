@@ -152,7 +152,13 @@ if (-not (Test-Path $shellDll)) { throw "Shell DLL 산출물 없음: $shellDll" 
 # ---- 3) Layout 디렉토리 ----
 Write-Host ''
 Write-Host '[3/5] Layout 디렉토리 구성'
-if (Test-Path $layoutDir) { Remove-Item $layoutDir -Recurse -Force }
+if (Test-Path $layoutDir) {
+    try { Remove-Item $layoutDir -Recurse -Force -ErrorAction Stop }
+    catch {
+        Start-Sleep -Milliseconds 600
+        Remove-Item $layoutDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
 New-Item -ItemType Directory -Path $layoutDir | Out-Null
 
 Copy-Item -Path (Join-Path $publishOut '*') -Destination $layoutDir -Recurse -Force

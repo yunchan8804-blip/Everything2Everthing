@@ -105,6 +105,10 @@ $publishDir = Join-Path $RootDir "publish"
 $distDir = Join-Path $RootDir "packaging/dist"
 
 if (-not $DryRun) {
+    # 0. 실행 중인 인스턴스 중지 (파일 잠금 방지)
+    Stop-Process -Name "Everything2Everything" -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Milliseconds 500
+
     # 1. Portable EXE Publish
     Write-Host "  - Portable 바이너리 빌드 (win-x64 Release)..." -ForegroundColor Gray
     dotnet publish (Join-Path $RootDir "src/Everything2Everything.App/Everything2Everything.App.csproj") `
