@@ -208,7 +208,7 @@
 
                             <!-- AI Task -->
                             <StackPanel x:Name="AiTaskPanel" Margin="0,0,0,32">
-                                <StackPanel Orientation="Horizontal">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <Image Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,6,0"
                                            RenderOptions.BitmapScalingMode="HighQuality"
                                            Source="pack://application:,,,/Assets/glyph-ai.png"/>
@@ -504,16 +504,17 @@
                                 Background="{StaticResource FsBgPanel}"
                                 BorderBrush="{StaticResource FsBorderSubtle}"
                                 BorderThickness="1" CornerRadius="20" Padding="4">
-                            <StackPanel Orientation="Horizontal">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <ToggleButton x:Name="TabActiveBtn"
                                               Style="{StaticResource FsTabPillStyle}"
                                               Command="{Binding TabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                               CommandParameter="Active">
-                                    <StackPanel Orientation="Horizontal">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <TextBlock Text="Active Queue" VerticalAlignment="Center"/>
-                                        <Border Margin="8,0,0,0" Style="{StaticResource FsTabBadgeStyle}">
+                                        <Border Margin="8,0,0,0" Style="{StaticResource FsTabBadgeStyle}" VerticalAlignment="Center">
                                             <TextBlock x:Name="TabActiveBadge" Text="0"
                                                        FontSize="10" FontWeight="SemiBold"
+                                                       VerticalAlignment="Center"
                                                        Foreground="{StaticResource FsTextTertiary}"/>
                                         </Border>
                                     </StackPanel>
@@ -523,11 +524,12 @@
                                               Style="{StaticResource FsTabPillStyle}"
                                               Command="{Binding TabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                               CommandParameter="Past">
-                                    <StackPanel Orientation="Horizontal">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <TextBlock Text="Past Results" VerticalAlignment="Center"/>
-                                        <Border Margin="8,0,0,0" Style="{StaticResource FsTabBadgeStyle}">
+                                        <Border Margin="8,0,0,0" Style="{StaticResource FsTabBadgeStyle}" VerticalAlignment="Center">
                                             <TextBlock x:Name="TabPastBadge" Text="0"
                                                        FontSize="10" FontWeight="SemiBold"
+                                                       VerticalAlignment="Center"
                                                        Foreground="{StaticResource FsTextTertiary}"/>
                                         </Border>
                                     </StackPanel>
@@ -536,22 +538,47 @@
                         </Border>
 
                         <!-- Actions -->
-                        <StackPanel Grid.Column="1" Orientation="Horizontal">
-                            <Button Content="⚙ 설정" Margin="0,0,8,0"
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Margin="0,0,8,0"
                                     Style="{StaticResource FsSecondaryButtonStyle}"
-                                    Command="{Binding SettingsCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                            <Button Content="Register Menu" Margin="0,0,8,0"
+                                    Command="{Binding SettingsCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="Settings24" FontSize="14" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="설정" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Margin="0,0,8,0"
                                     Style="{StaticResource FsSecondaryButtonStyle}"
-                                    Command="{Binding RegisterCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                            <Button Content="Diagnose" Margin="0,0,8,0"
+                                    Command="{Binding RegisterCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="AppsAddIn24" FontSize="14" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="우클릭 메뉴 등록" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Margin="0,0,8,0"
                                     Style="{StaticResource FsSecondaryButtonStyle}"
-                                    Command="{Binding DiagnoseCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                            <Button Content="Export Log" Margin="0,0,8,0"
+                                    Command="{Binding DiagnoseCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="Stethoscope24" FontSize="14" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="진단" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Margin="0,0,8,0"
                                     Style="{StaticResource FsSecondaryButtonStyle}"
-                                    Command="{Binding ExportLogCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                            <Button x:Name="ClearAllButton" Content="Clear All"
+                                    Command="{Binding ExportLogCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="ArrowDownload24" FontSize="14" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="로그 내보내기" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="ClearAllButton" Margin="0,0,8,0"
                                     Style="{StaticResource FsSecondaryButtonStyle}"
-                                    Command="{Binding ClearAllCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                    Command="{Binding ClearAllCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="Delete24" FontSize="14" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="목록 비우기" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -700,9 +727,35 @@
                     </Grid>
 
                     <!-- Past Results view (default) -->
-                    <ScrollViewer x:Name="PastResultsView" VerticalScrollBarVisibility="Auto"
-                                  Padding="24">
-                        <ItemsControl x:Name="PastResultsList"
+                    <Grid x:Name="PastResultsContainer">
+                        <!-- 빈 상태 안내 (Empty State) -->
+                        <Grid x:Name="PastResultsEmpty" Visibility="Collapsed">
+                            <Border Background="{StaticResource FsBgBase}" Padding="32">
+                                <Grid MaxWidth="440" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Rectangle RadiusX="10" RadiusY="10"
+                                               Stroke="{StaticResource FsBorderHairline}"
+                                               StrokeThickness="1.25"
+                                               StrokeDashArray="5 4"
+                                               Fill="#04FFFFFF"/>
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="48,52">
+                                        <ui:SymbolIcon Symbol="History24" FontSize="48"
+                                                       Foreground="{StaticResource FsTextTertiary}"
+                                                       HorizontalAlignment="Center"/>
+                                        <TextBlock Margin="0,16,0,0" FontSize="16" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource FsTextPrimary}"
+                                                   HorizontalAlignment="Center"
+                                                   Text="변환 이력이 없습니다"/>
+                                        <TextBlock Margin="0,6,0,0" Style="{StaticResource FsCaptionStyle}"
+                                                   HorizontalAlignment="Center"
+                                                   TextAlignment="Center"
+                                                   Text="파일을 변환하면 완료된 내역과 절감된 용량이 여기에 기록됩니다"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                        <ScrollViewer x:Name="PastResultsView" VerticalScrollBarVisibility="Auto"
+                                      Padding="24">
+                            <ItemsControl x:Name="PastResultsList"
                                       ItemsSource="{Binding PastResults, RelativeSource={RelativeSource AncestorType=Window}}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
@@ -813,6 +866,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </ScrollViewer>
+                    </Grid>
 
                     </Grid>
                     <!-- /좌측 컬럼 끝 -->

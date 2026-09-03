@@ -171,7 +171,8 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         TabPastBtn.IsChecked = tag == "Past";
 
         ActiveQueueView.Visibility = tag == "Active" ? Visibility.Visible : Visibility.Collapsed;
-        PastResultsView.Visibility = tag == "Past" ? Visibility.Visible : Visibility.Collapsed;
+        PastResultsContainer.Visibility = tag == "Past" ? Visibility.Visible : Visibility.Collapsed;
+        UpdatePastResultsVisibility();
     }
 
     // ============== Drag & Drop ==============
@@ -247,11 +248,19 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         ActiveQueueScroll.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    private void UpdatePastResultsVisibility()
+    {
+        var hasItems = _pastResults.Count > 0;
+        PastResultsEmpty.Visibility = hasItems ? Visibility.Collapsed : Visibility.Visible;
+        PastResultsView.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private void UpdateBadges()
     {
         TabActiveBadge.Text = _activeQueue.Count.ToString(CultureInfo.InvariantCulture);
         var count = _pastResults.Sum(g => g.Entries.Count);
         TabPastBadge.Text = count.ToString(CultureInfo.InvariantCulture);
+        UpdatePastResultsVisibility();
     }
 
     private void UpdateProcessQueueButton()

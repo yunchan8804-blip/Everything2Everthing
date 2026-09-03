@@ -6,9 +6,17 @@
     WindowStartupLocation="CenterOwner"
     ExtendsContentIntoTitleBar="True"
     WindowBackdropType="Mica"
-    Background="{StaticResource FsBgBase}">
+    Background="{DynamicResource FsBgBase}">
 
-    <Grid>
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="FormatShiftTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Background="{StaticResource FsBgBase}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -51,10 +59,10 @@
                                     Style="{StaticResource FsSecondaryButtonStyle}" Margin="8,0,0,0"
                                     IsEnabled="False" Click="OnVerifyOpenAi"/>
                         </Grid>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,16">
                             <Ellipse x:Name="OpenAiDot" Style="{StaticResource FsLossDotStyle}"
-                                     Fill="{StaticResource FsTextTertiary}" Margin="0,0,7,0"/>
-                            <TextBlock x:Name="OpenAiStatus" Text="키 미설정" Style="{StaticResource FsCaptionStyle}"/>
+                                     Fill="{StaticResource FsTextTertiary}" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="OpenAiStatus" Text="키 미설정" Style="{StaticResource FsCaptionStyle}" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <!-- Anthropic -->
@@ -68,23 +76,23 @@
                                          Style="{StaticResource FsPasswordInputStyle}"
                                          PasswordChanged="OnAnthropicKeyChanged"/>
                             <Button x:Name="AnthropicVerifyBtn" Grid.Column="1" Content="확인"
-                                    Style="{StaticResource FsSecondaryButtonStyle}" Margin="8,0,0,0"
-                                    IsEnabled="False" Click="OnVerifyAnthropic"/>
+                                     Style="{StaticResource FsSecondaryButtonStyle}" Margin="8,0,0,0"
+                                     IsEnabled="False" Click="OnVerifyAnthropic"/>
                         </Grid>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,16">
                             <Ellipse x:Name="AnthropicDot" Style="{StaticResource FsLossDotStyle}"
-                                     Fill="{StaticResource FsTextTertiary}" Margin="0,0,7,0"/>
-                            <TextBlock x:Name="AnthropicStatus" Text="키 미설정" Style="{StaticResource FsCaptionStyle}"/>
+                                     Fill="{StaticResource FsTextTertiary}" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="AnthropicStatus" Text="키 미설정" Style="{StaticResource FsCaptionStyle}" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <!-- Codex CLI (OAuth) -->
                         <TextBlock Text="Codex CLI (OAuth · API 키 불필요)" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,6"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,16">
                             <Ellipse x:Name="CodexDot" Style="{StaticResource FsLossDotStyle}"
-                                     Fill="{StaticResource FsTextTertiary}" Margin="0,0,7,0"/>
+                                     Fill="{StaticResource FsTextTertiary}" Margin="0,0,7,0" VerticalAlignment="Center"/>
                             <TextBlock x:Name="CodexStatus" Text="확인 중…" Style="{StaticResource FsCaptionStyle}" VerticalAlignment="Center"/>
                             <Button x:Name="CodexVerifyBtn" Content="테스트" Style="{StaticResource FsSecondaryButtonStyle}"
-                                    Margin="12,0,0,0" Padding="10,4" IsEnabled="False" Click="OnVerifyCodex"/>
+                                    Margin="12,0,0,0" Padding="10,4" IsEnabled="False" Click="OnVerifyCodex" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <!-- 모델 -->
@@ -113,10 +121,10 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0">
-                                <StackPanel Orientation="Horizontal">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <Ellipse x:Name="FfmpegDot" Style="{StaticResource FsLossDotStyle}"
-                                             Fill="{StaticResource FsStatusWarn}" Margin="0,0,7,0"/>
-                                    <TextBlock Text="FFmpeg" Style="{StaticResource FsBodyStyle}" FontWeight="Medium"/>
+                                             Fill="{StaticResource FsStatusWarn}" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="FFmpeg" Style="{StaticResource FsBodyStyle}" FontWeight="Medium" VerticalAlignment="Center"/>
                                     <TextBlock x:Name="FfmpegStatus" Text="미설치" Style="{StaticResource FsCaptionStyle}" Margin="8,0,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <TextBlock Text="영상/오디오 변환 (mp4·webm·mp3·flac…)" Style="{StaticResource FsCaptionStyle}" Margin="15,3,0,0"/>
@@ -134,10 +142,10 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0">
-                                <StackPanel Orientation="Horizontal">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <Ellipse x:Name="LibreDot" Style="{StaticResource FsLossDotStyle}"
-                                             Fill="{StaticResource FsStatusWarn}" Margin="0,0,7,0"/>
-                                    <TextBlock Text="LibreOffice" Style="{StaticResource FsBodyStyle}" FontWeight="Medium"/>
+                                             Fill="{StaticResource FsStatusWarn}" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="LibreOffice" Style="{StaticResource FsBodyStyle}" FontWeight="Medium" VerticalAlignment="Center"/>
                                     <TextBlock x:Name="LibreStatus" Text="미설치" Style="{StaticResource FsCaptionStyle}" Margin="8,0,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <TextBlock Text="한글/Word/문서 변환 (HWP·DOCX→PDF/이미지). 한글은 H2Orestart 확장 필요." Style="{StaticResource FsCaptionStyle}" Margin="15,3,0,0" TextWrapping="Wrap"/>
@@ -155,9 +163,9 @@
         <!-- ===== 푸터 ===== -->
         <Border Grid.Row="2" Background="{StaticResource FsBgPanel}"
                 BorderBrush="{StaticResource FsBorderSubtle}" BorderThickness="0,1,0,0" Padding="24,14">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="닫기" Style="{StaticResource FsSecondaryButtonStyle}" Padding="18,8" Click="OnClose"/>
-                <Button Content="저장" Style="{StaticResource FsPrimaryButtonStyle}" Padding="22,8" Margin="8,0,0,0" Click="OnSave"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <Button Content="닫기" Style="{StaticResource FsSecondaryButtonStyle}" Padding="20,8" Click="OnClose"/>
+                <Button Content="저장" Style="{StaticResource FsPrimaryButtonStyle}" Padding="20,8" Margin="8,0,0,0" Click="OnSave"/>
             </StackPanel>
         </Border>
     </Grid>

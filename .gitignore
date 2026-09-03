@@ -49,4 +49,5 @@ artifacts/
 
 # NuGet packages restore + nuget.exe cache
 packages/
-tools/
+tools/*
+!tools/*.ps1

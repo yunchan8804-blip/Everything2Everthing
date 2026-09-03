@@ -97,16 +97,24 @@ public partial class App : Application
 
     private async Task RunQuickAsync(IReadOnlyList<string> files, string outputExtension)
     {
+        // 옵션 팝업~변환 경로 전체를 명시적 종료 모드로 먼저 감싼다.
+        // 핵심(크래시 방지): 기본 OnLastWindowClose면 옵션 팝업(첫·유일 창)이 닫히는 순간 "마지막 창 종료" 규칙이
+        // 발동해 앱이 종료 시퀀스에 진입하고, 직후 ShutdownMode 설정/변환이 InvalidOperationException으로 크래시한다.
+        // (또한 진행 창을 닫아도 변환을 취소한 '뒤' 명시 종료해 ffmpeg 고아 프로세스를 막는다.)
+        ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown;
+
         // 빠른 변환 전, 출력 형식에 맞춘 간단 옵션 팝업.
         // '자세히 옵션…'이면 풀 UI(MainWindow)로 전환, '취소'면 종료, '변환'이면 선택 옵션으로 진행.
         var optWin = new QuickOptionsWindow(outputExtension, files.Count, Settings);
         var confirmed = optWin.ShowDialog();
-        if (optWin.OpenFullUi) { ShowConvertDialog(files); return; }
+        if (optWin.OpenFullUi)
+        {
+            // 풀 UI로 전환 — 종료 책임을 메인 창 수명(OnLastWindowClose)에 되돌린다.
+            ShutdownMode = System.Windows.ShutdownMode.OnLastWindowClose;
+            ShowConvertDialog(files);
+            return;
+        }
         if (confirmed != true) { Shutdown(0); return; }
-
-        // 변환 경로 동안은 명시적 종료 모드 — 진행 창을 닫아도 변환을 취소(ffmpeg 종료)한 '뒤' 앱을 종료한다.
-        // (기본 OnLastWindowClose면 창 닫는 즉시 종료가 시작돼 ffmpeg가 고아로 백그라운드에 남는다.)
-        ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown;
 
         var logPath = Path.Combine(Path.GetTempPath(), "Everything2Everything_quick.log");
         var log = new System.Text.StringBuilder();

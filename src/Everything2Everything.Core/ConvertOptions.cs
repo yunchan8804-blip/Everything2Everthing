@@ -71,6 +71,12 @@ public sealed record ConvertOptions
     /// <summary>독립(Independent) 배치 변환의 최대 병렬 수. 기본 = 논리 코어 수. 미디어(FFmpeg) 위주 배치는 낮춰 오버서브스크립션 회피.</summary>
     public int BatchParallelism { get; init; } = Environment.ProcessorCount;
 
+    /// <summary>
+    /// LibreOffice(soffice) 변환 1건의 타임아웃(초). 초과 시 프로세스 트리를 강제 종료해 hang을 회수한다.
+    /// 특정 HWP/문서에서 soffice가 무한 대기하는 사례를 방지(기본 120초). 큰 문서가 많으면 늘린다.
+    /// </summary>
+    public int LibreOfficeTimeoutSeconds { get; init; } = 120;
+
     /// <summary>영상 인코딩 시 GPU 하드웨어 가속(NVENC)을 우선 시도하고, 실패하면 CPU로 자동 폴백한다.</summary>
     public bool VideoPreferGpu { get; init; } = true;
 

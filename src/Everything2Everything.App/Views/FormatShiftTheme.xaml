@@ -118,6 +118,17 @@
         <Setter Property="Foreground" Value="{StaticResource FsTextSecondary}"/>
     </Style>
 
+    <!-- Fluent typography aliases (Used across dialogs) -->
+    <Style x:Key="TextSubtitle" TargetType="TextBlock" BasedOn="{StaticResource FsBodyStyle}">
+        <Setter Property="FontSize" Value="16"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style x:Key="TextCaption" TargetType="TextBlock" BasedOn="{StaticResource FsCaptionStyle}"/>
+    <Style x:Key="TextBody" TargetType="TextBlock" BasedOn="{StaticResource FsBodyStyle}"/>
+    <Style x:Key="TextBodyStrong" TargetType="TextBlock" BasedOn="{StaticResource FsBodyStyle}">
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
     <!-- Slider style: 2px track, 14px round thumb, blue fill up to value -->
     <Style x:Key="FsSliderStyle" TargetType="Slider">
         <Setter Property="Background" Value="Transparent"/>

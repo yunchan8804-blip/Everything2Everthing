@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text;
 using Everything2Everything.Core.Providers;
 using Markdig;
@@ -241,37 +240,10 @@ public sealed class DocumentProvider : IConverterProvider
             throw new InvalidOperationException("LibreOffice를 찾을 수 없습니다.");
 
         var outDir = Path.GetDirectoryName(Path.GetFullPath(targetPath))!;
-        Directory.CreateDirectory(outDir);
-
-        var psi = new ProcessStartInfo
-        {
-            FileName = soffice,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-        };
-        psi.ArgumentList.Add("--headless");
-        psi.ArgumentList.Add("--norestore");
-        psi.ArgumentList.Add("--nofirststartwizard");
-        psi.ArgumentList.Add("--convert-to");
-        psi.ArgumentList.Add(outputFormat);
-        psi.ArgumentList.Add("--outdir");
-        psi.ArgumentList.Add(outDir);
-        psi.ArgumentList.Add(sourcePath);
-
-        using var proc = Process.Start(psi)
-            ?? throw new InvalidOperationException("LibreOffice 프로세스 시작 실패");
-
-        try { await proc.WaitForExitAsync(ct).ConfigureAwait(false); }
-        catch (OperationCanceledException) { try { proc.Kill(true); } catch { } throw; }
-
-        if (proc.ExitCode != 0)
-            throw new InvalidOperationException($"LibreOffice 변환 실패 (exit {proc.ExitCode})");
-
-        var produced = Path.Combine(outDir, Path.GetFileNameWithoutExtension(sourcePath) + "." + outputFormat);
-        if (!File.Exists(produced))
-            throw new FileNotFoundException("LibreOffice가 결과물을 생성하지 않았습니다.", produced);
+        // soffice 호출 직렬화(기본 프로필 락 충돌 방지) + 타임아웃/트리 kill + 출력 검증은 LibreOfficeRunner가 담당.
+        var produced = await LibreOfficeRunner.ConvertAsync(
+            soffice, sourcePath, outDir, outputFormat, LibreOfficeRunner.DefaultTimeoutSeconds, ct)
+            .ConfigureAwait(false);
 
         if (!string.Equals(produced, targetPath, StringComparison.OrdinalIgnoreCase))
         {

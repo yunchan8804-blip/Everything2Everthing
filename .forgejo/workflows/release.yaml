@@ -1,0 +1,47 @@
+name: Forgejo Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '릴리즈 태그 (예: v1.0.6)'
+        required: true
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Run TDD Test Suite (Gate 1)
+        shell: pwsh
+        run: dotnet test src/Everything2Everything.Tests/Everything2Everything.Tests.csproj -c Release
+
+      - name: Build Portable Binary
+        shell: pwsh
+        run: |
+          dotnet publish src/Everything2Everything.App/Everything2Everything.App.csproj `
+            -c Release -r win-x64 --self-contained false -o publish
+
+      - name: Compress Portable Binary
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path packaging/dist -Force | Out-Null
+          Compress-Archive -Path publish/* -DestinationPath packaging/dist/Everything2Everything-win-x64-portable.zip -Force
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Everything2Everything-win-x64-portable
+          path: packaging/dist/Everything2Everything-win-x64-portable.zip
