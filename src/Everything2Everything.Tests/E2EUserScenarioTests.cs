@@ -4,6 +4,7 @@ using System.Linq;
 using Everything2Everything.App.ViewModels;
 using Everything2Everything.Core;
 using Everything2Everything.Core.Providers;
+using Everything2Everything.Core.Filters;
 using Xunit;
 
 namespace Everything2Everything.Tests;
@@ -97,4 +98,54 @@ public class E2EUserScenarioTests
         Assert.NotEmpty(path);
         Assert.Equal(".png", path![0].From);
     }
+
+    [Fact]
+    public void Scenario5_MultiHopTransitive_FindBestPath_FindsValidIntermediateHops()
+    {
+        // 직접적인 단일 Provider가 없더라도 유효한 2홉 변환 경로를 찾아내는지 검증
+        // 예: .md -> .html -> .png
+        var path = _engine.Providers.Graph.FindBestPath(".md", ".png");
+        Assert.NotNull(path);
+        Assert.True(path!.Count >= 2, "MD to PNG should traverse at least 2 hops (.md -> .html/.pdf -> .png)");
+        Assert.Equal(".md", path[0].From);
+        Assert.Equal(".png", path[^1].To);
+
+        // 중간 홉이 불가능한 도메인 도약(예: .docx)을 포함하지 않는지 검증
+        foreach (var hop in path)
+        {
+            Assert.True(MediaConversionNegotiator.CanConvert(hop.From, hop.To),
+                $"Hop {hop.From} -> {hop.To} must satisfy domain negotiation rules");
+        }
+    }
+
+    [Theory]
+    [InlineData(1000, 200, 80.0)]    // 1000B -> 200B (80% 절감)
+    [InlineData(1000, 1000, 0.0)]    // 동일 크기 (0% 절감)
+    [InlineData(1000, 1500, -50.0)]  // 크기 증가 (-50% 절감)
+    [InlineData(0, 500, 0.0)]        // 0바이트 원본 예외 방어 (DivideByZero 방어)
+    public void Scenario6_StorageSavingsCalculation_HandlesAllEdgeCasesSafely(long originalBytes, long outputBytes, double expectedSavings)
+    {
+        double savings = ComputeStorageSavings(originalBytes, outputBytes);
+        Assert.Equal(expectedSavings, savings, precision: 1);
+    }
+
+    private static double ComputeStorageSavings(long orig, long @out)
+    {
+        if (orig <= 0) return 0.0;
+        return ((double)(orig - @out) / orig) * 100.0;
+    }
+
+    [Fact]
+    public void Scenario7_MediaConversionNegotiator_StrictRejection_AcrossAllCrossDomains()
+    {
+        // 텍스트/표/오디오/이미지/비디오 간의 부적절한 도약 전수 거부 시나리오
+        Assert.False(MediaConversionNegotiator.CanConvert(".png", ".docx"));
+        Assert.False(MediaConversionNegotiator.CanConvert(".jpg", ".xlsx"));
+        Assert.False(MediaConversionNegotiator.CanConvert(".mp3", ".gif"));
+        Assert.False(MediaConversionNegotiator.CanConvert(".csv", ".mp4"));
+        Assert.False(MediaConversionNegotiator.CanConvert(".docx", ".mp3"));
+        Assert.False(MediaConversionNegotiator.CanConvert(".xlsx", ".png"));
+    }
+
 }
+
