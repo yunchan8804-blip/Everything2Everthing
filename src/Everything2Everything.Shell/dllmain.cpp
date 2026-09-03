@@ -125,11 +125,14 @@ inline Cat CatOf(const std::wstring& e) {
 
 inline bool Recommend(const std::wstring& inExt, const std::wstring& outExt) {
     const Cat in = CatOf(inExt), out = CatOf(outExt);
-    if (in == Cat::Video) return out == Cat::Video || out == Cat::Audio;
-    if (in == Cat::Audio) return out == Cat::Audio;
-    if (in == Cat::Data)  return out == Cat::Data;
+    if (in == Cat::Video)
+        return out == Cat::Video || out == Cat::Audio || outExt == L".gif" || outExt == L".png" || outExt == L".jpg" || outExt == L".webp";
+    if (in == Cat::Audio)
+        return out == Cat::Audio;
+    if (in == Cat::Data)
+        return out == Cat::Data;
     if (in == Cat::Image || in == Cat::Vector)
-        return out == Cat::Image || outExt == L".pdf" || outExt == L".txt" || outExt == L".docx";
+        return out == Cat::Image || outExt == L".pdf" || outExt == L".txt";
     if (in == Cat::Doc)
         return out == Cat::Image || outExt == L".pdf" || outExt == L".txt" || outExt == L".docx" || outExt == L".html" || outExt == L".md";
     if (in == Cat::Markup || in == Cat::Text)

@@ -147,18 +147,37 @@ if (-not $DryRun) {
         Write-Host "  - MSIX 디지털 서명 검증 통과 (Status: Valid, Signer: $($sig.SignerCertificate.Subject))" -ForegroundColor Green
     }
 
-    # 4. 1-클릭 설치 번들 ZIP 생성 (MSIX + .cer + Install.cmd)
+    # 4. Inno Setup 표준 설치 파일(Setup-x64.exe) 빌드
+    $iscc = "C:\Users\encep\AppData\Local\Programs\Inno Setup 6\ISCC.exe"
+    if (-not (Test-Path $iscc)) {
+        $iscc = (Get-Command iscc -ErrorAction SilentlyContinue)?.Source
+    }
+    $innoScript = Join-Path $RootDir "packaging/Everything2Everything.iss"
+    $innoExe = Join-Path $distDir "Everything2Everything-$Version-Setup-x64.exe"
+    if ((Test-Path $iscc) -and (Test-Path $innoScript)) {
+        Write-Host "  - Inno Setup 표준 설치 파일 빌드..." -ForegroundColor Gray
+        & $iscc "/DMyAppVersion=$Version" $innoScript
+        if ($LASTEXITCODE -eq 0 -and (Test-Path $innoExe)) {
+            Write-Host "  - Inno Setup 빌드 성공: $innoExe" -ForegroundColor Green
+        } else {
+            Write-Warning "Inno Setup 빌드 실패 (코드 $LASTEXITCODE)"
+        }
+    }
+
+    # 5. 1-클릭 설치 번들 ZIP 생성 (MSIX + .cer + Install.cmd + Install.ps1)
     $setupZip = Join-Path $distDir "Everything2Everything-$Version-Setup.zip"
     $cerFile = Join-Path $distDir "Everything2Everything-DevCert.cer"
-    $installCmd = Join-Path $distDir "Install.cmd"
+    $installCmd = Join-Path $RootDir "packaging/Install.cmd"
+    $installPs1 = Join-Path $RootDir "packaging/Install.ps1"
 
     $bundleFiles = @($msixFile)
     if (Test-Path $cerFile) { $bundleFiles += $cerFile }
     if (Test-Path $installCmd) { $bundleFiles += $installCmd }
+    if (Test-Path $installPs1) { $bundleFiles += $installPs1 }
 
     if (Test-Path $setupZip) { Remove-Item $setupZip -Force }
     Compress-Archive -Path $bundleFiles -DestinationPath $setupZip
-    Write-Host "  - 1-클릭 설치 번들 ZIP 생성: $setupZip" -ForegroundColor Gray
+    Write-Host "  - 1-클릭 MSIX 설치 번들 ZIP 생성: $setupZip" -ForegroundColor Gray
 } else {
     Write-Host "  (DryRun: 빌드 단계 건너뜀)" -ForegroundColor DarkGray
 }
@@ -211,15 +230,9 @@ if (-not $DryRun) {
 $ReleaseNotes
 
 ### 다운로드
+- **표준 설치 프로그램 (권장)**: `Everything2Everything-$Version-Setup-x64.exe` (인증서 경고 없는 1초 설치)
 - **Portable ZIP**: `Everything2Everything-$Version-win-x64-portable.zip` (무설치 경량 실행 파일)
-- **MSIX 패키지**: `Everything2Everything-x64.msix` (Windows 11 메인 메뉴 지원)
-
-### 주요 개선사항
-- TDD RED 체계 및 초엄격 디자인 감사(Design Audit AST) 도입
-- Fluent 2 아이콘-텍스트 수직 기준선(Baseline) 중앙 정렬 보정
-- 인풋 필드 패딩 규격화 (수평 10px+, 수직 8px+)
-- 변환 이력(Past Results) 제로-보이드 빈 상태(Empty State) 추가
-- 상단 내비게이션 버튼 한글화 및 Fluent SymbolIcon 통일
+- **MSIX 패키지**: `Everything2Everything-x64.msix` 및 1-클릭 설치 번들 `Everything2Everything-$Version-Setup.zip`
 "@
         draft = $false
         prerelease = $false
@@ -239,6 +252,13 @@ $ReleaseNotes
         # 첨부 파일 업로드
         $uploadUrl = "$ForgejoHost/api/v1/repos/$ForgejoOwner/$ForgejoRepo/releases/$($releaseResponse.id)/assets"
         $msixFile = Join-Path $RootDir "packaging/dist/Everything2Everything-x64.msix"
+        $innoExe = Join-Path $distDir "Everything2Everything-$Version-Setup-x64.exe"
+
+        if (Test-Path $innoExe) {
+            Write-Host "  - Inno Setup 표준 설치 파일(Setup-x64.exe) 업로드 중..." -ForegroundColor Gray
+            curl.exe -s -u "yunchan:ONVI2v4J#y" -X POST "$uploadUrl`?name=Everything2Everything-$Version-Setup-x64.exe" -F "attachment=@$innoExe" | Out-Null
+            Write-Host "    -> Inno Setup 설치 파일 업로드 완료!" -ForegroundColor Gray
+        }
 
         if (Test-Path $portableZip) {
             Write-Host "  - Portable ZIP 업로드 중..." -ForegroundColor Gray

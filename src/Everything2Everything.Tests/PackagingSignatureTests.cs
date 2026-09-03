@@ -78,4 +78,18 @@ public class PackagingSignatureTests
         Assert.Contains("powershell", content, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("TrustedPeople", content, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void InnoSetupScript_Exists_And_Configures_Lowest_Privileges_And_ContextMenu()
+    {
+        var repoRoot = FindRepoRoot();
+        var issPath = Path.Combine(repoRoot, "packaging", "Everything2Everything.iss");
+        Assert.True(File.Exists(issPath), "packaging/Everything2Everything.iss must exist for standard EXE installer");
+
+        var content = File.ReadAllText(issPath);
+        Assert.Contains("PrivilegesRequired=lowest", content);
+        Assert.Contains("PrivilegesRequiredOverridesAllowed=dialog commandline", content);
+        Assert.Contains("register", content);
+        Assert.Contains("unregister", content);
+    }
 }
