@@ -29,13 +29,13 @@ public static class QueueFilterMatcher
                 or ".svg" or ".heic" or ".heif" or ".raw" or ".dng" or ".cr2" or ".cr3" or ".nef" or ".arw"
                 => FilterCategory.Image,
 
-            ".pdf" or ".docx" or ".doc" or ".hwp" or ".hwpx" or ".txt" or ".md" or ".markdown" or ".html" or ".htm" or ".xlsx" or ".xls"
+            ".pdf" or ".docx" or ".doc" or ".hwp" or ".hwpx" or ".txt" or ".md" or ".markdown" or ".html" or ".htm"
                 => FilterCategory.Document,
 
             ".mp4" or ".mkv" or ".webm" or ".mov" or ".avi" or ".mp3" or ".wav" or ".flac" or ".aac" or ".m4a" or ".ogg" or ".opus"
                 => FilterCategory.Media,
 
-            ".csv" or ".json" or ".tsv" or ".xml" or ".yaml" or ".yml"
+            ".csv" or ".json" or ".tsv" or ".xml" or ".yaml" or ".yml" or ".xlsx" or ".xls"
                 => FilterCategory.Data,
 
             _ => FilterCategory.All,

@@ -1,6 +1,3 @@
-using DocumentFormat.OpenXml;
-using DocumentFormat.OpenXml.Packaging;
-using DocumentFormat.OpenXml.Wordprocessing;
 using Everything2Everything.Core.Providers;
 using Windows.Globalization;
 using Windows.Graphics.Imaging;
@@ -14,7 +11,7 @@ public sealed class OcrProvider : IConverterProvider
     private static readonly string[] OcrInputs =
         { ".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp", ".gif", ".heic", ".heif", ".pdf" };
 
-    private static readonly string[] OcrOutputs = { ".txt", ".docx" };
+    private static readonly string[] OcrOutputs = { ".txt" };
 
     private readonly PdfProvider _pdfProvider;
 
@@ -27,10 +24,10 @@ public sealed class OcrProvider : IConverterProvider
 
     public ProviderCapability Capability { get; } = new(
         Id: "ocr",
-        DisplayName: "OCR (이미지/PDF → 텍스트·DOCX)",
+        DisplayName: "OCR (이미지/PDF → 텍스트)",
         SupportedConversions: ProviderCapability.PairsFromMatrix(OcrInputs, OcrOutputs, LossClass.Rasterize),
         Status: ProviderStatus.Available,
-        Summary: "Windows OCR 엔진으로 이미지 또는 PDF 페이지에서 텍스트를 추출해 .txt 또는 .docx로 저장합니다.",
+        Summary: "Windows OCR 엔진으로 이미지 또는 PDF 페이지에서 텍스트를 추출해 .txt로 저장합니다.",
         ExternalDependencies: Array.Empty<ExternalDependency>(),
         RoadmapNote: "Windows에 설치된 OCR 언어 팩을 사용 — 한국어/영어는 Windows 11 기본 포함.");
 
@@ -95,10 +92,6 @@ public sealed class OcrProvider : IConverterProvider
                     ? pageTexts[0]
                     : string.Join(Environment.NewLine + Environment.NewLine + "---" + Environment.NewLine + Environment.NewLine, pageTexts);
                 await File.WriteAllTextAsync(path, combined, System.Text.Encoding.UTF8, cancellationToken).ConfigureAwait(false);
-            }
-            else if (outExt == ".docx")
-            {
-                WriteDocx(path, pageTexts);
             }
             else
             {
@@ -188,33 +181,5 @@ public sealed class OcrProvider : IConverterProvider
             return new List<string>();
 
         return result.OutputPaths.ToList();
-    }
-
-    private static void WriteDocx(string path, IReadOnlyList<string> pageTexts)
-    {
-        using var doc = WordprocessingDocument.Create(path, WordprocessingDocumentType.Document);
-        var mainPart = doc.AddMainDocumentPart();
-        mainPart.Document = new Document();
-        var body = mainPart.Document.AppendChild(new Body());
-
-        for (var pageIndex = 0; pageIndex < pageTexts.Count; pageIndex++)
-        {
-            var pageText = pageTexts[pageIndex] ?? string.Empty;
-            foreach (var line in pageText.Split('\n', StringSplitOptions.None))
-            {
-                var paragraph = body.AppendChild(new Paragraph());
-                var run = paragraph.AppendChild(new Run());
-                run.AppendChild(new Text(line.TrimEnd('\r')) { Space = SpaceProcessingModeValues.Preserve });
-            }
-
-            if (pageIndex < pageTexts.Count - 1)
-            {
-                var pageBreakPara = body.AppendChild(new Paragraph());
-                var pageBreakRun = pageBreakPara.AppendChild(new Run());
-                pageBreakRun.AppendChild(new Break { Type = BreakValues.Page });
-            }
-        }
-
-        mainPart.Document.Save();
     }
 }

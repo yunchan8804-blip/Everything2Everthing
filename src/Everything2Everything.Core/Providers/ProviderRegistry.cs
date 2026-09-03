@@ -1,3 +1,5 @@
+using Everything2Everything.Core.Filters;
+
 namespace Everything2Everything.Core.Providers;
 
 public sealed class ProviderRegistry
@@ -63,6 +65,7 @@ public sealed class ProviderRegistry
         var input = ConversionPair.Normalize(inputExtension);
         return _graph.ReachableOutputs(input, maxHops: 2, allowLossy: true)
             .Where(o => !string.Equals(o, input, StringComparison.OrdinalIgnoreCase))
+            .Where(o => MediaConversionNegotiator.CanConvert(input, o))
             .OrderBy(e => e, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
