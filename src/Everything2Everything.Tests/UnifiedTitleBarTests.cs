@@ -278,6 +278,42 @@ public class UnifiedTitleBarTests
     }
 
     [Fact]
+    public void MainWindow_InitialLaunch_DefaultsToActiveQueueView_WithEmptyDropZone()
+    {
+        RunOnSta(() =>
+        {
+            var engine = Everything2EverythingBootstrap.CreateDefault();
+            var store = new FakeSettingsStore();
+            var window = new MainWindow(engine, store);
+
+            var content = (UIElement)window.Content;
+            content.Measure(new Size(1280, 960));
+            content.Arrange(new Rect(0, 0, 1280, 960));
+
+            // 1. Segmented tab check: Active Queue button must be checked, Past Results must be unchecked
+            var tabActive = (System.Windows.Controls.Primitives.ToggleButton)window.FindName("TabActiveBtn");
+            var tabPast = (System.Windows.Controls.Primitives.ToggleButton)window.FindName("TabPastBtn");
+            Assert.NotNull(tabActive);
+            Assert.NotNull(tabPast);
+            Assert.True(tabActive.IsChecked, "프로그램 실행 시 기본 탭은 Active Queue여야 합니다.");
+            Assert.False(tabPast.IsChecked, "프로그램 실행 시 Past Results 탭은 체크 해제 상태여야 합니다.");
+
+            // 2. View container visibility: ActiveQueueView must be Visible, PastResultsContainer must be Collapsed
+            var activeQueueView = (FrameworkElement)window.FindName("ActiveQueueView");
+            var pastResultsContainer = (FrameworkElement)window.FindName("PastResultsContainer");
+            Assert.NotNull(activeQueueView);
+            Assert.NotNull(pastResultsContainer);
+            Assert.Equal(Visibility.Visible, activeQueueView.Visibility);
+            Assert.Equal(Visibility.Collapsed, pastResultsContainer.Visibility);
+
+            // 3. Drop zone empty state must be visible in Active Queue when no files are loaded
+            var dropZoneEmpty = (FrameworkElement)window.FindName("DropZoneEmpty");
+            Assert.NotNull(dropZoneEmpty);
+            Assert.Equal(Visibility.Visible, dropZoneEmpty.Visibility);
+        });
+    }
+
+    [Fact]
     public void SettingsWindow_TitleBar_MustDisplayProperlyAlignedHeaderAndCloseButton()
     {
         RunOnSta(() =>

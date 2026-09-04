@@ -68,6 +68,7 @@
                             BorderThickness="1" CornerRadius="6" Padding="2">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <ToggleButton x:Name="TabActiveBtn"
+                                          IsChecked="True"
                                           Style="{StaticResource FsTabPillStyle}"
                                           Command="{Binding TabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                           CommandParameter="Active">
@@ -82,7 +83,6 @@
                                 </StackPanel>
                             </ToggleButton>
                             <ToggleButton x:Name="TabPastBtn" Margin="2,0,0,0"
-                                          IsChecked="True"
                                           Style="{StaticResource FsTabPillStyle}"
                                           Command="{Binding TabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                           CommandParameter="Past">
@@ -362,153 +362,192 @@
                                 </StackPanel>
                             </Border>
 
-                            <!-- Card 5: 영상·오디오 인코딩 (출력이 영상/오디오일 때 동적 노출) -->
-                            <Border x:Name="MediaPanel" Style="{StaticResource FsCardStyle}" Margin="0,0,0,16" Visibility="Collapsed">
-                                <StackPanel>
-                                    <TextBlock Text="영상·오디오 인코딩" Style="{StaticResource FsLabelStyle}"/>
+                            <!-- Card 5: 상세 인코딩 설정 (폴드아웃 Expander) -->
+                            <Border Style="{StaticResource FsCardStyle}" Margin="0,0,0,16">
+                                <Expander x:Name="AdvancedOptionsExpander"
+                                          IsExpanded="{Binding Options.IsAdvancedExpanded, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                    <Expander.Header>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <ui:SymbolIcon Symbol="Options24" FontSize="14" Foreground="{StaticResource FsAccentCyan}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                            <TextBlock Text="상세 인코딩 설정" Style="{StaticResource FsLabelStyle}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <StackPanel Margin="0,12,0,0">
 
-                                    <!-- 영상 (영상 컨테이너 출력 시) -->
-                                    <StackPanel x:Name="VideoSubPanel" Margin="0,8,0,0">
-                                        <TextBlock Text="비디오 코덱" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
-                                        <ComboBox SelectedIndex="{Binding Options.VideoCodecIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                            <ComboBoxItem Content="자동 (H.264 / 고해상도 H.265)"/>
-                                            <ComboBoxItem Content="H.264 (최대 호환)"/>
-                                            <ComboBoxItem Content="H.265 / HEVC (고압축)"/>
-                                            <ComboBoxItem Content="VP9"/>
-                                            <ComboBoxItem Content="AV1 (최고 압축)"/>
-                                            <ComboBoxItem Content="원본 복사 (재인코딩 없음)"/>
-                                        </ComboBox>
+                                        <!-- A. PDF 상세 옵션 패널 (ISO 32000 / Ghostscript 규격) -->
+                                        <StackPanel x:Name="AdvancedPdfPanel" Visibility="Collapsed">
+                                            <TextBlock Text="PDF 최적화 및 렌더링" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,8"/>
+                                            <TextBlock Text="PDF 압축 레벨" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
+                                            <ComboBox x:Name="PdfCompressLevelCombo" SelectedIndex="{Binding Options.PdfCompressLevelIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                                <ComboBoxItem Content="Light (무손실 최적화 · 화질 유지 100%)"/>
+                                                <ComboBoxItem Content="Strong (웹/이메일 균형 · 150 DPI 리샘플링)"/>
+                                                <ComboBoxItem Content="Max (최대 압축 · 흑백/고압축)"/>
+                                            </ComboBox>
 
-                                        <TextBlock Text="레이트 컨트롤" Style="{StaticResource FsCaptionStyle}" Margin="0,10,0,4"/>
-                                        <ComboBox x:Name="RateControlCombo" SelectedIndex="{Binding Options.RateControlIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                            <ComboBoxItem Content="CRF (품질 기준 · 권장)"/>
-                                            <ComboBoxItem Content="평균 비트레이트 (ABR)"/>
-                                            <ComboBoxItem Content="제약 CRF (품질+상한)"/>
-                                            <ComboBoxItem Content="고정 비트레이트 (CBR)"/>
-                                            <ComboBoxItem Content="2패스 (최고 효율)"/>
-                                        </ComboBox>
+                                            <TextBlock Text="PDF 렌더링 해상도 (DPI)" Style="{StaticResource FsCaptionStyle}" Margin="0,10,0,4"/>
+                                            <ComboBox x:Name="PdfDpiCombo" SelectedIndex="{Binding Options.PdfDpiIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                                <ComboBoxItem Content="150 DPI (화면 / 웹 최적화)"/>
+                                                <ComboBoxItem Content="200 DPI (표준 오피스 밸런스)"/>
+                                                <ComboBoxItem Content="300 DPI (고해상도 인쇄 및 OCR용)"/>
+                                            </ComboBox>
+                                        </StackPanel>
 
-                                        <!-- CRF 슬라이더 (CRF / 제약CRF 모드) -->
-                                        <StackPanel Margin="0,10,0,0">
-                                            <StackPanel.Style>
-                                                <Style TargetType="StackPanel">
-                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="1"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
-                                                        <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="3"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
-                                                        <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="4"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </StackPanel.Style>
-                                            <Grid>
-                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                                <TextBlock Text="품질 (CRF) — 낮을수록 고화질" Style="{StaticResource FsCaptionStyle}"/>
-                                                <TextBlock Grid.Column="1" FontFamily="{StaticResource FsFontMono}" FontSize="12" Foreground="{StaticResource FsAccentBlue}"
-                                                           Text="{Binding Options.Crf, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                        <!-- B. 이미지 상세 옵션 패널 (W3C / MozJPEG 규격) -->
+                                        <StackPanel x:Name="AdvancedImagePanel" Visibility="Collapsed">
+                                            <TextBlock Text="이미지 고급 인코딩" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,8"/>
+                                            <CheckBox x:Name="ImageLosslessCheck" Margin="0,0,0,6" Content="무손실(Lossless) 보존 (WebP/PNG)"
+                                                      IsChecked="{Binding Options.ImageLossless, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                                            <CheckBox x:Name="ImageProgressiveCheck" Margin="0,0,0,6" Content="프로그레시브/인터레이스 웹 로딩"
+                                                      IsChecked="{Binding Options.Progressive, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                                            <CheckBox x:Name="ImageStripMetadataCheck" Margin="0,0,0,0" Content="개인정보(EXIF/GPS) 제거"
+                                                      IsChecked="{Binding Options.StripMetadata, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                                        </StackPanel>
+
+                                        <!-- C. 영상 상세 옵션 패널 (FFmpeg 규격) -->
+                                        <StackPanel x:Name="AdvancedVideoPanel" Visibility="Collapsed">
+                                            <TextBlock Text="영상 인코딩 (FFmpeg)" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,8"/>
+                                            <TextBlock Text="비디오 코덱" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
+                                            <ComboBox SelectedIndex="{Binding Options.VideoCodecIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                                <ComboBoxItem Content="자동 (H.264 / 고해상도 H.265)"/>
+                                                <ComboBoxItem Content="H.264 (최대 호환)"/>
+                                                <ComboBoxItem Content="H.265 / HEVC (고압축)"/>
+                                                <ComboBoxItem Content="VP9"/>
+                                                <ComboBoxItem Content="AV1 (최고 압축)"/>
+                                                <ComboBoxItem Content="원본 복사 (재인코딩 없음)"/>
+                                            </ComboBox>
+
+                                            <TextBlock Text="레이트 컨트롤" Style="{StaticResource FsCaptionStyle}" Margin="0,10,0,4"/>
+                                            <ComboBox x:Name="RateControlCombo" SelectedIndex="{Binding Options.RateControlIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                                <ComboBoxItem Content="CRF (품질 기준 · 권장)"/>
+                                                <ComboBoxItem Content="평균 비트레이트 (ABR)"/>
+                                                <ComboBoxItem Content="제약 CRF (품질+상한)"/>
+                                                <ComboBoxItem Content="고정 비트레이트 (CBR)"/>
+                                                <ComboBoxItem Content="2패스 (최고 효율)"/>
+                                            </ComboBox>
+
+                                            <!-- CRF 슬라이더 (CRF / 제약CRF 모드) -->
+                                            <StackPanel Margin="0,10,0,0">
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="1"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="3"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="4"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </StackPanel.Style>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                    <TextBlock Text="품질 (CRF) — 낮을수록 고화질" Style="{StaticResource FsCaptionStyle}"/>
+                                                    <TextBlock Grid.Column="1" FontFamily="{StaticResource FsFontMono}" FontSize="12" Foreground="{StaticResource FsAccentBlue}"
+                                                               Text="{Binding Options.Crf, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                </Grid>
+                                                <Slider Minimum="0" Maximum="51" Margin="0,4,0,0"
+                                                        Value="{Binding Options.Crf, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                                            </StackPanel>
+
+                                            <!-- 비트레이트 입력 (ABR/제약CRF/CBR/2패스 모드) -->
+                                            <StackPanel Margin="0,10,0,0">
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="1"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="2"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="3"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="4"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </StackPanel.Style>
+                                                <TextBlock Text="비디오 비트레이트 (kbps)" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
+                                                <TextBox Style="{StaticResource FsPathInputStyle}"
+                                                         Text="{Binding Options.VideoBitrateKbps, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                            </StackPanel>
+
+                                            <TextBlock Text="인코딩 프리셋 (느릴수록 고압축)" Style="{StaticResource FsCaptionStyle}" Margin="0,10,0,4"/>
+                                            <ComboBox SelectedIndex="{Binding Options.PresetIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                                <ComboBoxItem Content="UltraFast"/><ComboBoxItem Content="SuperFast"/><ComboBoxItem Content="VeryFast"/>
+                                                <ComboBoxItem Content="Faster"/><ComboBoxItem Content="Fast"/><ComboBoxItem Content="Medium"/>
+                                                <ComboBoxItem Content="Slow"/><ComboBoxItem Content="Slower"/><ComboBoxItem Content="VerySlow"/>
+                                            </ComboBox>
+
+                                            <Grid Margin="0,10,0,0">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="해상도" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
+                                                    <ComboBox SelectedIndex="{Binding Options.ResolutionIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                                        <ComboBoxItem Content="원본"/><ComboBoxItem Content="2160p (4K)"/><ComboBoxItem Content="1440p"/>
+                                                        <ComboBoxItem Content="1080p"/><ComboBoxItem Content="720p"/><ComboBoxItem Content="480p"/>
+                                                    </ComboBox>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="프레임레이트" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
+                                                    <ComboBox SelectedIndex="{Binding Options.FpsIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                                        <ComboBoxItem Content="원본"/><ComboBoxItem Content="24"/><ComboBoxItem Content="30"/><ComboBoxItem Content="60"/>
+                                                    </ComboBox>
+                                                </StackPanel>
                                             </Grid>
-                                            <Slider Minimum="0" Maximum="51" Margin="0,4,0,0"
-                                                    Value="{Binding Options.Crf, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+
+                                            <CheckBox Margin="0,12,0,0" Content="웹 스트리밍 최적화 (Faststart)"
+                                                      IsChecked="{Binding Options.FastStart, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                                            <CheckBox Margin="0,6,0,0" Content="GPU 하드웨어 가속 (NVENC 등)"
+                                                      IsChecked="{Binding Options.VideoPreferGpu, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+
+                                            <Expander Header="고급" Margin="0,10,0,0" Foreground="{StaticResource FsTextSecondary}">
+                                                <StackPanel Margin="0,8,0,0">
+                                                    <TextBlock Text="회전 / 뒤집기" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
+                                                    <ComboBox SelectedIndex="{Binding Options.RotateIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                                        <ComboBoxItem Content="없음"/><ComboBoxItem Content="시계 90°"/><ComboBoxItem Content="반시계 90°"/>
+                                                        <ComboBoxItem Content="180°"/><ComboBoxItem Content="좌우 반전"/><ComboBoxItem Content="상하 반전"/>
+                                                    </ComboBox>
+                                                    <TextBlock Text="디인터레이스" Style="{StaticResource FsCaptionStyle}" Margin="0,10,0,4"/>
+                                                    <ComboBox SelectedIndex="{Binding Options.DeinterlaceIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                                        <ComboBoxItem Content="끔"/><ComboBoxItem Content="Yadif"/><ComboBoxItem Content="Bwdif (고품질)"/>
+                                                    </ComboBox>
+                                                    <CheckBox Margin="0,10,0,0" Content="적응형 양자화 (GPU 화질↑)"
+                                                              IsChecked="{Binding Options.SpatialAq, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                                                </StackPanel>
+                                            </Expander>
                                         </StackPanel>
 
-                                        <!-- 비트레이트 입력 (ABR/제약CRF/CBR/2패스 모드) -->
-                                        <StackPanel Margin="0,10,0,0">
-                                            <StackPanel.Style>
-                                                <Style TargetType="StackPanel">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="1"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                        <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="2"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                        <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="3"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                        <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="4"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </StackPanel.Style>
-                                            <TextBlock Text="비디오 비트레이트 (kbps)" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
-                                            <TextBox Style="{StaticResource FsPathInputStyle}"
-                                                     Text="{Binding Options.VideoBitrateKbps, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <!-- D. 오디오 상세 옵션 패널 (ITU-R / EBU R128 규격) -->
+                                        <StackPanel x:Name="AdvancedAudioPanel" Visibility="Collapsed">
+                                            <TextBlock Text="오디오 인코딩" Style="{StaticResource FsLabelStyle}" Margin="0,8,0,8"/>
+                                            <TextBlock Text="오디오 코덱" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
+                                            <ComboBox SelectedIndex="{Binding Options.AudioCodecIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                                <ComboBoxItem Content="자동"/><ComboBoxItem Content="AAC"/><ComboBoxItem Content="MP3"/>
+                                                <ComboBoxItem Content="Opus"/><ComboBoxItem Content="Vorbis"/><ComboBoxItem Content="FLAC (무손실)"/>
+                                                <ComboBoxItem Content="PCM (WAV)"/><ComboBoxItem Content="원본 복사"/>
+                                            </ComboBox>
+                                            <TextBlock Text="오디오 비트레이트" Style="{StaticResource FsCaptionStyle}" Margin="0,10,0,4"/>
+                                            <ComboBox SelectedIndex="{Binding Options.AudioBitrateIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                                <ComboBoxItem Content="96 kbps"/><ComboBoxItem Content="128 kbps"/><ComboBoxItem Content="192 kbps"/>
+                                                <ComboBoxItem Content="256 kbps"/><ComboBoxItem Content="320 kbps"/>
+                                            </ComboBox>
+                                            <CheckBox Margin="0,8,0,0" Content="가변 비트레이트 (VBR)"
+                                                      IsChecked="{Binding Options.AudioVbr, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                                            <Grid Margin="0,10,0,0">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="샘플레이트" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
+                                                    <ComboBox SelectedIndex="{Binding Options.SampleRateIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                                        <ComboBoxItem Content="원본"/><ComboBoxItem Content="44.1 kHz"/><ComboBoxItem Content="48 kHz"/>
+                                                    </ComboBox>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="채널" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
+                                                    <ComboBox SelectedIndex="{Binding Options.ChannelsIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                                        <ComboBoxItem Content="원본"/><ComboBoxItem Content="모노"/><ComboBoxItem Content="스테레오"/>
+                                                    </ComboBox>
+                                                </StackPanel>
+                                            </Grid>
+                                            <CheckBox Margin="0,10,0,0" Content="음량 정규화 (EBU R128)"
+                                                      IsChecked="{Binding Options.Loudnorm, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
                                         </StackPanel>
 
-                                        <TextBlock Text="인코딩 프리셋 (느릴수록 고압축)" Style="{StaticResource FsCaptionStyle}" Margin="0,10,0,4"/>
-                                        <ComboBox SelectedIndex="{Binding Options.PresetIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                            <ComboBoxItem Content="UltraFast"/><ComboBoxItem Content="SuperFast"/><ComboBoxItem Content="VeryFast"/>
-                                            <ComboBoxItem Content="Faster"/><ComboBoxItem Content="Fast"/><ComboBoxItem Content="Medium"/>
-                                            <ComboBoxItem Content="Slow"/><ComboBoxItem Content="Slower"/><ComboBoxItem Content="VerySlow"/>
-                                        </ComboBox>
-
-                                        <Grid Margin="0,10,0,0">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <StackPanel Grid.Column="0">
-                                                <TextBlock Text="해상도" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
-                                                <ComboBox SelectedIndex="{Binding Options.ResolutionIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                                    <ComboBoxItem Content="원본"/><ComboBoxItem Content="2160p (4K)"/><ComboBoxItem Content="1440p"/>
-                                                    <ComboBoxItem Content="1080p"/><ComboBoxItem Content="720p"/><ComboBoxItem Content="480p"/>
-                                                </ComboBox>
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="2">
-                                                <TextBlock Text="프레임레이트" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
-                                                <ComboBox SelectedIndex="{Binding Options.FpsIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                                    <ComboBoxItem Content="원본"/><ComboBoxItem Content="24"/><ComboBoxItem Content="30"/><ComboBoxItem Content="60"/>
-                                                </ComboBox>
-                                            </StackPanel>
-                                        </Grid>
-
-                                        <CheckBox Margin="0,12,0,0" Content="웹 스트리밍 최적화 (Faststart)"
-                                                  IsChecked="{Binding Options.FastStart, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                                        <CheckBox Margin="0,6,0,0" Content="GPU 하드웨어 가속 (NVENC 등)"
-                                                  IsChecked="{Binding Options.VideoPreferGpu, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-
-                                        <Expander Header="고급" Margin="0,10,0,0" Foreground="{StaticResource FsTextSecondary}">
-                                            <StackPanel Margin="0,8,0,0">
-                                                <TextBlock Text="회전 / 뒤집기" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
-                                                <ComboBox SelectedIndex="{Binding Options.RotateIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                                    <ComboBoxItem Content="없음"/><ComboBoxItem Content="시계 90°"/><ComboBoxItem Content="반시계 90°"/>
-                                                    <ComboBoxItem Content="180°"/><ComboBoxItem Content="좌우 반전"/><ComboBoxItem Content="상하 반전"/>
-                                                </ComboBox>
-                                                <TextBlock Text="디인터레이스" Style="{StaticResource FsCaptionStyle}" Margin="0,10,0,4"/>
-                                                <ComboBox SelectedIndex="{Binding Options.DeinterlaceIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                                    <ComboBoxItem Content="끔"/><ComboBoxItem Content="Yadif"/><ComboBoxItem Content="Bwdif (고품질)"/>
-                                                </ComboBox>
-                                                <CheckBox Margin="0,10,0,0" Content="적응형 양자화 (GPU 화질↑)"
-                                                          IsChecked="{Binding Options.SpatialAq, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                                            </StackPanel>
-                                        </Expander>
                                     </StackPanel>
-
-                                    <!-- 오디오 (영상의 오디오 트랙 + 오디오 전용 출력) -->
-                                    <StackPanel x:Name="AudioSubPanel" Margin="0,14,0,0">
-                                        <TextBlock Text="오디오" Style="{StaticResource FsLabelStyle}"/>
-                                        <TextBlock Text="오디오 코덱" Style="{StaticResource FsCaptionStyle}" Margin="0,8,0,4"/>
-                                        <ComboBox SelectedIndex="{Binding Options.AudioCodecIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                            <ComboBoxItem Content="자동"/><ComboBoxItem Content="AAC"/><ComboBoxItem Content="MP3"/>
-                                            <ComboBoxItem Content="Opus"/><ComboBoxItem Content="Vorbis"/><ComboBoxItem Content="FLAC (무손실)"/>
-                                            <ComboBoxItem Content="PCM (WAV)"/><ComboBoxItem Content="원본 복사"/>
-                                        </ComboBox>
-                                        <TextBlock Text="오디오 비트레이트" Style="{StaticResource FsCaptionStyle}" Margin="0,10,0,4"/>
-                                        <ComboBox SelectedIndex="{Binding Options.AudioBitrateIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                            <ComboBoxItem Content="96 kbps"/><ComboBoxItem Content="128 kbps"/><ComboBoxItem Content="192 kbps"/>
-                                            <ComboBoxItem Content="256 kbps"/><ComboBoxItem Content="320 kbps"/>
-                                        </ComboBox>
-                                        <CheckBox Margin="0,8,0,0" Content="가변 비트레이트 (VBR)"
-                                                  IsChecked="{Binding Options.AudioVbr, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                                        <Grid Margin="0,10,0,0">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <StackPanel Grid.Column="0">
-                                                <TextBlock Text="샘플레이트" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
-                                                <ComboBox SelectedIndex="{Binding Options.SampleRateIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                                    <ComboBoxItem Content="원본"/><ComboBoxItem Content="44.1 kHz"/><ComboBoxItem Content="48 kHz"/>
-                                                </ComboBox>
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="2">
-                                                <TextBlock Text="채널" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
-                                                <ComboBox SelectedIndex="{Binding Options.ChannelsIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                                    <ComboBoxItem Content="원본"/><ComboBoxItem Content="모노"/><ComboBoxItem Content="스테레오"/>
-                                                </ComboBox>
-                                            </StackPanel>
-                                        </Grid>
-                                        <CheckBox Margin="0,10,0,0" Content="음량 정규화 (EBU R128)"
-                                                  IsChecked="{Binding Options.Loudnorm, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                                    </StackPanel>
-                                </StackPanel>
+                                </Expander>
                             </Border>
 
                             <!-- Card 6: Stats Box -->
@@ -685,8 +724,8 @@
 
                     <!-- 좌측: Active Queue OR Past Results -->
                     <Grid Grid.Row="1" Grid.Column="0">
-                    <!-- Active Queue view -->
-                    <Grid x:Name="ActiveQueueView" Visibility="Collapsed">
+                    <!-- Active Queue view (default) -->
+                    <Grid x:Name="ActiveQueueView" Visibility="Visible">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
@@ -880,8 +919,8 @@
                     </Grid>
                 </Grid>
 
-                    <!-- Past Results view (default) -->
-                    <Grid x:Name="PastResultsContainer">
+                    <!-- Past Results view -->
+                    <Grid x:Name="PastResultsContainer" Visibility="Collapsed">
                         <!-- 빈 상태 안내 (Empty State) -->
                         <Grid x:Name="PastResultsEmpty" Visibility="Collapsed">
                             <Border Background="{StaticResource FsBgBase}" Padding="32">

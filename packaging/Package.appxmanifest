@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10" xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4" xmlns:desktop5="http://schemas.microsoft.com/appx/manifest/desktop/windows10/5" xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10" IgnorableNamespaces="uap rescap desktop desktop4 desktop5 com">
-  <Identity Name="Everything2Everything.YunChan" Publisher="CN=Everything2EverythingDev" Version="1.0.14.0" ProcessorArchitecture="x64" />
+  <Identity Name="Everything2Everything.YunChan" Publisher="CN=Everything2EverythingDev" Version="1.0.16.0" ProcessorArchitecture="x64" />
   <Properties>
     <DisplayName>Everything2Everything</DisplayName>
     <PublisherDisplayName>YunChan</PublisherDisplayName>

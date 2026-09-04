@@ -172,12 +172,9 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         if (initialFiles is { Count: > 0 })
         {
             AddToQueue(initialFiles);
-            ShowTab("Active");
         }
-        else
-        {
-            ShowTab("Past");
-        }
+
+        ShowTab("Active");
 
         UpdateActiveQueueVisibility();
         ApplyAppDataStats();
@@ -1404,16 +1401,24 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         UpdateMediaPanelForFormat(extension);
     }
 
-    /// <summary>출력이 영상/오디오일 때만 영상·오디오 인코딩 패널을 노출(영상이면 영상+오디오, 오디오면 오디오만).</summary>
+    /// <summary>출력이 영상/오디오/PDF/이미지일 때 상세 인코딩 폴드아웃 서브패널 노출(Fluent 2 점진적 공개 패턴).</summary>
     private void UpdateMediaPanelForFormat(string? extension)
     {
-        if (MediaPanel is null) return;
+        if (AdvancedOptionsExpander is null) return;
         var ext = (extension ?? string.Empty).ToLowerInvariant();
         var isVideo = ext is ".mp4" or ".mkv" or ".webm" or ".mov" or ".avi";
         var isAudio = ext is ".mp3" or ".aac" or ".m4a" or ".opus" or ".ogg" or ".flac" or ".wav";
-        MediaPanel.Visibility = (isVideo || isAudio) ? Visibility.Visible : Visibility.Collapsed;
-        VideoSubPanel.Visibility = isVideo ? Visibility.Visible : Visibility.Collapsed;
-        AudioSubPanel.Visibility = (isVideo || isAudio) ? Visibility.Visible : Visibility.Collapsed;
+        var isPdf = ext is ".pdf";
+        var isImage = ext is ".jpg" or ".jpeg" or ".png" or ".webp" or ".avif" or ".tif" or ".tiff" or ".bmp" or ".gif";
+
+        if (AdvancedVideoPanel is not null)
+            AdvancedVideoPanel.Visibility = isVideo ? Visibility.Visible : Visibility.Collapsed;
+        if (AdvancedAudioPanel is not null)
+            AdvancedAudioPanel.Visibility = (isVideo || isAudio) ? Visibility.Visible : Visibility.Collapsed;
+        if (AdvancedPdfPanel is not null)
+            AdvancedPdfPanel.Visibility = isPdf ? Visibility.Visible : Visibility.Collapsed;
+        if (AdvancedImagePanel is not null)
+            AdvancedImagePanel.Visibility = isImage ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void UpdateOutputDestHint(string? extension)
