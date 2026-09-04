@@ -70,6 +70,24 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     public ICommand BatchSelectAllCommand { get; }
     public ICommand BatchRemoveSelectedCommand { get; }
     public ICommand BatchClearCompletedCommand { get; }
+    public ICommand ToggleInspectorCommand { get; }
+
+    private bool _isInspectorVisible = true;
+    public bool IsInspectorVisible
+    {
+        get => _isInspectorVisible;
+        set
+        {
+            if (_isInspectorVisible != value)
+            {
+                _isInspectorVisible = value;
+                if (InspectorColumn != null)
+                {
+                    InspectorColumn.Width = _isInspectorVisible ? new GridLength(380) : new GridLength(0);
+                }
+            }
+        }
+    }
 
     private string _searchText = "";
     public string SearchText
@@ -124,6 +142,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         BatchSelectAllCommand = new RelayCommand(p => BatchSelectAll(p));
         BatchRemoveSelectedCommand = new RelayCommand(_ => BatchRemoveSelected());
         BatchClearCompletedCommand = new RelayCommand(_ => BatchClearCompleted());
+        ToggleInspectorCommand = new RelayCommand(_ => ToggleInspector());
         RemoveQueueItemCommand = new RelayCommand(p => RemoveQueueItem(p as QueueItem));
         OpenFolderCommand = new RelayCommand(p => OpenFolderForPath(p as string));
         TabCommand = new RelayCommand(p => ShowTab(p as string ?? "Past"));
@@ -137,6 +156,11 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         PastRowCommand = new RelayCommand(p => HandlePastRowClick(p as MouseButtonEventArgs));
 
         InitializeComponent();
+
+        if (SmartPresetCombo is not null)
+        {
+            SmartPresetCombo.SelectionChanged += OnSmartPresetChanged;
+        }
 
         // ActiveQueueList/PastResultsList의 ItemsSource는 XAML이 ActiveQueue/PastResults에 바인딩(선언적).
 
@@ -218,6 +242,11 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         ActiveQueueView.Visibility = tag == "Active" ? Visibility.Visible : Visibility.Collapsed;
         PastResultsContainer.Visibility = tag == "Past" ? Visibility.Visible : Visibility.Collapsed;
         UpdatePastResultsVisibility();
+    }
+
+    public void ToggleInspector()
+    {
+        IsInspectorVisible = !IsInspectorVisible;
     }
 
     // ============== Drag & Drop ==============
@@ -317,12 +346,12 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         var count = _activeQueue.Count;
         if (_cts is not null)
         {
-            ProcessQueueButton.Content = $"Processing… ({count} files)";
+            ProcessQueueButton.Content = $"변환 처리 중… ({count}개 파일)";
             ProcessQueueButton.IsEnabled = false;
         }
         else if (count == 0)
         {
-            ProcessQueueButton.Content = "Idle — drop files to begin";
+            ProcessQueueButton.Content = "대기 중 — 파일을 드래그하여 추가하세요";
             ProcessQueueButton.IsEnabled = false;
         }
         else if (string.IsNullOrEmpty(SelectedOutputExtension))
@@ -332,7 +361,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         }
         else
         {
-            ProcessQueueButton.Content = $"Process Queue ({count})";
+            ProcessQueueButton.Content = $"대기열 일괄 변환 시작 ({count}개) [Ctrl + Enter]";
             ProcessQueueButton.IsEnabled = true;
         }
     }
@@ -574,6 +603,107 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
             QualitySlider.Value = _options.Quality;
             QualityValueText.Text = _options.Quality.ToString(CultureInfo.InvariantCulture);
+        }
+    }
+
+    private IReadOnlyList<FormatPreset> _currentFormatPresets = Array.Empty<FormatPreset>();
+    private bool _suppressPresetChanged;
+
+    private void UpdateSmartPresetsForFormat(string? ext)
+    {
+        if (SmartPresetCombo is null) return;
+
+        _currentFormatPresets = FormatPresetEngine.GetPresetsForExtension(ext);
+        _suppressPresetChanged = true;
+        try
+        {
+            SmartPresetCombo.Items.Clear();
+            foreach (var preset in _currentFormatPresets)
+            {
+                SmartPresetCombo.Items.Add(new ComboBoxItem
+                {
+                    Content = preset.Title,
+                    Tag = preset.Id,
+                    ToolTip = preset.Description,
+                });
+            }
+            if (SmartPresetCombo.Items.Count > 0)
+            {
+                SmartPresetCombo.SelectedIndex = 0;
+            }
+        }
+        finally
+        {
+            _suppressPresetChanged = false;
+        }
+
+        ApplySelectedSmartPreset();
+    }
+
+    private void OnSmartPresetChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressPresetChanged) return;
+        ApplySelectedSmartPreset();
+    }
+
+    private void ApplySelectedSmartPreset()
+    {
+        if (SmartPresetCombo is null || SmartPresetCombo.SelectedIndex < 0) return;
+        if (SmartPresetCombo.SelectedIndex >= _currentFormatPresets.Count) return;
+
+        var preset = _currentFormatPresets[SmartPresetCombo.SelectedIndex];
+        preset.Apply(_options);
+
+        if (SmartPresetDescriptionText is not null)
+        {
+            SmartPresetDescriptionText.Text = preset.Description;
+        }
+
+        if (SmartPresetChipsPanel is not null)
+        {
+            SmartPresetChipsPanel.Children.Clear();
+            var chipStyle = TryFindResource("FsSpecChipStyle") as Style;
+            var monoFont = TryFindResource("FsFontMono") as FontFamily;
+            var cyanBrush = TryFindResource("FsAccentCyan") as Brush ?? Brushes.Cyan;
+
+            foreach (var chip in preset.SpecChips)
+            {
+                var border = new Border();
+                if (chipStyle is not null)
+                {
+                    border.Style = chipStyle;
+                }
+                else
+                {
+                    border.CornerRadius = new CornerRadius(6);
+                    border.Padding = new Thickness(8, 3, 8, 3);
+                    border.Margin = new Thickness(0, 0, 6, 6);
+                }
+
+                var tb = new TextBlock
+                {
+                    Text = chip,
+                    FontSize = 11,
+                    Foreground = cyanBrush,
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
+                if (monoFont is not null)
+                {
+                    tb.FontFamily = monoFont;
+                }
+
+                border.Child = tb;
+                SmartPresetChipsPanel.Children.Add(border);
+            }
+        }
+
+        if (QualitySlider is not null)
+        {
+            QualitySlider.Value = _options.Quality;
+        }
+        if (QualityValueText is not null)
+        {
+            QualityValueText.Text = _options.Quality.ToString(CultureInfo.InvariantCulture) + "%";
         }
     }
 
@@ -1189,6 +1319,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         UpdateOutputDestHint(keepExt);
         UpdateCombineState(keepExt);
         UpdateProcessQueueButton();
+        UpdateSmartPresetsForFormat(keepExt);
 
         if (OutputFormatHint is not null)
         {
@@ -1233,6 +1364,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
             UpdateOutputFormatBadge(ext);
             UpdateQualityPanelForFormat(ext);
             UpdateOutputDestHint(ext);
+            UpdateSmartPresetsForFormat(ext);
         }
     }
 

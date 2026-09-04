@@ -1,28 +1,43 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
 
-    <!-- Backgrounds -->
-    <SolidColorBrush x:Key="FsBgBase"        Color="#090A0C"/>
-    <SolidColorBrush x:Key="FsBgPanel"       Color="#131417"/>
-    <SolidColorBrush x:Key="FsBgSurface"     Color="#1C1E22"/>
-    <SolidColorBrush x:Key="FsBgSurfaceHover" Color="#23252A"/>
-    <SolidColorBrush x:Key="FsBgInput"       Color="#0F1012"/>
+    <!-- Windows 11 Flagship Acrylic & Neo Glass Backgrounds -->
+    <SolidColorBrush x:Key="FsBgBase"        Color="#D80A0C10"/>
+    <SolidColorBrush x:Key="FsBgPanel"       Color="#E211141D"/>
+    <SolidColorBrush x:Key="FsBgSurface"     Color="#171B26"/>
+    <SolidColorBrush x:Key="FsBgSurfaceHover" Color="#222738"/>
+    <SolidColorBrush x:Key="FsBgInput"       Color="#0C0E14"/>
+
+    <!-- Neo Glass Rimlight Gradients -->
+    <LinearGradientBrush x:Key="FsGlassBorderBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#2EFFFFFF" Offset="0.0"/>
+        <GradientStop Color="#0EFFFFFF" Offset="1.0"/>
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="FsGlassBorderBrushHover" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#6606B6D4" Offset="0.0"/>
+        <GradientStop Color="#2206B6D4" Offset="1.0"/>
+    </LinearGradientBrush>
 
     <!-- Borders -->
-    <SolidColorBrush x:Key="FsBorderSubtle" Color="#26282D"/>
-    <SolidColorBrush x:Key="FsBorderStrong" Color="#3A3D45"/>
+    <SolidColorBrush x:Key="FsBorderSubtle" Color="#232733"/>
+    <SolidColorBrush x:Key="FsBorderStrong" Color="#3B4254"/>
 
     <!-- Text -->
-    <SolidColorBrush x:Key="FsTextPrimary"   Color="#ECEEFA"/>
-    <SolidColorBrush x:Key="FsTextSecondary" Color="#8B909A"/>
-    <SolidColorBrush x:Key="FsTextTertiary"  Color="#5D626C"/>
+    <SolidColorBrush x:Key="FsTextPrimary"   Color="#F8FAFC"/>
+    <SolidColorBrush x:Key="FsTextSecondary" Color="#94A3B8"/>
+    <SolidColorBrush x:Key="FsTextTertiary"  Color="#64748B"/>
 
-    <!-- Accents -->
-    <SolidColorBrush x:Key="FsAccentBlue"  Color="#3B72FF"/>
-    <SolidColorBrush x:Key="FsAccentGreen" Color="#10B981"/>
-    <SolidColorBrush x:Key="FsAccentAmber" Color="#F59E0B"/>
-    <SolidColorBrush x:Key="FsAccentRed"   Color="#EF4444"/>
+    <!-- Accents (Cybernetic Neon Cyan + Glowing Rims) -->
+    <SolidColorBrush x:Key="FsAccentBlue"      Color="#06B6D4"/>
+    <SolidColorBrush x:Key="FsAccentCyan"      Color="#06B6D4"/>
+    <SolidColorBrush x:Key="FsAccentCyanHover" Color="#22D3EE"/>
+    <SolidColorBrush x:Key="FsAccentCyanBg"    Color="#083344"/>
+    <SolidColorBrush x:Key="FsAccentGreen"     Color="#10B981"/>
+    <SolidColorBrush x:Key="FsAccentAmber"     Color="#F59E0B"/>
+    <SolidColorBrush x:Key="FsAccentRed"       Color="#EF4444"/>
 
     <!-- Format pills -->
     <SolidColorBrush x:Key="FsFmtPdf"  Color="#E53E3E"/>
@@ -55,6 +70,27 @@
     <SolidColorBrush x:Key="FsFmtVideo" Color="#FF7043"/>
     <!-- 오디오 = 라이트 퍼플 (Seti audio=purple, 통념 오디오=보라); 기존 PNG/GIF보다 라이트 -->
     <SolidColorBrush x:Key="FsFmtAudio" Color="#B794F4"/>
+
+    <!-- 포맷 카테고리별 시그니처 뱃지 브러시 (designpaca Dark Instrument) -->
+    <SolidColorBrush x:Key="FsBadgeImageBrush"   Color="#06B6D4"/>
+    <SolidColorBrush x:Key="FsBadgeImageBg"      Color="#083344"/>
+    <SolidColorBrush x:Key="FsBadgeDocBrush"     Color="#10B981"/>
+    <SolidColorBrush x:Key="FsBadgeDocBg"        Color="#064E3B"/>
+    <SolidColorBrush x:Key="FsBadgeVideoBrush"   Color="#F59E0B"/>
+    <SolidColorBrush x:Key="FsBadgeVideoBg"      Color="#451A03"/>
+    <SolidColorBrush x:Key="FsBadgeAudioBrush"   Color="#A855F7"/>
+    <SolidColorBrush x:Key="FsBadgeAudioBg"      Color="#3B0764"/>
+    <SolidColorBrush x:Key="FsBadgeArchiveBrush" Color="#EC4899"/>
+    <SolidColorBrush x:Key="FsBadgeArchiveBg"    Color="#500724"/>
+
+    <!-- Dark Instrument 정밀 계측기 랙마운트 카드 스타일 -->
+    <Style x:Key="FsInstrumentCardStyle" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource FsBgSurface}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource FsBorderHairline}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="12,10"/>
+    </Style>
 
     <!-- 손실 등급 토큰 (Radix dark; Container는 중립 회색 — 사용자 결정) -->
     <SolidColorBrush x:Key="FsLossLosslessDot"   Color="#30A46C"/>
@@ -181,39 +217,46 @@
         </Setter>
     </Style>
 
-    <!-- Tab pill style -->
+    <!-- Tab pill style (Refined Segmented Control) -->
     <Style x:Key="FsTabPillStyle" TargetType="ToggleButton">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{StaticResource FsTextSecondary}"/>
         <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Padding" Value="14,6"/>
-        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Padding" Value="12,5"/>
+        <Setter Property="FontSize" Value="12"/>
         <Setter Property="FontWeight" Value="Medium"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
-                    <Border x:Name="PART_Bd" CornerRadius="20"
+                    <Border x:Name="PART_Bd" CornerRadius="6"
                             Padding="{TemplateBinding Padding}"
-                            Background="{TemplateBinding Background}">
+                            Background="{TemplateBinding Background}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            BorderBrush="{TemplateBinding BorderBrush}">
                         <ContentPresenter HorizontalAlignment="Center"
                                           VerticalAlignment="Center"
                                           TextElement.Foreground="{TemplateBinding Foreground}"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="PART_Bd" Property="Background" Value="{StaticResource FsAccentBlue}"/>
-                            <Setter Property="Foreground" Value="White"/>
+                            <Setter TargetName="PART_Bd" Property="Background" Value="#23262E"/>
+                            <Setter TargetName="PART_Bd" Property="BorderBrush" Value="{StaticResource FsBorderHairline}"/>
+                            <Setter TargetName="PART_Bd" Property="BorderThickness" Value="1"/>
+                            <Setter Property="Foreground" Value="{StaticResource FsTextPrimary}"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="PART_Bd" Property="Background" Value="{StaticResource FsBgSurfaceHover}"/>
+                            <Setter Property="Foreground" Value="{StaticResource FsTextPrimary}"/>
                         </Trigger>
                         <MultiTrigger>
                             <MultiTrigger.Conditions>
                                 <Condition Property="IsChecked" Value="True"/>
                                 <Condition Property="IsMouseOver" Value="True"/>
                             </MultiTrigger.Conditions>
-                            <Setter TargetName="PART_Bd" Property="Background" Value="{StaticResource FsAccentBlue}"/>
+                            <Setter TargetName="PART_Bd" Property="Background" Value="#2A2E38"/>
+                            <Setter TargetName="PART_Bd" Property="BorderBrush" Value="{StaticResource FsBorderSubtle}"/>
                         </MultiTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -250,8 +293,8 @@
 
     <!-- Primary button (Processing Queue / Run) -->
     <Style x:Key="FsPrimaryButtonStyle" TargetType="Button">
-        <Setter Property="Background" Value="{StaticResource FsAccentBlue}"/>
-        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="Background" Value="{StaticResource FsAccentCyan}"/>
+        <Setter Property="Foreground" Value="#090A0C"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding" Value="12"/>
         <Setter Property="FontSize" Value="13"/>
@@ -272,11 +315,11 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="PART_Bd" Property="Opacity" Value="0.5"/>
+                            <Setter TargetName="PART_Bd" Property="Opacity" Value="0.4"/>
                             <Setter Property="Cursor" Value="Arrow"/>
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="PART_Bd" Property="Background" Value="#2D5DDB"/>
+                            <Setter TargetName="PART_Bd" Property="Background" Value="{StaticResource FsAccentCyanHover}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -318,11 +361,11 @@
         </Setter>
     </Style>
 
-    <!-- Tab badge -->
+    <!-- Tab badge (Refined micro badge) -->
     <Style x:Key="FsTabBadgeStyle" TargetType="Border">
-        <Setter Property="CornerRadius" Value="10"/>
-        <Setter Property="Padding" Value="6,1"/>
-        <Setter Property="Background" Value="{StaticResource FsBgSurface}"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="5,1"/>
+        <Setter Property="Background" Value="#14FFFFFF"/>
     </Style>
 
     <!-- Path input box -->
@@ -406,21 +449,23 @@
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
 
-    <!-- 큐/이력 row 공통 컨테이너: 투명 → hover 시 surface, 부드러운 fade -->
+    <!-- 큐/이력 row 글래스 카드: Neo Glass + 림라이트 보더 + 부드러운 호버 글로우 -->
     <Style x:Key="FsListRowStyle" TargetType="Border">
-        <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Background" Value="{StaticResource FsBgSurface}"/>
+        <Setter Property="CornerRadius" Value="10"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="{StaticResource FsGlassBorderBrush}"/>
+        <Setter Property="Margin" Value="0,0,0,8"/>
+        <Setter Property="Padding" Value="12,10"/>
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Background" Value="{StaticResource FsBgSurfaceHover}"/>
-                <Setter Property="BorderBrush" Value="{StaticResource FsBorderHairline}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource FsGlassBorderBrushHover}"/>
                 <Trigger.EnterActions>
                     <BeginStoryboard>
                         <Storyboard>
                             <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                             From="0.85" To="1" Duration="0:0:0.12"/>
+                                             From="0.88" To="1" Duration="0:0:0.12"/>
                         </Storyboard>
                     </BeginStoryboard>
                 </Trigger.EnterActions>
@@ -428,7 +473,7 @@
         </Style.Triggers>
     </Style>
 
-    <!-- 32x32 아이콘 버튼(설정 ⚙, 삭제 ×): 투명 → hover surface, radius 6 -->
+    <!-- 32x32 아이콘 버튼(설정, 삭제): 투명 → hover surface, radius 6 -->
     <Style x:Key="FsIconButtonStyle" TargetType="Button">
         <Setter Property="Width" Value="32"/>
         <Setter Property="Height" Value="32"/>
@@ -464,4 +509,164 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <!-- Neo Glass Card Shell (Windows 11 Fluent 2 Acrylic, radius 12, 림라이트 보더) -->
+    <Style x:Key="FsCardStyle" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource FsBgSurface}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource FsGlassBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="16"/>
+        <Setter Property="Margin" Value="0,0,0,16"/>
+    </Style>
+
+    <!-- 실시간 기술 스펙 칩 (Live Spec Chip) 캡슐 스타일 -->
+    <Style x:Key="FsSpecChipStyle" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource FsAccentCyanBg}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource FsAccentCyan}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="8,3"/>
+        <Setter Property="Margin" Value="0,0,6,6"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- Standard Toolbar Button (Height 32px, unified icon+text vertical alignment) -->
+    <Style x:Key="FsToolbarButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource FsBgSurface}"/>
+        <Setter Property="Foreground" Value="{StaticResource FsTextPrimary}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource FsGlassBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Height" Value="32"/>
+        <Setter Property="Padding" Value="12,0"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="PART_Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="8"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          TextElement.Foreground="{TemplateBinding Foreground}"
+                                          TextElement.FontSize="{TemplateBinding FontSize}"
+                                          TextElement.FontWeight="{TemplateBinding FontWeight}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="PART_Bd" Property="Background" Value="{StaticResource FsBgSurfaceHover}"/>
+                            <Setter TargetName="PART_Bd" Property="BorderBrush" Value="{StaticResource FsGlassBorderBrushHover}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="PART_Bd" Property="Opacity" Value="0.4"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Windows 11 Fluent 2 Unified TitleBar Style (Zero Vertical Misalignment & True Caption Centering) -->
+    <Style TargetType="{x:Type ui:TitleBar}">
+        <Setter Property="Height" Value="42"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource FsTextPrimary}"/>
+        <Setter Property="FontFamily" Value="{StaticResource FsFontSans}"/>
+        <Setter Property="ButtonsForeground" Value="#D0D5DD"/>
+        <Setter Property="ButtonsBackground" Value="#1FFFFFFF"/>
+        <Setter Property="VerticalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ui:TitleBar}">
+                    <Grid Background="{TemplateBinding Background}" Name="PART_MainGrid"
+                          HorizontalAlignment="{TemplateBinding HorizontalAlignment}"
+                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left Icon Area -->
+                        <Grid Name="TitleGrid" Margin="{TemplateBinding Padding}" HorizontalAlignment="Left" VerticalAlignment="Center" Grid.Column="0">
+                            <ContentPresenter Content="{TemplateBinding Icon}" Name="PART_Icon" Height="18" Width="18"
+                                              VerticalAlignment="Center" Focusable="False"
+                                              RenderOptions.BitmapScalingMode="HighQuality"
+                                              AutomationProperties.AutomationId="TitleBarIcon"/>
+                        </Grid>
+
+                        <Grid Grid.Column="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Header (Tabs + Telemetry) -->
+                            <ContentPresenter Content="{TemplateBinding Header}" HorizontalAlignment="Left" VerticalAlignment="Center" Grid.Column="0"/>
+
+                            <!-- CenterContent (Wide Native Drag Area) -->
+                            <ContentPresenter Content="{TemplateBinding CenterContent}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" Grid.Column="1"/>
+
+                            <!-- TrailingContent (Action Buttons) -->
+                            <ContentPresenter Content="{TemplateBinding TrailingContent}" HorizontalAlignment="Right" VerticalAlignment="Center" Grid.Column="2"/>
+
+                            <!-- Window Control Buttons: Stretch full height, icons centered on exact same centerline -->
+                            <Grid HorizontalAlignment="Right" VerticalAlignment="Stretch" Grid.Column="3">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ui:TitleBarButton ButtonType="Help" Name="PART_HelpButton" AutomationProperties.AutomationId="TitleBarHelpButton" Grid.Column="0" VerticalAlignment="Stretch" Height="Auto" Width="46"/>
+                                <ui:TitleBarButton ButtonType="Minimize" Name="PART_MinimizeButton" AutomationProperties.AutomationId="TitleBarMinimizeButton" Grid.Column="1" VerticalAlignment="Stretch" Height="Auto" Width="46"/>
+                                <ui:TitleBarButton ButtonType="Maximize" Name="PART_MaximizeButton" IsHitTestVisible="True" AutomationProperties.AutomationId="TitleBarMaximizeButton" Grid.Column="2" VerticalAlignment="Stretch" Height="Auto" Width="46"/>
+                                <ui:TitleBarButton ButtonType="Close" MouseOverButtonsForeground="#FFFFFFFF" MouseOverBackground="#E81123" Name="PART_CloseButton" AutomationProperties.AutomationId="TitleBarCloseButton" Grid.Column="4" VerticalAlignment="Stretch" Height="Auto" Width="46"/>
+                            </Grid>
+                        </Grid>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="Icon" Value="{x:Null}"/>
+                                <Condition Property="Title" Value="{x:Null}"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="TitleGrid" Property="Visibility" Value="Collapsed"/>
+                        </MultiTrigger>
+                        <Trigger Property="Icon" Value="{x:Null}">
+                            <Setter TargetName="PART_Icon" Property="Visibility" Value="Collapsed"/>
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="ShowMaximize" Value="True"/>
+                                <Condition Property="IsMaximized" Value="True"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="PART_MaximizeButton" Property="ButtonType" Value="Restore"/>
+                        </MultiTrigger>
+                        <Trigger Property="ShowHelp" Value="False">
+                            <Setter TargetName="PART_HelpButton" Property="Visibility" Value="Collapsed"/>
+                        </Trigger>
+                        <Trigger Property="ShowMinimize" Value="False">
+                            <Setter TargetName="PART_MinimizeButton" Property="Visibility" Value="Collapsed"/>
+                        </Trigger>
+                        <Trigger Property="ShowMaximize" Value="False">
+                            <Setter TargetName="PART_MaximizeButton" Property="Visibility" Value="Collapsed"/>
+                        </Trigger>
+                        <Trigger Property="ShowClose" Value="False">
+                            <Setter TargetName="PART_CloseButton" Property="Visibility" Value="Collapsed"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>
+

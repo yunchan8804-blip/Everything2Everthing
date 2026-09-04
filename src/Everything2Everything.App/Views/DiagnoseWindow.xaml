@@ -3,30 +3,46 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
                  Title="진단"
-                 Width="640" Height="540"
+                 Width="680" Height="580"
+                 MinWidth="560" MinHeight="480"
                  ExtendsContentIntoTitleBar="True"
-                 WindowBackdropType="Mica"
+                 WindowBackdropType="None"
                  WindowCornerPreference="Round"
                  WindowStartupLocation="CenterOwner">
-    <Grid>
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="FormatShiftTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Background="{StaticResource FsBgBase}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <ui:TitleBar Grid.Row="0" Title="진단"/>
-        <ScrollViewer Grid.Row="1" Margin="32,8,32,16" VerticalScrollBarVisibility="Auto">
+        <ui:TitleBar Grid.Row="0" Title="진단" Height="32"/>
+        <ScrollViewer Grid.Row="1" Margin="24,8,24,16" VerticalScrollBarVisibility="Auto">
             <StackPanel x:Name="ItemsPanel"/>
         </ScrollViewer>
-        <Border Grid.Row="2" Padding="32,16"
-                Background="{DynamicResource LayerOnAcrylicFillColorDefaultBrush}"
+        <Border Grid.Row="2" Padding="24,14"
+                Background="{StaticResource FsBgPanel}"
                 BorderThickness="0,1,0,0"
-                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <ui:Button Content="새로고침" Icon="{ui:SymbolIcon ArrowClockwise24}"
-                           Click="OnRefreshClick" Margin="0,0,8,0"/>
-                <ui:Button Content="닫기" Click="OnCloseClick" Appearance="Primary"/>
+                BorderBrush="{StaticResource FsBorderSubtle}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <Button Style="{StaticResource FsSecondaryButtonStyle}"
+                        Click="OnRefreshClick" Margin="0,0,8,0" Padding="14,6">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <ui:SymbolIcon Symbol="ArrowClockwise24" FontSize="13" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="새로고침" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <Button Content="닫기" Style="{StaticResource FsPrimaryButtonStyle}"
+                        Click="OnCloseClick" Padding="18,6"/>
             </StackPanel>
         </Border>
     </Grid>
 </ui:FluentWindow>
+

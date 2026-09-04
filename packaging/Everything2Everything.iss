@@ -1,6 +1,6 @@
 ; Everything2Everything Inno Setup Script
 #ifndef MyAppVersion
-#define MyAppVersion "1.0.8"
+#define MyAppVersion "1.0.14"
 #endif
 
 #define MyAppName "Everything2Everything"

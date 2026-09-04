@@ -161,7 +161,6 @@ public class DesignAuditAstTests
 
         var actionsPanel = doc.Descendants()
             .FirstOrDefault(e => e.Name.LocalName == "StackPanel" &&
-                                 e.Attribute("Grid.Column")?.Value == "1" &&
                                  e.Attribute("Orientation")?.Value == "Horizontal" &&
                                  e.Elements().Any(c => c.Name.LocalName == "Button" && c.Attribute("Command")?.Value?.Contains("SettingsCommand") == true));
 
@@ -234,12 +233,15 @@ public class DesignAuditAstTests
         var mainFile = Path.Combine(ViewsDir, "MainWindow.xaml");
         var doc = XDocument.Parse(File.ReadAllText(mainFile));
 
-        // 1. Quick Presets (PresetCommand 바인딩 버튼 존재)
-        var presetButtons = doc.Descendants()
-            .Where(e => (e.Name.LocalName == "Button" || e.Name.LocalName == "ToggleButton") &&
-                        e.Attribute("Command")?.Value.Contains("PresetCommand") == true)
-            .ToList();
-        Assert.True(presetButtons.Count >= 4, "빠른 최적화 프리셋 버튼 4개(웹/고화질/문서/모바일)가 MainWindow.xaml에 선언되어야 합니다.");
+        // 1. Dynamic Smart Presets (SmartPresetCombo 및 SmartPresetChipsPanel 존재)
+        var smartPresetCombo = doc.Descendants()
+            .FirstOrDefault(e => e.Name.LocalName == "ComboBox" &&
+                                 e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "SmartPresetCombo");
+        Assert.NotNull(smartPresetCombo);
+
+        var specChipsPanel = doc.Descendants()
+            .FirstOrDefault(e => e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "SmartPresetChipsPanel");
+        Assert.NotNull(specChipsPanel);
 
         // 2. SearchBox (검색창 존재)
         var searchBox = doc.Descendants()
@@ -259,4 +261,164 @@ public class DesignAuditAstTests
             .ToList();
         Assert.NotEmpty(openButtons);
     }
+
+    [Fact]
+    public void MainWindow_MustHave_CollapsibleInspectorColumn_And_ToggleCommand()
+    {
+        // 우측 미리보기 인스펙터를 원클릭으로 접고 펼쳐 큐 가로폭을 극대화할 수 있도록
+        // InspectorColumn 명명된 ColumnDefinition과 ToggleInspectorCommand 버튼이 존재해야 한다.
+        var mainFile = Path.Combine(ViewsDir, "MainWindow.xaml");
+        var doc = XDocument.Parse(File.ReadAllText(mainFile));
+
+        var inspectorCol = doc.Descendants()
+            .FirstOrDefault(e => e.Name.LocalName == "ColumnDefinition" &&
+                                 e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "InspectorColumn");
+        Assert.NotNull(inspectorCol);
+
+        var toggleBtn = doc.Descendants()
+            .FirstOrDefault(e => (e.Name.LocalName == "Button" || e.Name.LocalName == "ToggleButton") &&
+                                 e.Attribute("Command")?.Value.Contains("ToggleInspectorCommand") == true);
+        Assert.NotNull(toggleBtn);
+    }
+
+    [Fact]
+    public void FormatShiftTheme_MustDefine_DoubleBezelAndCardStyles()
+    {
+        // Fluent 2 / Dark Instrument 디자인 고도화를 위해
+        // 8px 그리드 기반의 카드(Double-Bezel) 및 툴바 표준 스타일이 FormatShiftTheme.xaml에 선언되어야 한다.
+        var themeFile = Path.Combine(ViewsDir, "FormatShiftTheme.xaml");
+        var doc = XDocument.Parse(File.ReadAllText(themeFile));
+
+        var cardStyle = doc.Descendants()
+            .FirstOrDefault(e => e.Name.LocalName == "Style" &&
+                                 e.Attribute(XName.Get("Key", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "FsCardStyle");
+        Assert.NotNull(cardStyle);
+
+        var toolbarBtnStyle = doc.Descendants()
+            .FirstOrDefault(e => e.Name.LocalName == "Style" &&
+                                 e.Attribute(XName.Get("Key", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "FsToolbarButtonStyle");
+        Assert.NotNull(toolbarBtnStyle);
+    }
+
+    [Fact]
+    public void InspectorHeader_MustHave_DismissOrCloseButton_WithToggleCommand()
+    {
+        // 우측 미리보기 인스펙터 헤더에 직관적으로 닫을 수 있는 닫기 버튼이 제공되어야 한다.
+        var mainFile = Path.Combine(ViewsDir, "MainWindow.xaml");
+        var doc = XDocument.Parse(File.ReadAllText(mainFile));
+
+        var inspectorCol = doc.Descendants()
+            .FirstOrDefault(e => e.Name.LocalName == "Border" &&
+                                 e.Attribute("Grid.Column")?.Value == "1" &&
+                                 e.Descendants().Any(d => d.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "PreviewImageArea"));
+        Assert.NotNull(inspectorCol);
+
+        var header = inspectorCol.Descendants()
+            .FirstOrDefault(e => e.Name.LocalName == "Border" && e.Attribute("Grid.Row")?.Value == "0");
+        Assert.NotNull(header);
+
+        var closeBtn = header.Descendants()
+            .FirstOrDefault(e => e.Name.LocalName == "Button" &&
+                                 e.Attribute("Command")?.Value.Contains("ToggleInspectorCommand") == true);
+        Assert.NotNull(closeBtn);
+    }
+
+    [Fact]
+    public void EmptyStates_MustHave_ActionableCallToActions_And_Shortcuts()
+    {
+        // Zero-Void 원칙: DropZone과 PastResults 빈 상태 화면은 단순 텍스트뿐 아니라
+        // 사용자의 즉각적인 행동을 유도하는 Action 버튼을 포함해야 한다.
+        var mainFile = Path.Combine(ViewsDir, "MainWindow.xaml");
+        var doc = XDocument.Parse(File.ReadAllText(mainFile));
+
+        var dropEmpty = doc.Descendants()
+            .FirstOrDefault(e => e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "DropZoneEmpty");
+        Assert.NotNull(dropEmpty);
+
+        var dropCta = dropEmpty.Descendants()
+            .FirstOrDefault(e => e.Name.LocalName == "Button" &&
+                                 e.Attribute("Command")?.Value.Contains("AddFilesCommand") == true);
+        Assert.NotNull(dropCta);
+
+        var pastEmpty = doc.Descendants()
+            .FirstOrDefault(e => e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "PastResultsEmpty");
+        Assert.NotNull(pastEmpty);
+
+        var pastCta = pastEmpty.Descendants()
+            .FirstOrDefault(e => e.Name.LocalName == "Button" &&
+                                 e.Attribute("Command")?.Value.Contains("TabCommand") == true);
+        Assert.NotNull(pastCta);
+    }
+
+    [Fact]
+    public void TopHeader_MustHave_EngineStatusTelemetryBadge()
+    {
+        // designpaca R1/R2: 정밀 계측기 상단 툴바에 실시간 엔진 가동 상태 및 프로바이더 텔레메트리 뱃지가 존재해야 한다.
+        var mainFile = Path.Combine(ViewsDir, "MainWindow.xaml");
+        var doc = XDocument.Parse(File.ReadAllText(mainFile));
+
+        var engineTelemetry = doc.Descendants()
+            .FirstOrDefault(e => e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "EngineTelemetryBadge");
+        Assert.NotNull(engineTelemetry);
+    }
+
+    [Fact]
+    public void FormatShiftTheme_MustDefine_InstrumentTokens_And_CategoryBrushes()
+    {
+        // designpaca R2/R3: FormatShiftTheme.xaml에 포맷 카테고리별 시그니처 브러시와 정밀 카드 스타일이 선언되어 있어야 한다.
+        var themeFile = Path.Combine(ViewsDir, "FormatShiftTheme.xaml");
+        var doc = XDocument.Parse(File.ReadAllText(themeFile));
+
+        var keys = doc.Descendants()
+            .Select(e => e.Attribute(XName.Get("Key", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value)
+            .Where(k => k != null)
+            .ToHashSet();
+
+        Assert.Contains("FsBadgeImageBrush", keys);
+        Assert.Contains("FsBadgeDocBrush", keys);
+        Assert.Contains("FsBadgeVideoBrush", keys);
+        Assert.Contains("FsBadgeAudioBrush", keys);
+        Assert.Contains("FsInstrumentCardStyle", keys);
+    }
+
+    [Fact]
+    public void ActiveQueueList_ItemTemplate_MustHave_InstrumentCard_With_CategoryAndTelemetry()
+    {
+        // designpaca R1/R3: 대기열 리스트 DataTemplate에 단순 텍스트가 아닌 정밀 계측 카드와 카테고리 뱃지가 구조화되어야 한다.
+        var mainFile = Path.Combine(ViewsDir, "MainWindow.xaml");
+        var doc = XDocument.Parse(File.ReadAllText(mainFile));
+
+        var activeList = doc.Descendants()
+            .FirstOrDefault(e => e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "ActiveQueueList");
+        Assert.NotNull(activeList);
+
+        var dataTemplate = activeList.Descendants().FirstOrDefault(e => e.Name.LocalName == "DataTemplate");
+        Assert.NotNull(dataTemplate);
+
+        // 카테고리 뱃지 및 모노스페이스 텔레메트리 식별
+        var hasCategoryPill = dataTemplate.Descendants().Any(e =>
+            e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "ItemCategoryBadge" ||
+            e.Attribute("Tag")?.Value == "CategoryPill");
+        Assert.True(hasCategoryPill, "대기열 카드에 포맷 카테고리 뱃지(ItemCategoryBadge)가 있어야 합니다.");
+    }
+
+    [Fact]
+    public void SwissMinimal_Tokens_MustInclude_NeonCyanSignatureAccent()
+    {
+        // designpaca 사용자 인터뷰 결정: 스위스 미니멀 + 네온 시안(#06B6D4) 시그니처 악센트 토큰 검증
+        var themeFile = Path.Combine(ViewsDir, "FormatShiftTheme.xaml");
+        var doc = XDocument.Parse(File.ReadAllText(themeFile));
+
+        var cyanBrush = doc.Descendants()
+            .FirstOrDefault(e => e.Attribute(XName.Get("Key", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "FsAccentCyan");
+        Assert.NotNull(cyanBrush);
+        Assert.Equal("#06B6D4", cyanBrush.Attribute("Color")?.Value);
+
+        var cyanBgBrush = doc.Descendants()
+            .FirstOrDefault(e => e.Attribute(XName.Get("Key", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "FsAccentCyanBg");
+        Assert.NotNull(cyanBgBrush);
+        Assert.Equal("#083344", cyanBgBrush.Attribute("Color")?.Value);
+    }
 }
+
+
