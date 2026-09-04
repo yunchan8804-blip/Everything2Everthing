@@ -20,7 +20,7 @@
 
     <Grid Background="{StaticResource FsBgBase}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="32"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 

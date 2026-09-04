@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Xml.Linq;
 using Everything2Everything.App.Views;
 using Everything2Everything.Core;
@@ -275,6 +276,112 @@ public class UnifiedTitleBarTests
                 $"우측 액션 버튼 그룹의 가로 폭이 너무 넓습니다({trailing.DesiredSize.Width}px). 260px 이하로 컴팩트하게 구성되어야 왼쪽 탭과 겹치지 않습니다.");
         });
     }
+
+    [Fact]
+    public void SettingsWindow_TitleBar_MustDisplayProperlyAlignedHeaderAndCloseButton()
+    {
+        RunOnSta(() =>
+        {
+            var store = new FakeSettingsStore();
+            var window = new SettingsWindow(store);
+
+            var content = (UIElement)window.Content;
+            content.Measure(new Size(560, 720));
+            content.Arrange(new Rect(0, 0, 560, 720));
+
+            var titleBar = FindLogicalChild<Wpf.Ui.Controls.TitleBar>(window);
+            Assert.NotNull(titleBar);
+            titleBar.ApplyTemplate();
+
+            // 1. TitleBar height must be 42px
+            Assert.Equal(42.0, titleBar.ActualHeight);
+
+            // 2. PART_MainGrid must stretch to 42px
+            var mainGrid = (FrameworkElement)titleBar.Template.FindName("PART_MainGrid", titleBar);
+            Assert.NotNull(mainGrid);
+            Assert.Equal(42.0, mainGrid.ActualHeight);
+
+            // 3. Find the rendered TextBlock with text "설정"
+            var textBlocks = FindVisualChildren<TextBlock>(titleBar).Where(t => t.Text == "설정").ToList();
+            Assert.NotEmpty(textBlocks);
+            var titleTb = textBlocks.First();
+
+            // 4. TextBlock "설정" must not be at X=0 (must have left padding/margin >= 12px)
+            var textPt = titleTb.TransformToAncestor(titleBar).Transform(new Point(0, 0));
+            Assert.True(textPt.X >= 12.0, $"Title text X coordinate ({textPt.X}px) must be >= 12px to prevent touching window edge.");
+
+            var closeBtn = (FrameworkElement)titleBar.Template.FindName("PART_CloseButton", titleBar);
+            Assert.NotNull(closeBtn);
+            Assert.Equal(Visibility.Visible, closeBtn.Visibility);
+
+            // 5. Title text center Y and Close button center Y must match within 2.0px tolerance
+            var textCenterY = textPt.Y + titleTb.ActualHeight / 2.0;
+            var closeCenterY = closeBtn.TransformToAncestor(titleBar).Transform(new Point(0, closeBtn.ActualHeight / 2.0)).Y;
+            Assert.True(Math.Abs(textCenterY - closeCenterY) <= 2.0,
+                $"Title text CenterY ({textCenterY:F1}px) and CloseButton CenterY ({closeCenterY:F1}px) must match within 2px.");
+        });
+    }
+
+    [Fact]
+    public void DiagnoseWindow_TitleBar_MustHaveStandardHeightAndButtons()
+    {
+        RunOnSta(() =>
+        {
+            var engine = Everything2EverythingBootstrap.CreateDefault();
+            var window = new DiagnoseWindow(engine);
+
+            var content = (UIElement)window.Content;
+            content.Measure(new Size(680, 580));
+            content.Arrange(new Rect(0, 0, 680, 580));
+
+            var titleBar = FindLogicalChild<Wpf.Ui.Controls.TitleBar>(window);
+            Assert.NotNull(titleBar);
+            titleBar.ApplyTemplate();
+
+            // Height must be standard 42px (not hardcoded 32px)
+            Assert.Equal(42.0, titleBar.ActualHeight);
+            Assert.False(titleBar.ShowMaximize);
+            Assert.False(titleBar.ShowMinimize);
+        });
+    }
+
+    [Fact]
+    public void QuickOptionsWindow_TitleBar_MustHaveStandardHeightAndButtons()
+    {
+        RunOnSta(() =>
+        {
+            var store = new FakeSettingsStore();
+            var window = new QuickOptionsWindow(".mp4", 1, store);
+
+            var content = (UIElement)window.Content;
+            content.Measure(new Size(380, 500));
+            content.Arrange(new Rect(0, 0, 380, 500));
+
+            var titleBar = FindLogicalChild<Wpf.Ui.Controls.TitleBar>(window);
+            Assert.NotNull(titleBar);
+            titleBar.ApplyTemplate();
+
+            Assert.Equal(42.0, titleBar.ActualHeight);
+            Assert.False(titleBar.ShowMaximize);
+            Assert.False(titleBar.ShowMinimize);
+        });
+    }
+
+
+    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
+    {
+        int count = VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T typed) yield return typed;
+            foreach (var descendant in FindVisualChildren<T>(child))
+            {
+                yield return descendant;
+            }
+        }
+    }
+
 
     private static bool IsDescendantOf(DependencyObject? node, DependencyObject targetAncestor)
     {

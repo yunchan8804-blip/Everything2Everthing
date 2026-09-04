@@ -23,7 +23,7 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <ui:TitleBar Grid.Row="0" Title="진단" Height="32"/>
+        <ui:TitleBar Grid.Row="0" Title="진단" ShowMaximize="False" ShowMinimize="False"/>
         <ScrollViewer Grid.Row="1" Margin="24,8,24,16" VerticalScrollBarVisibility="Auto">
             <StackPanel x:Name="ItemsPanel"/>
         </ScrollViewer>

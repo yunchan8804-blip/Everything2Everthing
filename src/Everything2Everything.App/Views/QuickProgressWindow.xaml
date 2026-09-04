@@ -22,7 +22,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        <ui:TitleBar Grid.Row="0" x:Name="WindowTitleBar" Title="빠른 변환"/>
+        <ui:TitleBar Grid.Row="0" x:Name="WindowTitleBar" Title="빠른 변환" ShowMaximize="False" ShowMinimize="False"/>
         <Grid Grid.Row="1" Margin="32,12,32,24">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
