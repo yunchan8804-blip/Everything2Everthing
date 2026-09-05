@@ -18,8 +18,30 @@ using LossClass = Everything2Everything.Core.Providers.LossClass;
 
 namespace Everything2Everything.App.Views;
 
-public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
+public partial class MainWindow : Wpf.Ui.Controls.FluentWindow, INotifyPropertyChanged
 {
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void OnPropertyChanged([CallerMemberName] string? name = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    private bool _hasSelectedItem;
+    public bool HasSelectedItem
+    {
+        get => _hasSelectedItem;
+        set
+        {
+            if (_hasSelectedItem != value)
+            {
+                _hasSelectedItem = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public ICommand ClearSearchCommand { get; }
+    public ICommand SelectAllQueueCommand => BatchSelectAllCommand;
+    public ICommand DeleteSelectedQueueCommand => BatchRemoveSelectedCommand;
+
     private readonly ConversionEngine _engine;
     private readonly ISettingsStore _settings;
     private readonly OptionsViewModel _options = new();
@@ -153,6 +175,11 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         DragLeaveCommand = new RelayCommand(_ => DropHintOverlay.Visibility = Visibility.Collapsed);
         DropCommand = new RelayCommand(p => HandleFilesDropped(p as DragEventArgs));
         QueueRowCommand = new RelayCommand(p => HandleQueueRowClick(p as MouseButtonEventArgs));
+        ClearSearchCommand = new RelayCommand(_ =>
+        {
+            SearchText = "";
+            if (SearchBox is not null) SearchBox.Text = "";
+        });
         PastRowCommand = new RelayCommand(p => HandlePastRowClick(p as MouseButtonEventArgs));
 
         InitializeComponent();
@@ -302,7 +329,9 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         foreach (var path in paths)
         {
             if (!File.Exists(path) || existing.Contains(path)) continue;
-            _activeQueue.Add(QueueItem.FromPath(path));
+            var item = QueueItem.FromPath(path);
+            item.PropertyChanged += OnQueueItemPropertyChanged;
+            _activeQueue.Add(item);
         }
         UpdateBadges();
         UpdateProcessQueueButton();
@@ -316,9 +345,18 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         }
     }
 
+    private void OnQueueItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(QueueItem.IsSelected))
+        {
+            UpdateQueueSummary();
+        }
+    }
+
     private void RemoveQueueItem(QueueItem? item)
     {
         if (item is null) return;
+        item.PropertyChanged -= OnQueueItemPropertyChanged;
         _activeQueue.Remove(item);
         UpdateBadges();
         UpdateProcessQueueButton();
@@ -350,6 +388,40 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         var count = _pastResults.Sum(g => g.Entries.Count);
         TabPastBadge.Text = count.ToString(CultureInfo.InvariantCulture);
         UpdatePastResultsVisibility();
+        UpdateQueueSummary();
+        UpdatePastResultsTelemetry();
+    }
+
+    private void UpdateQueueSummary()
+    {
+        if (QueueSummaryCountText is null || QueueSummarySizeText is null) return;
+        var count = _activeQueue.Count;
+        long totalBytes = _activeQueue.Sum(q => q.SourceSizeBytes);
+        QueueSummaryCountText.Text = $"총 {count}개 항목";
+        QueueSummarySizeText.Text = HumanizeBytes(totalBytes);
+
+        var selectedCount = _activeQueue.Count(q => q.IsSelected);
+        if (QueueSelectedBadge is not null && QueueSelectedText is not null)
+        {
+            if (selectedCount > 0)
+            {
+                QueueSelectedBadge.Visibility = Visibility.Visible;
+                QueueSelectedText.Text = $"{selectedCount}개 선택됨";
+            }
+            else
+            {
+                QueueSelectedBadge.Visibility = Visibility.Collapsed;
+            }
+        }
+    }
+
+    private void UpdatePastResultsTelemetry()
+    {
+        if (PastTotalCountText is null || PastTotalSavingsText is null) return;
+        var totalCount = _pastResults.Sum(g => g.Entries.Count);
+        var totalSavings = _pastResults.Sum(g => g.SessionSavingsBytes);
+        PastTotalCountText.Text = $"{totalCount}개 파일";
+        PastTotalSavingsText.Text = HumanizeBytes(totalSavings);
     }
 
     private void UpdateProcessQueueButton()
@@ -523,10 +595,44 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         var info = FileInspectorBuilder.Build(filePath);
         PreviewFileName.Text = string.IsNullOrEmpty(fileName) ? info.FileName : fileName;
         PreviewFilePath.Text = string.IsNullOrEmpty(filePath) ? info.FullPath : filePath;
-        PreviewFormatText.Text = string.IsNullOrEmpty(formatLabel) || formatLabel == "—" ? info.Extension.TrimStart('.').ToUpperInvariant() : formatLabel;
-        PreviewSizeText.Text = string.IsNullOrEmpty(sizeText) || sizeText == "—" ? info.FormattedSize : sizeText;
+        var fmt = string.IsNullOrEmpty(formatLabel) || formatLabel == "—" ? info.Extension.TrimStart('.').ToUpperInvariant() : formatLabel;
+        var sz = string.IsNullOrEmpty(sizeText) || sizeText == "—" ? info.FormattedSize : sizeText;
+        PreviewFormatText.Text = fmt;
+        PreviewSizeText.Text = sz;
         PreviewDimText.Text = info.DimensionsOrMeta;
         PreviewPageText.Text = info.Category.ToKoreanLabel();
+        UpdateConversionPipelineCard(fmt, sz);
+        HasSelectedItem = !string.IsNullOrEmpty(filePath);
+    }
+
+    private void UpdateConversionPipelineCard(string? formatLabel, string? sizeText)
+    {
+        if (ConversionPipelineCard is null || PipelineSourceText is null || PipelineTargetText is null) return;
+
+        if (string.IsNullOrEmpty(formatLabel) || formatLabel == "—")
+        {
+            PipelineSourceText.Text = "선택 대기";
+            PipelineTargetText.Text = (SelectedOutputExtension ?? ".jpg").TrimStart('.').ToUpperInvariant();
+            if (PipelineLossText is not null) PipelineLossText.Text = "파일을 선택하면 변환 정보 표시";
+            if (PipelineEstimatedText is not null) PipelineEstimatedText.Text = "대기 중";
+            return;
+        }
+
+        PipelineSourceText.Text = $"{formatLabel} · {sizeText ?? "—"}";
+        var targetExt = (SelectedOutputExtension ?? ".jpg").TrimStart('.').ToUpperInvariant();
+        PipelineTargetText.Text = targetExt;
+
+        var isSame = string.Equals(formatLabel, targetExt, StringComparison.OrdinalIgnoreCase);
+        if (isSame)
+        {
+            if (PipelineLossText is not null) PipelineLossText.Text = "무손실 재압축 및 메타 정돈";
+            if (PipelineEstimatedText is not null) PipelineEstimatedText.Text = "최적화";
+        }
+        else
+        {
+            if (PipelineLossText is not null) PipelineLossText.Text = $"{formatLabel} → {targetExt} 변환";
+            if (PipelineEstimatedText is not null) PipelineEstimatedText.Text = "실시간 매칭";
+        }
     }
 
     private void ShowPreviewLoading()
@@ -751,6 +857,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     {
         bool select = parameter is true;
         BatchQueueService.SetSelectionAll(_activeQueue, select);
+        UpdateQueueSummary();
     }
 
     private void BatchRemoveSelected()
@@ -1334,6 +1441,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         UpdateCombineState(keepExt);
         UpdateProcessQueueButton();
         UpdateSmartPresetsForFormat(keepExt);
+        UpdateConversionPipelineCard(PreviewFormatText?.Text, PreviewSizeText?.Text);
 
         if (OutputFormatHint is not null)
         {
@@ -1379,6 +1487,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
             UpdateQualityPanelForFormat(ext);
             UpdateOutputDestHint(ext);
             UpdateSmartPresetsForFormat(ext);
+            UpdateConversionPipelineCard(PreviewFormatText?.Text, PreviewSizeText?.Text);
         }
     }
 

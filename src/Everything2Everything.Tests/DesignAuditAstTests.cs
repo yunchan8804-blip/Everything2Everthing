@@ -947,6 +947,137 @@ public class DesignAuditAstTests
         Assert.True(int.TryParse(widthVal, out var w) && w <= 180,
             $"SearchBox 컬럼 폭은 180px 이하여야 필터 버튼들이 잘리지 않습니다. 현재: {widthVal}");
     }
+
+    [Fact]
+    public void BatchActionBar_MustInclude_LiveCockpitSummary()
+    {
+        // BatchActionBar는 단순 버튼 나열이 아니라 큐의 총 파일 개수 및 총 데이터 용량을 한눈에 보여주는
+        // QueueSummaryCountText 및 QueueSummarySizeText 콕핏 텔레메트리 요소를 포함해야 한다.
+        var file = Path.Combine(ViewsDir, "MainWindow.xaml");
+        var doc = XDocument.Parse(File.ReadAllText(file));
+
+        var batchBar = doc.Descendants().FirstOrDefault(e =>
+            e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "BatchActionBar");
+        Assert.NotNull(batchBar);
+
+        var summaryCount = batchBar.Descendants().FirstOrDefault(e =>
+            e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "QueueSummaryCountText");
+        var summarySize = batchBar.Descendants().FirstOrDefault(e =>
+            e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "QueueSummarySizeText");
+
+        Assert.NotNull(summaryCount);
+        Assert.NotNull(summarySize);
+    }
+
+    [Fact]
+    public void Inspector_MustInclude_ConversionPipelineCard()
+    {
+        // 미리보기 패널(Inspector)은 원본과 대상 형식 간 변환 경로 및 예상 절감 효과를 즉시 시각화하는
+        // ConversionPipelineCard 컨테이너를 포함해야 한다.
+        var file = Path.Combine(ViewsDir, "MainWindow.xaml");
+        var doc = XDocument.Parse(File.ReadAllText(file));
+
+        var pipelineCard = doc.Descendants().FirstOrDefault(e =>
+            e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "ConversionPipelineCard");
+        Assert.NotNull(pipelineCard);
+
+        var sourceText = pipelineCard.Descendants().FirstOrDefault(e =>
+            e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "PipelineSourceText");
+        var targetText = pipelineCard.Descendants().FirstOrDefault(e =>
+            e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "PipelineTargetText");
+
+        Assert.NotNull(sourceText);
+        Assert.NotNull(targetText);
+    }
+
+    [Fact]
+    public void PastResults_MustInclude_TelemetryHeaderBar()
+    {
+        // 변환 기록 뷰(PastResultsContainer)는 단순 리스트 노출 전에 누적 변환 수량 및 총 절감량을 요약하고
+        // 빠른 내보내기 액션을 제공하는 PastResultsHeaderBar 툴바를 포함해야 한다.
+        var file = Path.Combine(ViewsDir, "MainWindow.xaml");
+        var doc = XDocument.Parse(File.ReadAllText(file));
+
+        var container = doc.Descendants().FirstOrDefault(e =>
+            e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "PastResultsContainer");
+        Assert.NotNull(container);
+
+        var headerBar = container.Descendants().FirstOrDefault(e =>
+            e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "PastResultsHeaderBar");
+        Assert.NotNull(headerBar);
+    }
+
+    [Fact]
+    public void Sidebar_OutputFormatHint_MustWrapText()
+    {
+        // 320px 좁은 사이드바 폭에서도 설명 문구가 '자동 필...'처럼 잘리지 않도록
+        // OutputFormatHint는 TextWrapping="Wrap"을 선언해야 한다.
+        var file = Path.Combine(ViewsDir, "MainWindow.xaml");
+        var doc = XDocument.Parse(File.ReadAllText(file));
+
+        var hint = doc.Descendants().FirstOrDefault(e =>
+            e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "OutputFormatHint");
+        Assert.NotNull(hint);
+
+        var textWrapping = hint.Attribute("TextWrapping")?.Value;
+        Assert.Equal("Wrap", textWrapping);
+    }
+    [Fact]
+    public void SearchBox_MustInclude_WatermarkPlaceholder_And_ClearButton()
+    {
+        // 검색창은 플레이스홀더 워터마크(SearchPlaceholderText)와 입력 내용 원클릭 지우기 버튼(SearchClearButton)을 포함해야 한다.
+        var file = Path.Combine(ViewsDir, "MainWindow.xaml");
+        var doc = XDocument.Parse(File.ReadAllText(file));
+
+        var placeholder = doc.Descendants().FirstOrDefault(e =>
+            e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "SearchPlaceholderText");
+        var clearBtn = doc.Descendants().FirstOrDefault(e =>
+            e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "SearchClearButton");
+
+        Assert.NotNull(placeholder);
+        Assert.NotNull(clearBtn);
+    }
+
+    [Fact]
+    public void Inspector_ActionButtons_MustBind_IsEnabled_To_Selection()
+    {
+        // 파일이 선택되지 않았을 때 무의미한 클릭을 방지하기 위해
+        // 미리보기 하단의 열기(PreviewOpenButton) 및 폴더보기(PreviewRevealButton) 버튼은 IsEnabled 바인딩 또는 제어를 가져야 한다.
+        var file = Path.Combine(ViewsDir, "MainWindow.xaml");
+        var doc = XDocument.Parse(File.ReadAllText(file));
+
+        var openBtn = doc.Descendants().FirstOrDefault(e =>
+            e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "PreviewOpenButton");
+        var revealBtn = doc.Descendants().FirstOrDefault(e =>
+            e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "PreviewRevealButton");
+
+        Assert.NotNull(openBtn);
+        Assert.NotNull(revealBtn);
+
+        var openEnabled = openBtn.Attribute("IsEnabled")?.Value;
+        var revealEnabled = revealBtn.Attribute("IsEnabled")?.Value;
+
+        Assert.NotNull(openEnabled);
+        Assert.NotNull(revealEnabled);
+    }
+
+    [Fact]
+    public void Window_InputBindings_MustInclude_SelectAll_And_Delete()
+    {
+        // Raycast / Linear 급 생산성을 위해 전체 선택(Ctrl+A) 및 선택 항목 삭제(Delete) 단축키가 Window.InputBindings에 등록되어야 한다.
+        var file = Path.Combine(ViewsDir, "MainWindow.xaml");
+        var doc = XDocument.Parse(File.ReadAllText(file));
+
+        var inputBindings = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == "Window.InputBindings");
+        Assert.NotNull(inputBindings);
+
+        var keyBindings = inputBindings.Elements().Where(e => e.Name.LocalName == "KeyBinding").ToList();
+        bool hasCtrlA = keyBindings.Any(kb => kb.Attribute("Key")?.Value == "A" && kb.Attribute("Modifiers")?.Value == "Ctrl");
+        bool hasDelete = keyBindings.Any(kb => kb.Attribute("Key")?.Value == "Delete");
+
+        Assert.True(hasCtrlA, "Window.InputBindings에 Ctrl+A 단축키가 등록되어야 합니다.");
+        Assert.True(hasDelete, "Window.InputBindings에 Delete 단축키가 등록되어야 합니다.");
+    }
 }
 
 

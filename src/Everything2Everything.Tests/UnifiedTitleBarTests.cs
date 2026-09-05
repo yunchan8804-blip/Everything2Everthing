@@ -416,6 +416,19 @@ public class UnifiedTitleBarTests
             Assert.Equal("50%", q2.DisplayStateText);
             Assert.Equal("변환 완료", q3.DisplayStateText);
 
+            var summaryCount = (TextBlock)window.FindName("QueueSummaryCountText");
+            var summarySize = (TextBlock)window.FindName("QueueSummarySizeText");
+            Assert.NotNull(summaryCount);
+            Assert.NotNull(summarySize);
+            Assert.Equal("총 3개 항목", summaryCount.Text);
+
+            var pipeSource = (TextBlock)window.FindName("PipelineSourceText");
+            var pipeTarget = (TextBlock)window.FindName("PipelineTargetText");
+            Assert.NotNull(pipeSource);
+            Assert.NotNull(pipeTarget);
+            Assert.Equal("JPG · 4.2 MB", pipeSource.Text);
+            Assert.Equal("JPG", pipeTarget.Text);
+
             try
             {
                 var rtb = new System.Windows.Media.Imaging.RenderTargetBitmap(1280, 960, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
@@ -582,6 +595,10 @@ public class UnifiedTitleBarTests
 
             Assert.Equal(Visibility.Collapsed, pastResultsEmpty.Visibility);
             Assert.Equal(Visibility.Visible, pastResultsView.Visibility);
+
+            var pastTotalCount = (TextBlock)window.FindName("PastTotalCountText");
+            Assert.NotNull(pastTotalCount);
+            Assert.Equal("2개 파일", pastTotalCount.Text);
 
             // Render populated state
             try
