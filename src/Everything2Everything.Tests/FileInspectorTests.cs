@@ -60,4 +60,24 @@ public class FileInspectorTests
         var info = FileInspectorBuilder.Build(dummyPath);
         Assert.Equal(expectedCategory, info.Category);
     }
+
+    [Theory]
+    [InlineData(FilterCategory.All, "전체")]
+    [InlineData(FilterCategory.Image, "이미지")]
+    [InlineData(FilterCategory.Document, "문서")]
+    [InlineData(FilterCategory.Media, "미디어")]
+    [InlineData(FilterCategory.Data, "데이터")]
+    public void ToKoreanLabel_ReturnsRefinedKoreanCategory(FilterCategory category, string expectedLabel)
+    {
+        var label = category.ToKoreanLabel();
+        Assert.Equal(expectedLabel, label);
+    }
+
+    [Fact]
+    public void Build_DimensionsOrMeta_UsesKoreanCategory()
+    {
+        var dummyPath = "C:\\test\\sample.png";
+        var info = FileInspectorBuilder.Build(dummyPath);
+        Assert.Equal("PNG · 이미지", info.DimensionsOrMeta);
+    }
 }

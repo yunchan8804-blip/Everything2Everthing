@@ -11,6 +11,7 @@
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <ui:ControlsDictionary/>
                 <ResourceDictionary Source="FormatShiftTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
@@ -29,132 +30,132 @@
             <StackPanel>
 
                 <!-- ===== AI 카드 ===== -->
-                <Border Background="{StaticResource FsBgSurface}"
-                        BorderBrush="{StaticResource FsBorderHairline}" BorderThickness="1"
-                        CornerRadius="10" Padding="20" Margin="0,0,0,16">
-                    <StackPanel>
-                        <TextBlock Text="AI 텍스트 변환" Style="{StaticResource FsBodyStyle}" FontWeight="SemiBold" FontSize="15"/>
-                        <TextBlock Text="요약 · 번역 · 교정에 사용됩니다 (종량 과금 · 네트워크 필요). 키가 없으면 AI 변환만 비활성됩니다."
-                                   Style="{StaticResource FsCaptionStyle}" TextWrapping="Wrap" Margin="0,4,0,16"/>
+                <Border Style="{StaticResource FsDoubleBezelShellStyle}" Margin="0,0,0,16">
+                    <Border Style="{StaticResource FsDoubleBezelCoreStyle}" Padding="20">
+                        <StackPanel>
+                            <TextBlock Text="AI 텍스트 변환" Style="{StaticResource FsBodyStyle}" FontWeight="SemiBold" FontSize="15"/>
+                            <TextBlock Text="요약 · 번역 · 교정에 사용됩니다 (종량 과금 · 네트워크 필요). 키가 없으면 AI 변환만 비활성됩니다."
+                                       Style="{StaticResource FsCaptionStyle}" TextWrapping="Wrap" Margin="0,4,0,16"/>
 
-                        <TextBlock Text="기본 백엔드" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,6"/>
-                        <ComboBox x:Name="BackendCombo" Margin="0,0,0,16">
-                            <ComboBoxItem Content="자동 (API 키 우선, 없으면 Codex)"/>
-                            <ComboBoxItem Content="OpenAI (API 키)"/>
-                            <ComboBoxItem Content="Anthropic (API 키)"/>
-                            <ComboBoxItem Content="Codex CLI (ChatGPT 구독 OAuth)"/>
-                        </ComboBox>
+                            <TextBlock Text="기본 백엔드" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,6"/>
+                            <ComboBox x:Name="BackendCombo" Margin="0,0,0,16">
+                                <ComboBoxItem Content="자동 (API 키 우선, 없으면 Codex)"/>
+                                <ComboBoxItem Content="OpenAI (API 키)"/>
+                                <ComboBoxItem Content="Anthropic (API 키)"/>
+                                <ComboBoxItem Content="Codex CLI (ChatGPT 구독 OAuth)"/>
+                            </ComboBox>
 
-                        <!-- OpenAI -->
-                        <TextBlock Text="OpenAI API Key" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,6"/>
-                        <Grid Margin="0,0,0,4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <PasswordBox x:Name="OpenAiKeyBox" Grid.Column="0"
-                                         Style="{StaticResource FsPasswordInputStyle}"
-                                         PasswordChanged="OnOpenAiKeyChanged"/>
-                            <Button x:Name="OpenAiVerifyBtn" Grid.Column="1" Content="확인"
-                                    Style="{StaticResource FsSecondaryButtonStyle}" Margin="8,0,0,0"
-                                    IsEnabled="False" Click="OnVerifyOpenAi"/>
-                        </Grid>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,16">
-                            <Ellipse x:Name="OpenAiDot" Style="{StaticResource FsLossDotStyle}"
-                                     Fill="{StaticResource FsTextTertiary}" Margin="0,0,7,0" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="OpenAiStatus" Text="키 미설정" Style="{StaticResource FsCaptionStyle}" VerticalAlignment="Center"/>
+                            <!-- OpenAI -->
+                            <TextBlock Text="OpenAI API Key" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,6"/>
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <PasswordBox x:Name="OpenAiKeyBox" Grid.Column="0"
+                                             Style="{StaticResource FsPasswordInputStyle}"
+                                             PasswordChanged="OnOpenAiKeyChanged"/>
+                                <Button x:Name="OpenAiVerifyBtn" Grid.Column="1" Content="확인"
+                                        Style="{StaticResource FsSecondaryButtonStyle}" Margin="8,0,0,0"
+                                        IsEnabled="False" Click="OnVerifyOpenAi"/>
+                            </Grid>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,16">
+                                <Ellipse x:Name="OpenAiDot" Style="{StaticResource FsLossDotStyle}"
+                                         Fill="{StaticResource FsTextTertiary}" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="OpenAiStatus" Text="키 미설정" Style="{StaticResource FsCaptionStyle}" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <!-- Anthropic -->
+                            <TextBlock Text="Anthropic API Key" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,6"/>
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <PasswordBox x:Name="AnthropicKeyBox" Grid.Column="0"
+                                             Style="{StaticResource FsPasswordInputStyle}"
+                                             PasswordChanged="OnAnthropicKeyChanged"/>
+                                <Button x:Name="AnthropicVerifyBtn" Grid.Column="1" Content="확인"
+                                        Style="{StaticResource FsSecondaryButtonStyle}" Margin="8,0,0,0"
+                                        IsEnabled="False" Click="OnVerifyAnthropic"/>
+                            </Grid>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,16">
+                                <Ellipse x:Name="AnthropicDot" Style="{StaticResource FsLossDotStyle}"
+                                         Fill="{StaticResource FsTextTertiary}" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="AnthropicStatus" Text="키 미설정" Style="{StaticResource FsCaptionStyle}" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <!-- Codex CLI (OAuth) -->
+                            <TextBlock Text="Codex CLI (OAuth · API 키 불필요)" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,6"/>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,16">
+                                <Ellipse x:Name="CodexDot" Style="{StaticResource FsLossDotStyle}"
+                                         Fill="{StaticResource FsTextTertiary}" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="CodexStatus" Text="확인 중…" Style="{StaticResource FsCaptionStyle}" VerticalAlignment="Center"/>
+                                <Button x:Name="CodexVerifyBtn" Content="테스트" Style="{StaticResource FsSecondaryButtonStyle}"
+                                        Margin="12,0,0,0" Padding="10,4" IsEnabled="False" Click="OnVerifyCodex" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <!-- 모델 -->
+                            <TextBlock Text="모델 (선택)" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,6"/>
+                            <TextBox x:Name="ModelBox" Style="{StaticResource FsPathInputStyle}"/>
+                            <TextBlock Text="비워두면 기본 모델 (OpenAI: gpt-4o-mini, Anthropic: claude-3-5-sonnet-latest)"
+                                       Style="{StaticResource FsCaptionStyle}" Margin="0,6,0,0"/>
                         </StackPanel>
-
-                        <!-- Anthropic -->
-                        <TextBlock Text="Anthropic API Key" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,6"/>
-                        <Grid Margin="0,0,0,4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <PasswordBox x:Name="AnthropicKeyBox" Grid.Column="0"
-                                         Style="{StaticResource FsPasswordInputStyle}"
-                                         PasswordChanged="OnAnthropicKeyChanged"/>
-                            <Button x:Name="AnthropicVerifyBtn" Grid.Column="1" Content="확인"
-                                     Style="{StaticResource FsSecondaryButtonStyle}" Margin="8,0,0,0"
-                                     IsEnabled="False" Click="OnVerifyAnthropic"/>
-                        </Grid>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,16">
-                            <Ellipse x:Name="AnthropicDot" Style="{StaticResource FsLossDotStyle}"
-                                     Fill="{StaticResource FsTextTertiary}" Margin="0,0,7,0" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="AnthropicStatus" Text="키 미설정" Style="{StaticResource FsCaptionStyle}" VerticalAlignment="Center"/>
-                        </StackPanel>
-
-                        <!-- Codex CLI (OAuth) -->
-                        <TextBlock Text="Codex CLI (OAuth · API 키 불필요)" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,6"/>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,16">
-                            <Ellipse x:Name="CodexDot" Style="{StaticResource FsLossDotStyle}"
-                                     Fill="{StaticResource FsTextTertiary}" Margin="0,0,7,0" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="CodexStatus" Text="확인 중…" Style="{StaticResource FsCaptionStyle}" VerticalAlignment="Center"/>
-                            <Button x:Name="CodexVerifyBtn" Content="테스트" Style="{StaticResource FsSecondaryButtonStyle}"
-                                    Margin="12,0,0,0" Padding="10,4" IsEnabled="False" Click="OnVerifyCodex" VerticalAlignment="Center"/>
-                        </StackPanel>
-
-                        <!-- 모델 -->
-                        <TextBlock Text="모델 (선택)" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,6"/>
-                        <TextBox x:Name="ModelBox" Style="{StaticResource FsPathInputStyle}"/>
-                        <TextBlock Text="비워두면 기본 모델 (OpenAI: gpt-4o-mini, Anthropic: claude-3-5-sonnet-latest)"
-                                   Style="{StaticResource FsCaptionStyle}" Margin="0,6,0,0"/>
-                    </StackPanel>
+                    </Border>
                 </Border>
 
                 <!-- ===== 외부 도구 카드 ===== -->
-                <Border Background="{StaticResource FsBgSurface}"
-                        BorderBrush="{StaticResource FsBorderHairline}" BorderThickness="1"
-                        CornerRadius="10" Padding="20">
-                    <StackPanel>
-                        <TextBlock Text="외부 도구" Style="{StaticResource FsBodyStyle}" FontWeight="SemiBold" FontSize="15"/>
-                        <TextBlock Text="설치하면 영상/오디오·한글/Word 변환이 자동 활성화됩니다."
-                                   Style="{StaticResource FsCaptionStyle}" TextWrapping="Wrap" Margin="0,4,0,12"/>
-                        <CheckBox x:Name="GpuToggle" Content="영상 변환 시 GPU 가속(NVENC) 시도 — 없으면 CPU 자동 전환"
-                                  Foreground="{StaticResource FsTextSecondary}" IsChecked="True" Margin="0,0,0,16"/>
+                <Border Style="{StaticResource FsDoubleBezelShellStyle}">
+                    <Border Style="{StaticResource FsDoubleBezelCoreStyle}" Padding="20">
+                        <StackPanel>
+                            <TextBlock Text="외부 도구" Style="{StaticResource FsBodyStyle}" FontWeight="SemiBold" FontSize="15"/>
+                            <TextBlock Text="설치하면 영상/오디오·한글/Word 변환이 자동 활성화됩니다."
+                                       Style="{StaticResource FsCaptionStyle}" TextWrapping="Wrap" Margin="0,4,0,12"/>
+                            <CheckBox x:Name="GpuToggle" Content="영상 변환 시 GPU 가속(NVENC) 시도 — 없으면 CPU 자동 전환"
+                                      Foreground="{StaticResource FsTextSecondary}" IsChecked="True" Margin="0,0,0,16"/>
 
-                        <!-- FFmpeg -->
-                        <Grid Margin="0,0,0,14">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Ellipse x:Name="FfmpegDot" Style="{StaticResource FsLossDotStyle}"
-                                             Fill="{StaticResource FsStatusWarn}" Margin="0,0,7,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="FFmpeg" Style="{StaticResource FsBodyStyle}" FontWeight="Medium" VerticalAlignment="Center"/>
-                                    <TextBlock x:Name="FfmpegStatus" Text="미설치" Style="{StaticResource FsCaptionStyle}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                            <!-- FFmpeg -->
+                            <Grid Margin="0,0,0,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Ellipse x:Name="FfmpegDot" Style="{StaticResource FsLossDotStyle}"
+                                                 Fill="{StaticResource FsStatusWarn}" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="FFmpeg" Style="{StaticResource FsBodyStyle}" FontWeight="Medium" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="FfmpegStatus" Text="미설치" Style="{StaticResource FsCaptionStyle}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <TextBlock Text="영상/오디오 변환 (mp4·webm·mp3·flac…)" Style="{StaticResource FsCaptionStyle}" Margin="15,3,0,0"/>
                                 </StackPanel>
-                                <TextBlock Text="영상/오디오 변환 (mp4·webm·mp3·flac…)" Style="{StaticResource FsCaptionStyle}" Margin="15,3,0,0"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                <Button Content="다운로드" Style="{StaticResource FsSecondaryButtonStyle}" Click="OnDownloadFfmpeg"/>
-                                <Button Content="폴더 열기" Style="{StaticResource FsSecondaryButtonStyle}" Margin="6,0,0,0" Click="OnOpenFfmpegFolder"/>
-                            </StackPanel>
-                        </Grid>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Content="다운로드" Style="{StaticResource FsSecondaryButtonStyle}" Click="OnDownloadFfmpeg"/>
+                                    <Button Content="폴더 열기" Style="{StaticResource FsSecondaryButtonStyle}" Margin="6,0,0,0" Click="OnOpenFfmpegFolder"/>
+                                </StackPanel>
+                            </Grid>
 
-                        <!-- LibreOffice -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Ellipse x:Name="LibreDot" Style="{StaticResource FsLossDotStyle}"
-                                             Fill="{StaticResource FsStatusWarn}" Margin="0,0,7,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="LibreOffice" Style="{StaticResource FsBodyStyle}" FontWeight="Medium" VerticalAlignment="Center"/>
-                                    <TextBlock x:Name="LibreStatus" Text="미설치" Style="{StaticResource FsCaptionStyle}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                            <!-- LibreOffice -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Ellipse x:Name="LibreDot" Style="{StaticResource FsLossDotStyle}"
+                                                 Fill="{StaticResource FsStatusWarn}" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="LibreOffice" Style="{StaticResource FsBodyStyle}" FontWeight="Medium" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="LibreStatus" Text="미설치" Style="{StaticResource FsCaptionStyle}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <TextBlock Text="한글/Word/문서 변환 (HWP·DOCX→PDF/이미지). 한글은 H2Orestart 확장 필요." Style="{StaticResource FsCaptionStyle}" Margin="15,3,0,0" TextWrapping="Wrap"/>
                                 </StackPanel>
-                                <TextBlock Text="한글/Word/문서 변환 (HWP·DOCX→PDF/이미지). 한글은 H2Orestart 확장 필요." Style="{StaticResource FsCaptionStyle}" Margin="15,3,0,0" TextWrapping="Wrap"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                <Button Content="다운로드" Style="{StaticResource FsSecondaryButtonStyle}" Click="OnDownloadLibre"/>
-                            </StackPanel>
-                        </Grid>
-                    </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Content="다운로드" Style="{StaticResource FsSecondaryButtonStyle}" Click="OnDownloadLibre"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
                 </Border>
 
             </StackPanel>

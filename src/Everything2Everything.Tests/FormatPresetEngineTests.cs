@@ -34,12 +34,29 @@ public class FormatPresetEngineTests
         Assert.True(presets.Count >= 3);
 
         var q85 = presets.First(p => p.Title.Contains("웹 고화질"));
-        Assert.Contains("Quality 85", q85.SpecChips);
+        Assert.Contains("품질 85", q85.SpecChips);
 
         var options = new OptionsViewModel();
         q85.Apply(options);
         Assert.Equal(85, options.ImageQuality);
         Assert.True(options.StripMetadata);
+    }
+
+    [Theory]
+    [InlineData(".jpg", "품질 95")]
+    [InlineData(".webp", "품질 85")]
+    [InlineData(".avif", "품질 55")]
+    public void GetPresetsForExtension_ImagePresets_MustUseKoreanQualityChips(string ext, string expectedChip)
+    {
+        var presets = FormatPresetEngine.GetPresetsForExtension(ext);
+        var hasExpectedChip = presets.Any(p => p.SpecChips.Contains(expectedChip));
+        Assert.True(hasExpectedChip, $"{ext} 프리셋 스펙 칩에 한국어 '{expectedChip}'이 포함되어야 합니다.");
+
+        // 영어 Quality X 칩 금지
+        foreach (var p in presets)
+        {
+            Assert.DoesNotContain(p.SpecChips, c => c.StartsWith("Quality "));
+        }
     }
 
     [Fact]
@@ -69,6 +86,30 @@ public class FormatPresetEngineTests
         web1080.Apply(options);
         Assert.Equal(23, options.VideoCrf);
         Assert.Equal("fast", options.VideoPreset);
+    }
+
+    [Theory]
+    [InlineData(".jpg", 4)]
+    [InlineData(".png", 3)]
+    [InlineData(".webp", 4)]
+    [InlineData(".avif", 3)]
+    [InlineData(".pdf", 4)]
+    [InlineData(".mp4", 4)]
+    [InlineData(".mp3", 4)]
+    [InlineData(".gif", 2)]
+    public void GetPresetsForExtension_MajorFormats_ReturnRichPresetSuite(string ext, int minPresetCount)
+    {
+        var presets = FormatPresetEngine.GetPresetsForExtension(ext);
+        Assert.True(presets.Count >= minPresetCount,
+            $"{ext} 형식의 프리셋 개수가 너무 적습니다 (최소 {minPresetCount}개 이상 필요, 실제: {presets.Count}개).");
+
+        foreach (var p in presets)
+        {
+            Assert.False(string.IsNullOrWhiteSpace(p.Id), "프리셋 ID가 비어있습니다.");
+            Assert.False(string.IsNullOrWhiteSpace(p.Title), "프리셋 제목이 비어있습니다.");
+            Assert.False(string.IsNullOrWhiteSpace(p.Description), "프리셋 설명이 비어있습니다.");
+            Assert.True(p.SpecChips.Count >= 2, $"프리셋 [{p.Title}]의 스펙 칩 개수가 2개 미만입니다.");
+        }
     }
 
     [Fact]

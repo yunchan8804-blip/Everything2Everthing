@@ -521,6 +521,100 @@
         <Setter Property="Margin" Value="0,0,0,16"/>
     </Style>
 
+    <!-- Double-Bezel (Doppelrand) Machine-Hardware Container Styles (high-end-visual-design Section 4) -->
+    <Style x:Key="FsDoubleBezelShellStyle" TargetType="Border">
+        <Setter Property="Background" Value="#10131B"/>
+        <Setter Property="BorderBrush" Value="{StaticResource FsBorderHairline}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="14"/>
+        <Setter Property="Padding" Value="4"/>
+        <Setter Property="Margin" Value="0,0,0,16"/>
+    </Style>
+
+    <Style x:Key="FsDoubleBezelCoreStyle" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource FsBgSurface}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource FsGlassBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="Padding" Value="14"/>
+    </Style>
+
+    <!-- Physical <kbd> Keycap Shortcut Style (minimalist-ui Section 5) -->
+    <Style x:Key="FsKbdStyle" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource FsBgInput}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource FsBorderStrong}"/>
+        <Setter Property="BorderThickness" Value="1,1,2,1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="6,2"/>
+        <Setter Property="Margin" Value="0,0,4,0"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- Island Button-in-Button Primary Launch CTA Style (high-end-visual-design Section 4.B) -->
+    <LinearGradientBrush x:Key="FsIslandButtonGlow" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#0284C7" Offset="0.0"/>
+        <GradientStop Color="#0369A1" Offset="1.0"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="FsIslandButtonGlowHover" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#0EA5E9" Offset="0.0"/>
+        <GradientStop Color="#0284C7" Offset="1.0"/>
+    </LinearGradientBrush>
+
+    <Style x:Key="FsIslandPrimaryButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource FsIslandButtonGlow}"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+        <Setter Property="BorderBrush" Value="#4038BDF8"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Height" Value="44"/>
+        <Setter Property="Padding" Value="16,0,10,0"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="PART_Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="10"
+                            Padding="{TemplateBinding Padding}">
+                        <Grid VerticalAlignment="Center">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ContentPresenter Grid.Column="0"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              TextElement.Foreground="{TemplateBinding Foreground}"
+                                              TextElement.FontSize="{TemplateBinding FontSize}"
+                                              TextElement.FontWeight="{TemplateBinding FontWeight}"/>
+                            <Border Grid.Column="1" Margin="8,0,0,0"
+                                    Width="26" Height="26" CornerRadius="13"
+                                    Background="#22FFFFFF"
+                                    VerticalAlignment="Center" HorizontalAlignment="Right">
+                                <ui:SymbolIcon Symbol="ArrowRight24" FontSize="13"
+                                               Foreground="#FFFFFF"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="PART_Bd" Property="Opacity" Value="0.45"/>
+                            <Setter Property="Cursor" Value="Arrow"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="PART_Bd" Property="Background" Value="{StaticResource FsIslandButtonGlowHover}"/>
+                            <Setter TargetName="PART_Bd" Property="BorderBrush" Value="#8038BDF8"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- 실시간 기술 스펙 칩 (Live Spec Chip) 캡슐 스타일 -->
     <Style x:Key="FsSpecChipStyle" TargetType="Border">
         <Setter Property="Background" Value="{StaticResource FsAccentCyanBg}"/>

@@ -37,6 +37,8 @@ public static class FormatPresetEngine
             ".avif" => AvifPresets(),
             ".jpg" or ".jpeg" => JpgPresets(),
             ".png" => PngPresets(),
+            ".gif" => GifPresets(),
+            ".heic" => HeicPresets(),
 
             ".pdf" => PdfPresets(),
 
@@ -148,15 +150,15 @@ public static class FormatPresetEngine
         new(
             "webp-web-q85",
             "웹 고화질 (Q85 · 추천)",
-            "Quality 85 · EXIF 메타데이터 제거 · 웹 게시 표준",
-            new[] { "Quality 85", "Strip EXIF", "웹 최적화" },
+            "품질 85 · EXIF 메타데이터 제거 · 웹 게시 표준",
+            new[] { "품질 85", "EXIF 제거", "웹 최적화" },
             opt => { opt.ImageQuality = 85; opt.StripMetadata = true; }
         ),
         new(
             "webp-compact-q65",
             "웹 초경량 (Q65 · 빠른 로딩)",
-            "Quality 65 · 고압축 이미지로 첫 페이지 로딩 가속",
-            new[] { "Quality 65", "Strip EXIF", "초경량" },
+            "품질 65 · 고압축 이미지로 첫 페이지 로딩 가속",
+            new[] { "품질 65", "EXIF 제거", "초경량" },
             opt => { opt.ImageQuality = 65; opt.StripMetadata = true; }
         ),
         new(
@@ -170,8 +172,15 @@ public static class FormatPresetEngine
             "webp-sns-thumb",
             "SNS 썸네일 (Q75)",
             "피드 및 카드 썸네일 최적화",
-            new[] { "Quality 75", "썸네일" },
+            new[] { "품질 75", "썸네일" },
             opt => { opt.ImageQuality = 75; opt.StripMetadata = true; }
+        ),
+        new(
+            "webp-extreme-q50",
+            "초절약 압축 (Q50)",
+            "대역폭 극소화 및 모바일 웹 가속",
+            new[] { "품질 50", "대역폭 절약", "초경량" },
+            opt => { opt.ImageQuality = 50; opt.StripMetadata = true; }
         )
     };
 
@@ -179,17 +188,31 @@ public static class FormatPresetEngine
     {
         new(
             "avif-balanced",
-            "차세대 초고압축 (Q55)",
-            "AV1 코덱 기반 압축률 극대화",
-            new[] { "Quality 55", "AV1 코덱", "초고압축" },
+            "차세대 초고압축 (Q55 · 추천)",
+            "AV1 코덱 기반 압축률 극대화 · 웹 표준",
+            new[] { "품질 55", "AV1 코덱", "초고압축" },
             opt => { opt.ImageQuality = 85; opt.StripMetadata = true; }
         ),
         new(
             "avif-high",
             "고화질 아카이빙 (Q75)",
-            "색상 심도 10-bit HDR 보존",
-            new[] { "Quality 75", "10-bit HDR" },
+            "색상 심도 10-bit HDR 보존 및 디테일 유지",
+            new[] { "품질 75", "10-bit HDR", "고화질" },
             opt => { opt.ImageQuality = 95; opt.StripMetadata = false; }
+        ),
+        new(
+            "avif-web-stream",
+            "웹 스트리밍 경량 (Q60)",
+            "빠른 디코딩 및 현대적 웹 브라우저 가속",
+            new[] { "품질 60", "웹 스트리밍", "빠른 로딩" },
+            opt => { opt.ImageQuality = 70; opt.StripMetadata = true; }
+        ),
+        new(
+            "avif-compact-q45",
+            "극소 용량 보관 (Q45)",
+            "초고효율 AV1 압축으로 최소 용량 달성",
+            new[] { "품질 45", "초절약", "극소 용량" },
+            opt => { opt.ImageQuality = 55; opt.StripMetadata = true; }
         )
     };
 
@@ -198,23 +221,37 @@ public static class FormatPresetEngine
         new(
             "jpg-photo-q95",
             "디지털 인화·고화질 (Q95)",
-            "Quality 95 · 색상 프로파일 보존 · 선명한 사진",
-            new[] { "Quality 95", "ICC 보존", "고해상도" },
+            "품질 95 · 색상 프로파일 보존 · 선명한 사진",
+            new[] { "품질 95", "ICC 보존", "고해상도" },
             opt => { opt.ImageQuality = 95; opt.StripMetadata = false; }
         ),
         new(
             "jpg-web-q80",
             "웹 표준 (Q80 · 권장)",
-            "Quality 80 · 프로그레시브 JPEG · 메타데이터 제거",
-            new[] { "Quality 80", "Strip EXIF", "프로그레시브" },
+            "품질 80 · 프로그레시브 JPEG · 메타데이터 제거",
+            new[] { "품질 80", "EXIF 제거", "프로그레시브" },
             opt => { opt.ImageQuality = 80; opt.StripMetadata = true; }
         ),
         new(
             "jpg-compact-q70",
             "모바일 메신저 (Q70)",
-            "Quality 70 · 카카오톡/문자 전송 가벼운 용량",
-            new[] { "Quality 70", "용량 절약" },
+            "품질 70 · 카카오톡/문자 전송 가벼운 용량",
+            new[] { "품질 70", "용량 절약", "모바일 최적화" },
             opt => { opt.ImageQuality = 70; opt.StripMetadata = true; }
+        ),
+        new(
+            "jpg-archive-q100",
+            "아카이빙 무손실급 (Q100)",
+            "최고 화질 보존 · 메타데이터 및 ICC 완전 유지",
+            new[] { "품질 100", "원본 보존", "무손실급" },
+            opt => { opt.ImageQuality = 100; opt.StripMetadata = false; }
+        ),
+        new(
+            "jpg-thumb-q60",
+            "경량 썸네일 (Q60)",
+            "빠른 로딩을 위한 인덱스 썸네일 전용",
+            new[] { "품질 60", "썸네일", "초경량" },
+            opt => { opt.ImageQuality = 60; opt.StripMetadata = true; }
         )
     };
 
@@ -233,6 +270,70 @@ public static class FormatPresetEngine
             "불필요한 청크 제거 · 알파 투명도 보존",
             new[] { "웹 최적화", "투명도 보존", "EXIF 제거" },
             opt => { opt.ImageQuality = 100; opt.StripMetadata = true; }
+        ),
+        new(
+            "png-clean-alpha",
+            "클린 알파 투명도 보존",
+            "아이콘, 로고, UI 에셋 투명 레이어 무손실",
+            new[] { "알파 채널", "아이콘/UI", "투명도 무손실" },
+            opt => { opt.ImageQuality = 100; opt.StripMetadata = false; }
+        ),
+        new(
+            "png-uncompressed",
+            "무압축 고속 출력",
+            "압축 딜레이 없는 즉시 저장 및 렌더링",
+            new[] { "고속 저장", "무손실", "CPU 절약" },
+            opt => { opt.ImageQuality = 100; opt.StripMetadata = false; }
+        )
+    };
+
+    private static IReadOnlyList<FormatPreset> GifPresets() => new List<FormatPreset>
+    {
+        new(
+            "gif-web-256",
+            "웹 애니메이션 표준 (256색)",
+            "적응형 팔레트 · 디더링 적용으로 선명한 색감",
+            new[] { "256 Colors", "디더링", "웹 표준" },
+            opt => { opt.Quality = 85; }
+        ),
+        new(
+            "gif-compact-128",
+            "초경량 메신저 GIF (128색)",
+            "용량 축소 팔레트 · 프레임 레이트 최적화",
+            new[] { "128 Colors", "용량 절약", "메신저" },
+            opt => { opt.Quality = 65; }
+        ),
+        new(
+            "gif-sharp-64",
+            "고압축 그래픽 (64색)",
+            "심플 아이콘 및 UI 애니메이션 극소 용량",
+            new[] { "64 Colors", "초소형", "UI 그래픽" },
+            opt => { opt.Quality = 50; }
+        )
+    };
+
+    private static IReadOnlyList<FormatPreset> HeicPresets() => new List<FormatPreset>
+    {
+        new(
+            "heic-original-q90",
+            "Apple 고화질 보존 (Q90)",
+            "아이폰 원본급 HEVC 압축 · 라이브 포토 및 HDR 보존",
+            new[] { "Quality 90", "Apple HEVC", "HDR 보존" },
+            opt => { opt.ImageQuality = 90; opt.StripMetadata = false; }
+        ),
+        new(
+            "heic-balanced-q80",
+            "균형 공유 (Q80 · 추천)",
+            "표준 HEIF 압축 · 호환성과 용량 균형",
+            new[] { "Quality 80", "표준 압축", "용량 절약" },
+            opt => { opt.ImageQuality = 80; opt.StripMetadata = true; }
+        ),
+        new(
+            "heic-compact-q65",
+            "초경량 아카이빙 (Q65)",
+            "대용량 사진첩 백업용 극소 용량",
+            new[] { "Quality 65", "초경량", "백업 전용" },
+            opt => { opt.ImageQuality = 65; opt.StripMetadata = true; }
         )
     };
 
@@ -290,6 +391,13 @@ public static class FormatPresetEngine
             "원본 해상도 유지 · H.264 Medium · 오디오 무손실 복사",
             new[] { "원본 해상도", "CRF 18", "Medium", "고화질 보존" },
             opt => { opt.VideoCrf = 18; opt.VideoPreset = "medium"; opt.ResolutionIndex = 0; opt.AudioBitrateKbps = 320; }
+        ),
+        new(
+            "mp4-4k-uhd",
+            "4K UHD 아카이빙 (CRF 16)",
+            "H.264 High Profile · 마스터링 고화질 아카이빙",
+            new[] { "4K UHD", "CRF 16", "마스터링", "고비트레이트" },
+            opt => { opt.VideoCrf = 16; opt.VideoPreset = "slow"; opt.ResolutionIndex = 1; opt.AudioBitrateKbps = 320; }
         ),
         new(
             "mp4-audio-extract",

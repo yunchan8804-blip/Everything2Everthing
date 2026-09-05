@@ -50,7 +50,7 @@ public static class CategoryGlyphs
     public static ImageSource ForCategory(string category)
     {
         if (Cache.TryGetValue(category, out var cached)) return cached;
-        var uri = new Uri($"pack://application:,,,/Assets/glyph-{category}.png", UriKind.Absolute);
+        var uri = new Uri($"pack://application:,,,/Everything2Everything;component/Assets/glyph-{category}.png", UriKind.Absolute);
         var img = new BitmapImage();
         img.BeginInit();
         img.CacheOption = BitmapCacheOption.OnLoad;

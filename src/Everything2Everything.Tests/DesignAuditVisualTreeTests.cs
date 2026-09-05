@@ -249,6 +249,167 @@ public class DesignAuditVisualTreeTests
         });
     }
 
+    [Fact]
+    public void MainWindow_WhenQueueIsEmpty_ShowsDefaultFormat_AndQualitySlider_AndAdvancedPanel_Visible()
+    {
+        // Zero-Void 원칙 및 점진적 공개 원칙: 큐가 비어있더라도 사용자가 변환 옵션과 품질 슬라이더를 사전에 확인하고 조작할 수 있도록
+        // 기본 출력 포맷(.jpg)과 품질 슬라이더, 해당 포맷의 상세 인코딩 서브패널이 Visible 이어야 한다.
+        RunOnSta(() =>
+        {
+            var engine = Everything2EverythingBootstrap.CreateDefault();
+            var settings = new FakeSettingsStore();
+            var window = new MainWindow(engine, settings);
+
+            var content = (UIElement)window.Content;
+            content.Measure(new Size(1280, 960));
+            content.Arrange(new Rect(0, 0, 1280, 960));
+
+            var formatCombo = (ComboBox)window.FindName("OutputFormatCombo");
+            var qualityPanel = (StackPanel)window.FindName("QualityPanel");
+            var advancedImagePanel = (StackPanel)window.FindName("AdvancedImagePanel");
+
+            Assert.NotNull(formatCombo);
+            Assert.NotNull(qualityPanel);
+            Assert.NotNull(advancedImagePanel);
+
+            // 큐가 비어있어도 지원 가능한 전체 포맷이 채워져 있어야 한다.
+            Assert.True(formatCombo.Items.Count > 0, "큐가 비어있어도 전체 지원 포맷이 표시되어야 합니다.");
+            // 기본 포맷(.jpg)에 맞춰 품질 슬라이더 패널이 표시되어야 한다.
+            Assert.Equal(Visibility.Visible, qualityPanel.Visibility);
+            // 기본 포맷에 맞춰 상세 설정 패널이 표시되어야 한다.
+            Assert.Equal(Visibility.Visible, advancedImagePanel.Visibility);
+        });
+    }
+
+    [Fact]
+    public void MainWindow_FormatSwitching_UpdatesQuickPanels_And_AdvancedPanels_Correctly()
+    {
+        // 사용자 피드백 대응: 스마트 프리셋 직하단에서 각 미디어 형식(.mp4, .pdf, .mp3, .webp)에 따라
+        // 전용 퀵 컨트롤(품질/CRF/비트레이트/PDF압축)과 상세 폴드아웃 서브패널이 동적으로 즉시 표시되어야 한다.
+        RunOnSta(() =>
+        {
+            var engine = Everything2EverythingBootstrap.CreateDefault();
+            var settings = new FakeSettingsStore();
+            var window = new MainWindow(engine, settings);
+
+            var content = (UIElement)window.Content;
+            content.Measure(new Size(1280, 960));
+            content.Arrange(new Rect(0, 0, 1280, 960));
+
+            var formatCombo = (ComboBox)window.FindName("OutputFormatCombo");
+            var qualityPanel = (StackPanel)window.FindName("QualityPanel");
+            var videoQuickPanel = (StackPanel)window.FindName("VideoQuickPanel");
+            var audioQuickPanel = (StackPanel)window.FindName("AudioQuickPanel");
+            var pdfQuickPanel = (StackPanel)window.FindName("PdfQuickPanel");
+            var expander = (Expander)window.FindName("AdvancedOptionsExpander");
+            var advVideo = (StackPanel)window.FindName("AdvancedVideoPanel");
+            var advAudio = (StackPanel)window.FindName("AdvancedAudioPanel");
+            var advPdf = (StackPanel)window.FindName("AdvancedPdfPanel");
+            var advImage = (StackPanel)window.FindName("AdvancedImagePanel");
+
+            Assert.NotNull(formatCombo);
+            Assert.NotNull(qualityPanel);
+            Assert.NotNull(videoQuickPanel);
+            Assert.NotNull(audioQuickPanel);
+            Assert.NotNull(pdfQuickPanel);
+            Assert.NotNull(expander);
+
+            // 기본은 열려있어야 함 (사용자가 즉시 확인 가능)
+            Assert.True(expander.IsExpanded);
+
+            void SelectExtension(string ext)
+            {
+                for (var i = 0; i < formatCombo.Items.Count; i++)
+                {
+                    if (formatCombo.Items[i] is ComboBoxItem item && (string)item.Tag == ext)
+                    {
+                        formatCombo.SelectedIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            // 1. 영상 (.mp4) 전환 검증
+            SelectExtension(".mp4");
+            Assert.Equal(Visibility.Collapsed, qualityPanel.Visibility);
+            Assert.Equal(Visibility.Visible, videoQuickPanel.Visibility);
+            Assert.Equal(Visibility.Visible, advVideo.Visibility);
+            Assert.Equal(Visibility.Visible, advAudio.Visibility);
+            Assert.Equal(Visibility.Collapsed, advPdf.Visibility);
+
+            // 2. PDF (.pdf) 전환 검증
+            SelectExtension(".pdf");
+            Assert.Equal(Visibility.Collapsed, qualityPanel.Visibility);
+            Assert.Equal(Visibility.Collapsed, videoQuickPanel.Visibility);
+            Assert.Equal(Visibility.Visible, pdfQuickPanel.Visibility);
+            Assert.Equal(Visibility.Visible, advPdf.Visibility);
+            Assert.Equal(Visibility.Collapsed, advVideo.Visibility);
+
+            // 3. 오디오 (.mp3) 전환 검증
+            SelectExtension(".mp3");
+            Assert.Equal(Visibility.Collapsed, qualityPanel.Visibility);
+            Assert.Equal(Visibility.Visible, audioQuickPanel.Visibility);
+            Assert.Equal(Visibility.Visible, advAudio.Visibility);
+            Assert.Equal(Visibility.Collapsed, advVideo.Visibility);
+
+            // 4. 이미지 (.webp) 전환 검증
+            SelectExtension(".webp");
+            Assert.Equal(Visibility.Visible, qualityPanel.Visibility);
+            Assert.Equal(Visibility.Collapsed, videoQuickPanel.Visibility);
+            Assert.Equal(Visibility.Collapsed, audioQuickPanel.Visibility);
+            Assert.Equal(Visibility.Collapsed, pdfQuickPanel.Visibility);
+            Assert.Equal(Visibility.Visible, advImage.Visibility);
+        });
+    }
+
+    [Fact]
+    public void MainWindow_RenderToBitmap_SavesVisualVerificationArtifact()
+    {
+        RunOnSta(() =>
+        {
+            var dir = System.IO.Directory.GetCurrentDirectory();
+            while (dir != null && !System.IO.File.Exists(System.IO.Path.Combine(dir, "Everything2Everything.slnx")))
+            {
+                dir = System.IO.Directory.GetParent(dir)?.FullName;
+            }
+            var root = dir ?? throw new System.IO.DirectoryNotFoundException("솔루션 루트를 찾을 수 없습니다.");
+
+            var engine = Everything2EverythingBootstrap.CreateDefault();
+            var settings = new FakeSettingsStore();
+            var testFiles = new List<string>
+            {
+                System.IO.Path.Combine(root, "test_assets", "test_icon.png"),
+                System.IO.Path.Combine(root, "test_assets", "test_art.png")
+            };
+
+            var window = new MainWindow(engine, settings, testFiles);
+            window.ApplyTemplate();
+            var expander = (Expander)window.FindName("AdvancedOptionsExpander");
+            expander.ApplyTemplate();
+
+            var content = (UIElement)window.Content;
+            content.Measure(new Size(1280, 960));
+            content.Arrange(new Rect(0, 0, 1280, 960));
+            content.UpdateLayout();
+
+            var rtb = new System.Windows.Media.Imaging.RenderTargetBitmap(1280, 960, 96, 96, PixelFormats.Pbgra32);
+            rtb.Render(content);
+
+            var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+            encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(rtb));
+
+            var outDir = @"C:\Users\encep\.gemini\antigravity\brain\a5abaf02-dd4b-45f7-8890-144e9da36bcc";
+            var outPath = System.IO.Path.Combine(outDir, "app_rendered_preview.png");
+            using (var fs = new System.IO.FileStream(outPath, System.IO.FileMode.Create, System.IO.FileAccess.Write, System.IO.FileShare.ReadWrite))
+            {
+                encoder.Save(fs);
+            }
+
+            Assert.True(System.IO.File.Exists(outPath));
+            Assert.True(new System.IO.FileInfo(outPath).Length > 1000);
+        });
+    }
+
     private static IEnumerable<T> FindLogicalChildren<T>(object parent) where T : DependencyObject
     {
         if (parent is ContentControl cc && cc.Content != null)

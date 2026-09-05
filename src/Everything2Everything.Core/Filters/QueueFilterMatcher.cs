@@ -68,4 +68,15 @@ public static class QueueFilterMatcher
     {
         return System.Linq.Enumerable.Where(source, item => Matches(fileNameSelector(item), query, category));
     }
+
+    /// <summary>카테고리를 사용자 친화적인 한국어 라벨로 변환합니다.</summary>
+    public static string ToKoreanLabel(this FilterCategory category) => category switch
+    {
+        FilterCategory.All => "전체",
+        FilterCategory.Image => "이미지",
+        FilterCategory.Document => "문서",
+        FilterCategory.Media => "미디어",
+        FilterCategory.Data => "데이터",
+        _ => "기타",
+    };
 }

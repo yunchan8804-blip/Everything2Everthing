@@ -3,7 +3,7 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
                  xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
-                 Title="FormatShift Utility"
+                 Title="Everything2Everything"
                  Icon="pack://application:,,,/Everything2Everything;component/Assets/app-icon.png"
                  Width="1280" Height="960"
                  MinWidth="1080" MinHeight="640"
@@ -49,7 +49,7 @@
         </Grid.RowDefinitions>
 
         <!-- ============== UNIFIED TOP BAR (Row 0: 42px) ============== -->
-        <ui:TitleBar x:Name="AppTitleBar" Title="" Height="42" Grid.Row="0"
+        <ui:TitleBar x:Name="AppTitleBar" Title="Everything2Everything" Height="42" Grid.Row="0"
                      VerticalAlignment="Stretch" HorizontalAlignment="Stretch"
                      ShowMaximize="True" ShowMinimize="True">
 
@@ -73,7 +73,7 @@
                                           Command="{Binding TabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                           CommandParameter="Active">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="Active Queue" VerticalAlignment="Center"/>
+                                    <TextBlock Text="대기열" VerticalAlignment="Center"/>
                                     <Border Margin="6,0,0,0" Style="{StaticResource FsTabBadgeStyle}" VerticalAlignment="Center">
                                         <TextBlock x:Name="TabActiveBadge" Text="0"
                                                    FontSize="10" FontWeight="SemiBold"
@@ -87,7 +87,7 @@
                                           Command="{Binding TabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                           CommandParameter="Past">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="Past Results" VerticalAlignment="Center"/>
+                                    <TextBlock Text="변환 기록" VerticalAlignment="Center"/>
                                     <Border Margin="6,0,0,0" Style="{StaticResource FsTabBadgeStyle}" VerticalAlignment="Center">
                                         <TextBlock x:Name="TabPastBadge" Text="0"
                                                    FontSize="10" FontWeight="SemiBold"
@@ -174,8 +174,9 @@
                     <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Padding="16,16,16,16">
                         <StackPanel>
                             <!-- Smart Conversion Deck: Output Format + Dynamic Presets + Live Spec Chips + Quality -->
-                            <Border Style="{StaticResource FsCardStyle}">
-                                <StackPanel>
+                            <Border Style="{StaticResource FsDoubleBezelShellStyle}" Margin="0,0,0,16">
+                                <Border Style="{StaticResource FsDoubleBezelCoreStyle}">
+                                    <StackPanel>
                                     <Grid Margin="0,0,0,12">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -205,6 +206,7 @@
                                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
                                         <ComboBox x:Name="OutputFormatCombo" Grid.Column="1"
+                                                  AutomationProperties.AutomationId="OutputFormatCombo"
                                                   Margin="8,0,0,0" VerticalAlignment="Center">
                                             <i:Interaction.Triggers>
                                                 <i:EventTrigger EventName="SelectionChanged">
@@ -229,20 +231,11 @@
                                     <!-- 3. Live Spec Chips Container -->
                                     <WrapPanel x:Name="SmartPresetChipsPanel" Margin="0,0,0,10"/>
 
-                                    <Border Height="1" Background="{StaticResource FsBorderSubtle}" Margin="0,0,0,12"/>
+                                    <Border Height="1" Background="{StaticResource FsBorderSubtle}" Margin="0,4,0,12"/>
 
-                                    <!-- 4. Quality & Combine Settings -->
-                                    <CheckBox x:Name="CombineToSingleCheck"
-                                              Margin="0,0,0,4"
-                                              Content="단일 파일로 결합 (큐 전체 → 한 파일)"
-                                              IsEnabled="False"
-                                              Command="{Binding CombineToggleCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                                    <TextBlock x:Name="CombineHint" Margin="0,0,0,10"
-                                               Style="{StaticResource FsCaptionStyle}"
-                                               Text="PDF/TIFF/GIF 출력에 한해 큐의 이미지들을 한 파일로 결합합니다"/>
-
-                                    <!-- Encoding Quality -->
-                                    <StackPanel x:Name="QualityPanel" Margin="0,4,0,0">
+                                    <!-- 4. 포맷별 핵심 인코딩 컨트롤 (프리셋 직하단 즉시 노출) -->
+                                    <!-- A. 이미지 품질 슬라이더 (JPG/WebP/AVIF) -->
+                                    <StackPanel x:Name="QualityPanel" Margin="0,0,0,6">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
@@ -259,7 +252,8 @@
                                                            Text="{Binding Options.Quality, RelativeSource={RelativeSource AncestorType=Window}, StringFormat={}{0}%}"/>
                                             </Border>
                                         </Grid>
-                                        <Slider x:Name="QualitySlider" Margin="0,10,0,0"
+                                        <Slider x:Name="QualitySlider" Margin="0,8,0,0"
+                                                AutomationProperties.AutomationId="QualitySlider"
                                                 Style="{StaticResource FsSliderStyle}"
                                                 Minimum="1" Maximum="100"
                                                 Value="{Binding Options.Quality, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
@@ -272,314 +266,326 @@
                                             <TextBlock Grid.Column="1" Text="품질 우선" Style="{StaticResource FsCaptionStyle}"/>
                                         </Grid>
                                     </StackPanel>
+
+                                    <!-- B. 영상 주 품질 CRF 슬라이더 (MP4/MKV/WebM/MOV) -->
+                                    <StackPanel x:Name="VideoQuickPanel" Margin="0,0,0,6" Visibility="Collapsed">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="영상 화질 (CRF)" Style="{StaticResource FsLabelStyle}"/>
+                                            <Border Grid.Column="1" CornerRadius="4"
+                                                    Background="{StaticResource FsBgInput}"
+                                                    BorderBrush="{StaticResource FsBorderSubtle}"
+                                                    BorderThickness="1" Padding="6,2">
+                                                <TextBlock FontFamily="{StaticResource FsFontMono}" FontSize="12"
+                                                           Foreground="{StaticResource FsAccentBlue}"
+                                                           Text="{Binding Options.Crf, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                            </Border>
+                                        </Grid>
+                                        <Slider x:Name="VideoCrfSlider" Margin="0,8,0,0" Style="{StaticResource FsSliderStyle}"
+                                                AutomationProperties.AutomationId="VideoCrfSlider"
+                                                Minimum="0" Maximum="51"
+                                                Value="{Binding Options.Crf, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                                        <Grid Margin="0,4,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="고화질 (0)" Style="{StaticResource FsCaptionStyle}"/>
+                                            <TextBlock Grid.Column="1" Text="고압축 (51)" Style="{StaticResource FsCaptionStyle}"/>
+                                        </Grid>
+                                    </StackPanel>
+
+                                    <!-- C. 오디오 주 비트레이트 선택기 (MP3/AAC/Opus/FLAC) -->
+                                    <StackPanel x:Name="AudioQuickPanel" Margin="0,0,0,6" Visibility="Collapsed">
+                                        <TextBlock Text="오디오 비트레이트" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,4"/>
+                                        <ComboBox x:Name="AudioBitrateQuickCombo"
+                                                  AutomationProperties.AutomationId="AudioBitrateQuickCombo"
+                                                  SelectedIndex="{Binding Options.AudioBitrateIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                            <ComboBoxItem Content="96 kbps (음성·저용량)"/>
+                                            <ComboBoxItem Content="128 kbps (표준)"/>
+                                            <ComboBoxItem Content="192 kbps (고음질 권장)"/>
+                                            <ComboBoxItem Content="256 kbps (매우 높음)"/>
+                                            <ComboBoxItem Content="320 kbps (최고 음질)"/>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <!-- D. PDF 압축 레벨 선택기 (PDF) -->
+                                    <StackPanel x:Name="PdfQuickPanel" Margin="0,0,0,6" Visibility="Collapsed">
+                                        <TextBlock Text="PDF 최적화 레벨" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,4"/>
+                                        <ComboBox x:Name="PdfCompressQuickCombo"
+                                                  AutomationProperties.AutomationId="PdfCompressQuickCombo"
+                                                  SelectedIndex="{Binding Options.PdfCompressLevelIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                            <ComboBoxItem Content="Light (무손실 최적화 · 화질 유지 100%)"/>
+                                            <ComboBoxItem Content="Strong (웹/이메일 균형 · 150 DPI 리샘플링)"/>
+                                            <ComboBoxItem Content="Max (최대 압축 · 흑백/고압축)"/>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <!-- 5. 상세 인코딩 설정 (폴드아웃 Expander: 프리셋 직하단 위치) -->
+                                    <Expander x:Name="AdvancedOptionsExpander"
+                                              Margin="0,6,0,6"
+                                              AutomationProperties.AutomationId="AdvancedOptionsExpander"
+                                              IsExpanded="True">
+                                        <Expander.Header>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <ui:SymbolIcon Symbol="Options24" FontSize="14" Foreground="{StaticResource FsAccentCyan}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBlock Text="상세 인코딩 설정" Style="{StaticResource FsLabelStyle}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Expander.Header>
+                                        <StackPanel Margin="0,12,0,0">
+
+                                            <!-- A. PDF 상세 옵션 패널 (ISO 32000 / Ghostscript 규격) -->
+                                            <StackPanel x:Name="AdvancedPdfPanel" Visibility="Collapsed">
+                                                <TextBlock Text="PDF 최적화 및 렌더링" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,8"/>
+                                                <TextBlock Text="PDF 압축 레벨" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
+                                                <ComboBox x:Name="PdfCompressLevelCombo"
+                                                          AutomationProperties.AutomationId="PdfCompressLevelCombo"
+                                                          SelectedIndex="{Binding Options.PdfCompressLevelIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                                    <ComboBoxItem Content="Light (무손실 최적화 · 화질 유지 100%)"/>
+                                                    <ComboBoxItem Content="Strong (웹/이메일 균형 · 150 DPI 리샘플링)"/>
+                                                    <ComboBoxItem Content="Max (최대 압축 · 흑백/고압축)"/>
+                                                </ComboBox>
+
+                                                <TextBlock Text="PDF 렌더링 해상도 (DPI)" Style="{StaticResource FsCaptionStyle}" Margin="0,10,0,4"/>
+                                                <ComboBox x:Name="PdfDpiCombo"
+                                                          AutomationProperties.AutomationId="PdfDpiCombo"
+                                                          SelectedIndex="{Binding Options.PdfDpiIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                                    <ComboBoxItem Content="150 DPI (화면 / 웹 최적화)"/>
+                                                    <ComboBoxItem Content="200 DPI (표준 오피스 밸런스)"/>
+                                                    <ComboBoxItem Content="300 DPI (고해상도 인쇄 및 OCR용)"/>
+                                                </ComboBox>
+                                            </StackPanel>
+
+                                            <!-- B. 이미지 상세 옵션 패널 (W3C / MozJPEG 규격) -->
+                                            <StackPanel x:Name="AdvancedImagePanel" Visibility="Collapsed">
+                                                <TextBlock Text="이미지 고급 인코딩" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,8"/>
+                                                <CheckBox x:Name="ImageLosslessCheck" Margin="0,0,0,6" Content="무손실(Lossless) 보존 (WebP/PNG)"
+                                                          AutomationProperties.AutomationId="ImageLosslessCheck"
+                                                          IsChecked="{Binding Options.ImageLossless, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                                                <CheckBox x:Name="ImageProgressiveCheck" Margin="0,0,0,6" Content="프로그레시브/인터레이스 웹 로딩"
+                                                          AutomationProperties.AutomationId="ImageProgressiveCheck"
+                                                          IsChecked="{Binding Options.Progressive, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                                                <CheckBox x:Name="ImageStripMetadataCheck" Margin="0,0,0,0" Content="개인정보(EXIF/GPS) 제거"
+                                                          AutomationProperties.AutomationId="ImageStripMetadataCheck"
+                                                          IsChecked="{Binding Options.StripMetadata, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                                            </StackPanel>
+
+                                            <!-- C. 영상 상세 옵션 패널 (FFmpeg 규격) -->
+                                            <StackPanel x:Name="AdvancedVideoPanel" Visibility="Collapsed">
+                                                <TextBlock Text="영상 인코딩 (FFmpeg)" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,8"/>
+                                                <TextBlock Text="비디오 코덱" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
+                                                <ComboBox SelectedIndex="{Binding Options.VideoCodecIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                                    <ComboBoxItem Content="자동 (H.264 / 고해상도 H.265)"/>
+                                                    <ComboBoxItem Content="H.264 (최대 호환)"/>
+                                                    <ComboBoxItem Content="H.265 / HEVC (고압축)"/>
+                                                    <ComboBoxItem Content="VP9"/>
+                                                    <ComboBoxItem Content="AV1 (최고 압축)"/>
+                                                    <ComboBoxItem Content="원본 복사 (재인코딩 없음)"/>
+                                                </ComboBox>
+
+                                                <TextBlock Text="레이트 컨트롤" Style="{StaticResource FsCaptionStyle}" Margin="0,10,0,4"/>
+                                                <ComboBox x:Name="RateControlCombo" SelectedIndex="{Binding Options.RateControlIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                                    <ComboBoxItem Content="CRF (품질 기준 · 권장)"/>
+                                                    <ComboBoxItem Content="평균 비트레이트 (ABR)"/>
+                                                    <ComboBoxItem Content="제약 CRF (품질+상한)"/>
+                                                    <ComboBoxItem Content="고정 비트레이트 (CBR)"/>
+                                                    <ComboBoxItem Content="2패스 (최고 효율)"/>
+                                                </ComboBox>
+
+                                                <!-- 비트레이트 입력 (ABR/제약CRF/CBR/2패스 모드) -->
+                                                <StackPanel Margin="0,10,0,0">
+                                                    <StackPanel.Style>
+                                                        <Style TargetType="StackPanel">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="1"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="2"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="3"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="4"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </StackPanel.Style>
+                                                    <TextBlock Text="비트레이트 (kbps)" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
+                                                    <TextBox Style="{StaticResource FsPathInputStyle}"
+                                                             Text="{Binding Options.VideoBitrateKbps, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                                                </StackPanel>
+
+                                                <TextBlock Text="인코딩 속도 / 압축 효율" Style="{StaticResource FsCaptionStyle}" Margin="0,10,0,4"/>
+                                                <Slider Minimum="0" Maximum="8" Margin="0,4,0,0" Style="{StaticResource FsSliderStyle}"
+                                                        Value="{Binding Options.PresetIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                                                <Grid Margin="0,4,0,0">
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                    <TextBlock Text="초고속 (용량↑)" Style="{StaticResource FsCaptionStyle}"/>
+                                                    <TextBlock Grid.Column="1" Text="최고효율 (느림)" Style="{StaticResource FsCaptionStyle}"/>
+                                                </Grid>
+
+                                                <CheckBox Margin="0,12,0,0" Content="웹 스트리밍 최적화 (Faststart)"
+                                                          IsChecked="{Binding Options.FastStart, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                                                <CheckBox Margin="0,6,0,0" Content="GPU 하드웨어 가속 (NVENC 등)"
+                                                          IsChecked="{Binding Options.VideoPreferGpu, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                                            </StackPanel>
+
+                                            <!-- D. 오디오 상세 옵션 패널 (ITU-R / EBU R128 규격) -->
+                                            <StackPanel x:Name="AdvancedAudioPanel" Visibility="Collapsed">
+                                                <TextBlock Text="오디오 인코딩" Style="{StaticResource FsLabelStyle}" Margin="0,8,0,8"/>
+                                                <TextBlock Text="오디오 코덱" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
+                                                <ComboBox SelectedIndex="{Binding Options.AudioCodecIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                                    <ComboBoxItem Content="자동"/><ComboBoxItem Content="AAC"/><ComboBoxItem Content="MP3"/>
+                                                    <ComboBoxItem Content="Opus"/><ComboBoxItem Content="Vorbis"/><ComboBoxItem Content="FLAC (무손실)"/>
+                                                    <ComboBoxItem Content="PCM (WAV)"/><ComboBoxItem Content="원본 복사"/>
+                                                </ComboBox>
+                                                <CheckBox Margin="0,8,0,0" Content="가변 비트레이트 (VBR)"
+                                                          IsChecked="{Binding Options.AudioVbr, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                                                <CheckBox Margin="0,10,0,0" Content="음량 정규화 (EBU R128)"
+                                                          IsChecked="{Binding Options.Loudnorm, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                                            </StackPanel>
+
+                                        </StackPanel>
+                                    </Expander>
+
+                                    <Border Height="1" Background="{StaticResource FsBorderSubtle}" Margin="0,6,0,12"/>
+
+                                    <!-- 6. 단일 파일로 결합 체크박스 -->
+                                    <CheckBox x:Name="CombineToSingleCheck"
+                                              Margin="0,0,0,4"
+                                              IsEnabled="False"
+                                              Command="{Binding CombineToggleCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                                        <TextBlock Text="단일 파일로 결합 (전체 병합)" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                    </CheckBox>
+                                    <TextBlock x:Name="CombineHint" Margin="0,0,0,6"
+                                               Style="{StaticResource FsCaptionStyle}"
+                                               TextWrapping="Wrap"
+                                               Text="PDF/TIFF/GIF 출력 시 큐의 파일들을 하나로 결합합니다"/>
                                 </StackPanel>
                             </Border>
+                        </Border>
 
                             <!-- Card 3: Output Destination & Conflict Rule -->
-                            <Border Style="{StaticResource FsCardStyle}">
-                                <StackPanel>
-                                    <TextBlock Text="저장 위치 및 충돌 규칙" Style="{StaticResource FsLabelStyle}"/>
-                                    <Grid Margin="0,10,0,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBox x:Name="OutputPathTextBox"
-                                                 Style="{StaticResource FsPathInputStyle}"
-                                                 Text="{Binding Options.CustomOutputDirectory, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                 ToolTip="비워두면 원본 폴더 옆 서브폴더에 저장"/>
-                                        <Button Grid.Column="1" Margin="8,0,0,0" Width="36"
-                                                Content="…" Style="{StaticResource FsSecondaryButtonStyle}"
-                                                Command="{Binding PickOutputFolderCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                                    </Grid>
-                                    <TextBlock x:Name="OutputDestHint" Margin="0,6,0,0"
-                                               Style="{StaticResource FsCaptionStyle}"
-                                               Text="비워두면 원본 옆 _jpg 폴더에 저장됩니다"/>
+                            <Border Style="{StaticResource FsDoubleBezelShellStyle}" Margin="0,0,0,16">
+                                <Border Style="{StaticResource FsDoubleBezelCoreStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="저장 위치 및 충돌 규칙" Style="{StaticResource FsLabelStyle}"/>
+                                        <Grid Margin="0,10,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="OutputPathTextBox"
+                                                     Style="{StaticResource FsPathInputStyle}"
+                                                     Text="{Binding Options.CustomOutputDirectory, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     ToolTip="비워두면 원본 폴더 옆 서브폴더에 저장"/>
+                                            <Button Grid.Column="1" Margin="8,0,0,0" Width="36"
+                                                    Content="…" Style="{StaticResource FsSecondaryButtonStyle}"
+                                                    Command="{Binding PickOutputFolderCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                        </Grid>
+                                        <TextBlock x:Name="OutputDestHint" Margin="0,6,0,0"
+                                                   Style="{StaticResource FsCaptionStyle}"
+                                                   Text="비워두면 원본 옆 _jpg 폴더에 저장됩니다"/>
 
-                                    <Border Height="1" Background="{StaticResource FsBorderSubtle}" Margin="0,14,0,14"/>
+                                        <Border Height="1" Background="{StaticResource FsBorderSubtle}" Margin="0,14,0,14"/>
 
-                                    <TextBlock Text="FILE CONFLICT RULE" Style="{StaticResource FsLabelStyle}"/>
-                                    <Border Margin="0,8,0,0"
-                                            Background="{StaticResource FsBgInput}"
-                                            BorderBrush="{StaticResource FsBorderSubtle}"
-                                            BorderThickness="1" CornerRadius="6" Padding="2">
-                                        <UniformGrid Rows="1" Columns="3">
-                                            <ToggleButton x:Name="ConflictSkipBtn" Content="Skip"
-                                                          Style="{StaticResource FsSegmentStyle}"
-                                                          Command="{Binding ConflictRuleCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                          CommandParameter="Skip" ToolTip="건너뛰기"/>
-                                            <ToggleButton x:Name="ConflictRenameBtn" Content="Rename"
-                                                          Style="{StaticResource FsSegmentStyle}"
-                                                          IsChecked="True"
-                                                          Command="{Binding ConflictRuleCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                          CommandParameter="Rename" ToolTip="이름 변경"/>
-                                            <ToggleButton x:Name="ConflictReplaceBtn" Content="Replace"
-                                                          Style="{StaticResource FsSegmentStyle}"
-                                                          Command="{Binding ConflictRuleCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                          CommandParameter="Replace" ToolTip="덮어쓰기"/>
-                                        </UniformGrid>
-                                    </Border>
-                                </StackPanel>
+                                        <TextBlock Text="파일 충돌 해결" Style="{StaticResource FsLabelStyle}"/>
+                                        <Border Margin="0,8,0,0"
+                                                Background="{StaticResource FsBgInput}"
+                                                BorderBrush="{StaticResource FsBorderSubtle}"
+                                                BorderThickness="1" CornerRadius="6" Padding="2">
+                                            <UniformGrid Rows="1" Columns="3">
+                                                <ToggleButton x:Name="ConflictSkipBtn" Content="건너뛰기"
+                                                              Style="{StaticResource FsSegmentStyle}"
+                                                              Command="{Binding ConflictRuleCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                              CommandParameter="Skip" ToolTip="건너뛰기"/>
+                                                <ToggleButton x:Name="ConflictRenameBtn" Content="이름 변경"
+                                                              Style="{StaticResource FsSegmentStyle}"
+                                                              IsChecked="True"
+                                                              Command="{Binding ConflictRuleCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                              CommandParameter="Rename" ToolTip="이름 변경"/>
+                                                <ToggleButton x:Name="ConflictReplaceBtn" Content="덮어쓰기"
+                                                              Style="{StaticResource FsSegmentStyle}"
+                                                              Command="{Binding ConflictRuleCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                              CommandParameter="Replace" ToolTip="덮어쓰기"/>
+                                            </UniformGrid>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
                             </Border>
 
                             <!-- Card 4: AI Task -->
-                            <Border Style="{StaticResource FsCardStyle}" Margin="0,0,0,16">
-                                <StackPanel x:Name="AiTaskPanel">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Image Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,6,0"
-                                               RenderOptions.BitmapScalingMode="HighQuality"
-                                               Source="pack://application:,,,/Everything2Everything;component/Assets/glyph-ai.png"/>
-                                        <TextBlock Text="AI 작업" Style="{StaticResource FsLabelStyle}" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                    <ComboBox x:Name="AiTaskCombo" Margin="0,8,0,0"
-                                              SelectedIndex="0">
-                                        <ComboBoxItem Content="요약"/>
-                                        <ComboBoxItem Content="번역"/>
-                                        <ComboBoxItem Content="교정"/>
-                                    </ComboBox>
-                                    <TextBlock x:Name="AiTaskHint" Margin="0,6,0,0"
-                                               Style="{StaticResource FsCaptionStyle}"
-                                               Text="텍스트(txt·md·docx) 출력 시 LLM이 적용합니다"/>
-                                    <StackPanel x:Name="AiTargetLangPanel" Margin="0,10,0,0">
-                                        <StackPanel.Style>
-                                            <Style TargetType="StackPanel">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <!-- 번역(인덱스 1)일 때만 대상 언어 입력 표시 -->
-                                                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=AiTaskCombo}" Value="1">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </StackPanel.Style>
-                                        <TextBlock Text="대상 언어" Style="{StaticResource FsCaptionStyle}"
-                                                   Margin="0,0,0,4"/>
-                                        <TextBox x:Name="AiTargetLangBox"
-                                                 Style="{StaticResource FsPathInputStyle}"
-                                                 Text="영어"
-                                                 ToolTip="번역 대상 언어 (예: 영어)"/>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- Card 5: 상세 인코딩 설정 (폴드아웃 Expander) -->
-                            <Border Style="{StaticResource FsCardStyle}" Margin="0,0,0,16">
-                                <Expander x:Name="AdvancedOptionsExpander"
-                                          IsExpanded="{Binding Options.IsAdvancedExpanded, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                    <Expander.Header>
+                            <Border Style="{StaticResource FsDoubleBezelShellStyle}" Margin="0,0,0,16">
+                                <Border Style="{StaticResource FsDoubleBezelCoreStyle}">
+                                    <StackPanel x:Name="AiTaskPanel">
                                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                            <ui:SymbolIcon Symbol="Options24" FontSize="14" Foreground="{StaticResource FsAccentCyan}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                            <TextBlock Text="상세 인코딩 설정" Style="{StaticResource FsLabelStyle}" VerticalAlignment="Center"/>
+                                            <Image Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,6,0"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                                   Source="pack://application:,,,/Everything2Everything;component/Assets/glyph-ai.png"/>
+                                            <TextBlock Text="AI 작업" Style="{StaticResource FsLabelStyle}" VerticalAlignment="Center"/>
                                         </StackPanel>
-                                    </Expander.Header>
-                                    <StackPanel Margin="0,12,0,0">
-
-                                        <!-- A. PDF 상세 옵션 패널 (ISO 32000 / Ghostscript 규격) -->
-                                        <StackPanel x:Name="AdvancedPdfPanel" Visibility="Collapsed">
-                                            <TextBlock Text="PDF 최적화 및 렌더링" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,8"/>
-                                            <TextBlock Text="PDF 압축 레벨" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
-                                            <ComboBox x:Name="PdfCompressLevelCombo" SelectedIndex="{Binding Options.PdfCompressLevelIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                                <ComboBoxItem Content="Light (무손실 최적화 · 화질 유지 100%)"/>
-                                                <ComboBoxItem Content="Strong (웹/이메일 균형 · 150 DPI 리샘플링)"/>
-                                                <ComboBoxItem Content="Max (최대 압축 · 흑백/고압축)"/>
-                                            </ComboBox>
-
-                                            <TextBlock Text="PDF 렌더링 해상도 (DPI)" Style="{StaticResource FsCaptionStyle}" Margin="0,10,0,4"/>
-                                            <ComboBox x:Name="PdfDpiCombo" SelectedIndex="{Binding Options.PdfDpiIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                                <ComboBoxItem Content="150 DPI (화면 / 웹 최적화)"/>
-                                                <ComboBoxItem Content="200 DPI (표준 오피스 밸런스)"/>
-                                                <ComboBoxItem Content="300 DPI (고해상도 인쇄 및 OCR용)"/>
-                                            </ComboBox>
+                                        <ComboBox x:Name="AiTaskCombo" Margin="0,8,0,0"
+                                                  SelectedIndex="0">
+                                            <ComboBoxItem Content="요약"/>
+                                            <ComboBoxItem Content="번역"/>
+                                            <ComboBoxItem Content="교정"/>
+                                        </ComboBox>
+                                        <TextBlock x:Name="AiTaskHint" Margin="0,6,0,0"
+                                                   Style="{StaticResource FsCaptionStyle}"
+                                                   Text="텍스트(txt·md·docx) 출력 시 LLM이 적용합니다"/>
+                                        <StackPanel x:Name="AiTargetLangPanel" Margin="0,10,0,0">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <!-- 번역(인덱스 1)일 때만 대상 언어 입력 표시 -->
+                                                        <DataTrigger Binding="{Binding SelectedIndex, ElementName=AiTaskCombo}" Value="1">
+                                                             <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <TextBlock Text="대상 언어" Style="{StaticResource FsCaptionStyle}"
+                                                       Margin="0,0,0,4"/>
+                                            <TextBox x:Name="AiTargetLangBox"
+                                                     Style="{StaticResource FsPathInputStyle}"
+                                                     Text="영어"
+                                                     ToolTip="번역 대상 언어 (예: 영어)"/>
                                         </StackPanel>
-
-                                        <!-- B. 이미지 상세 옵션 패널 (W3C / MozJPEG 규격) -->
-                                        <StackPanel x:Name="AdvancedImagePanel" Visibility="Collapsed">
-                                            <TextBlock Text="이미지 고급 인코딩" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,8"/>
-                                            <CheckBox x:Name="ImageLosslessCheck" Margin="0,0,0,6" Content="무손실(Lossless) 보존 (WebP/PNG)"
-                                                      IsChecked="{Binding Options.ImageLossless, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                                            <CheckBox x:Name="ImageProgressiveCheck" Margin="0,0,0,6" Content="프로그레시브/인터레이스 웹 로딩"
-                                                      IsChecked="{Binding Options.Progressive, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                                            <CheckBox x:Name="ImageStripMetadataCheck" Margin="0,0,0,0" Content="개인정보(EXIF/GPS) 제거"
-                                                      IsChecked="{Binding Options.StripMetadata, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                                        </StackPanel>
-
-                                        <!-- C. 영상 상세 옵션 패널 (FFmpeg 규격) -->
-                                        <StackPanel x:Name="AdvancedVideoPanel" Visibility="Collapsed">
-                                            <TextBlock Text="영상 인코딩 (FFmpeg)" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,8"/>
-                                            <TextBlock Text="비디오 코덱" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
-                                            <ComboBox SelectedIndex="{Binding Options.VideoCodecIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                                <ComboBoxItem Content="자동 (H.264 / 고해상도 H.265)"/>
-                                                <ComboBoxItem Content="H.264 (최대 호환)"/>
-                                                <ComboBoxItem Content="H.265 / HEVC (고압축)"/>
-                                                <ComboBoxItem Content="VP9"/>
-                                                <ComboBoxItem Content="AV1 (최고 압축)"/>
-                                                <ComboBoxItem Content="원본 복사 (재인코딩 없음)"/>
-                                            </ComboBox>
-
-                                            <TextBlock Text="레이트 컨트롤" Style="{StaticResource FsCaptionStyle}" Margin="0,10,0,4"/>
-                                            <ComboBox x:Name="RateControlCombo" SelectedIndex="{Binding Options.RateControlIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                                <ComboBoxItem Content="CRF (품질 기준 · 권장)"/>
-                                                <ComboBoxItem Content="평균 비트레이트 (ABR)"/>
-                                                <ComboBoxItem Content="제약 CRF (품질+상한)"/>
-                                                <ComboBoxItem Content="고정 비트레이트 (CBR)"/>
-                                                <ComboBoxItem Content="2패스 (최고 효율)"/>
-                                            </ComboBox>
-
-                                            <!-- CRF 슬라이더 (CRF / 제약CRF 모드) -->
-                                            <StackPanel Margin="0,10,0,0">
-                                                <StackPanel.Style>
-                                                    <Style TargetType="StackPanel">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="1"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
-                                                            <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="3"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
-                                                            <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="4"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </StackPanel.Style>
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                                    <TextBlock Text="품질 (CRF) — 낮을수록 고화질" Style="{StaticResource FsCaptionStyle}"/>
-                                                    <TextBlock Grid.Column="1" FontFamily="{StaticResource FsFontMono}" FontSize="12" Foreground="{StaticResource FsAccentBlue}"
-                                                               Text="{Binding Options.Crf, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                                                </Grid>
-                                                <Slider Minimum="0" Maximum="51" Margin="0,4,0,0"
-                                                        Value="{Binding Options.Crf, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                                            </StackPanel>
-
-                                            <!-- 비트레이트 입력 (ABR/제약CRF/CBR/2패스 모드) -->
-                                            <StackPanel Margin="0,10,0,0">
-                                                <StackPanel.Style>
-                                                    <Style TargetType="StackPanel">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="1"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                            <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="2"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                            <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="3"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                            <DataTrigger Binding="{Binding SelectedIndex, ElementName=RateControlCombo}" Value="4"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </StackPanel.Style>
-                                                <TextBlock Text="비디오 비트레이트 (kbps)" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
-                                                <TextBox Style="{StaticResource FsPathInputStyle}"
-                                                         Text="{Binding Options.VideoBitrateKbps, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                            </StackPanel>
-
-                                            <TextBlock Text="인코딩 프리셋 (느릴수록 고압축)" Style="{StaticResource FsCaptionStyle}" Margin="0,10,0,4"/>
-                                            <ComboBox SelectedIndex="{Binding Options.PresetIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                                <ComboBoxItem Content="UltraFast"/><ComboBoxItem Content="SuperFast"/><ComboBoxItem Content="VeryFast"/>
-                                                <ComboBoxItem Content="Faster"/><ComboBoxItem Content="Fast"/><ComboBoxItem Content="Medium"/>
-                                                <ComboBoxItem Content="Slow"/><ComboBoxItem Content="Slower"/><ComboBoxItem Content="VerySlow"/>
-                                            </ComboBox>
-
-                                            <Grid Margin="0,10,0,0">
-                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                                <StackPanel Grid.Column="0">
-                                                    <TextBlock Text="해상도" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
-                                                    <ComboBox SelectedIndex="{Binding Options.ResolutionIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                                        <ComboBoxItem Content="원본"/><ComboBoxItem Content="2160p (4K)"/><ComboBoxItem Content="1440p"/>
-                                                        <ComboBoxItem Content="1080p"/><ComboBoxItem Content="720p"/><ComboBoxItem Content="480p"/>
-                                                    </ComboBox>
-                                                </StackPanel>
-                                                <StackPanel Grid.Column="2">
-                                                    <TextBlock Text="프레임레이트" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
-                                                    <ComboBox SelectedIndex="{Binding Options.FpsIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                                        <ComboBoxItem Content="원본"/><ComboBoxItem Content="24"/><ComboBoxItem Content="30"/><ComboBoxItem Content="60"/>
-                                                    </ComboBox>
-                                                </StackPanel>
-                                            </Grid>
-
-                                            <CheckBox Margin="0,12,0,0" Content="웹 스트리밍 최적화 (Faststart)"
-                                                      IsChecked="{Binding Options.FastStart, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                                            <CheckBox Margin="0,6,0,0" Content="GPU 하드웨어 가속 (NVENC 등)"
-                                                      IsChecked="{Binding Options.VideoPreferGpu, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-
-                                            <Expander Header="고급" Margin="0,10,0,0" Foreground="{StaticResource FsTextSecondary}">
-                                                <StackPanel Margin="0,8,0,0">
-                                                    <TextBlock Text="회전 / 뒤집기" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
-                                                    <ComboBox SelectedIndex="{Binding Options.RotateIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                                        <ComboBoxItem Content="없음"/><ComboBoxItem Content="시계 90°"/><ComboBoxItem Content="반시계 90°"/>
-                                                        <ComboBoxItem Content="180°"/><ComboBoxItem Content="좌우 반전"/><ComboBoxItem Content="상하 반전"/>
-                                                    </ComboBox>
-                                                    <TextBlock Text="디인터레이스" Style="{StaticResource FsCaptionStyle}" Margin="0,10,0,4"/>
-                                                    <ComboBox SelectedIndex="{Binding Options.DeinterlaceIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                                        <ComboBoxItem Content="끔"/><ComboBoxItem Content="Yadif"/><ComboBoxItem Content="Bwdif (고품질)"/>
-                                                    </ComboBox>
-                                                    <CheckBox Margin="0,10,0,0" Content="적응형 양자화 (GPU 화질↑)"
-                                                              IsChecked="{Binding Options.SpatialAq, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                                                </StackPanel>
-                                            </Expander>
-                                        </StackPanel>
-
-                                        <!-- D. 오디오 상세 옵션 패널 (ITU-R / EBU R128 규격) -->
-                                        <StackPanel x:Name="AdvancedAudioPanel" Visibility="Collapsed">
-                                            <TextBlock Text="오디오 인코딩" Style="{StaticResource FsLabelStyle}" Margin="0,8,0,8"/>
-                                            <TextBlock Text="오디오 코덱" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
-                                            <ComboBox SelectedIndex="{Binding Options.AudioCodecIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                                <ComboBoxItem Content="자동"/><ComboBoxItem Content="AAC"/><ComboBoxItem Content="MP3"/>
-                                                <ComboBoxItem Content="Opus"/><ComboBoxItem Content="Vorbis"/><ComboBoxItem Content="FLAC (무손실)"/>
-                                                <ComboBoxItem Content="PCM (WAV)"/><ComboBoxItem Content="원본 복사"/>
-                                            </ComboBox>
-                                            <TextBlock Text="오디오 비트레이트" Style="{StaticResource FsCaptionStyle}" Margin="0,10,0,4"/>
-                                            <ComboBox SelectedIndex="{Binding Options.AudioBitrateIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                                <ComboBoxItem Content="96 kbps"/><ComboBoxItem Content="128 kbps"/><ComboBoxItem Content="192 kbps"/>
-                                                <ComboBoxItem Content="256 kbps"/><ComboBoxItem Content="320 kbps"/>
-                                            </ComboBox>
-                                            <CheckBox Margin="0,8,0,0" Content="가변 비트레이트 (VBR)"
-                                                      IsChecked="{Binding Options.AudioVbr, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                                            <Grid Margin="0,10,0,0">
-                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                                <StackPanel Grid.Column="0">
-                                                    <TextBlock Text="샘플레이트" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
-                                                    <ComboBox SelectedIndex="{Binding Options.SampleRateIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                                        <ComboBoxItem Content="원본"/><ComboBoxItem Content="44.1 kHz"/><ComboBoxItem Content="48 kHz"/>
-                                                    </ComboBox>
-                                                </StackPanel>
-                                                <StackPanel Grid.Column="2">
-                                                    <TextBlock Text="채널" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
-                                                    <ComboBox SelectedIndex="{Binding Options.ChannelsIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                                        <ComboBoxItem Content="원본"/><ComboBoxItem Content="모노"/><ComboBoxItem Content="스테레오"/>
-                                                    </ComboBox>
-                                                </StackPanel>
-                                            </Grid>
-                                            <CheckBox Margin="0,10,0,0" Content="음량 정규화 (EBU R128)"
-                                                      IsChecked="{Binding Options.Loudnorm, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                                        </StackPanel>
-
                                     </StackPanel>
-                                </Expander>
+                                </Border>
                             </Border>
 
                             <!-- Card 6: Stats Box -->
-                            <Border Style="{StaticResource FsCardStyle}" Margin="0,0,0,16" Padding="16">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel>
-                                        <TextBlock Text="오늘 변환된 파일"
-                                                   FontFamily="{StaticResource FsFontSans}"
-                                                   FontSize="10" FontWeight="SemiBold"
-                                                   Foreground="{StaticResource FsTextSecondary}"/>
-                                        <TextBlock x:Name="ProcessedTodayText"
-                                                   FontFamily="{StaticResource FsFontMono}"
-                                                   FontSize="14"
-                                                   Foreground="{StaticResource FsTextPrimary}"
-                                                   Text="0" Margin="0,4,0,0"/>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="1">
-                                        <TextBlock Text="예상 절감 용량"
-                                                   FontFamily="{StaticResource FsFontSans}"
-                                                   FontSize="10" FontWeight="SemiBold"
-                                                   Foreground="{StaticResource FsTextSecondary}"/>
-                                        <TextBlock x:Name="SpaceSavedText"
-                                                   FontFamily="{StaticResource FsFontMono}"
-                                                   FontSize="14"
-                                                   Foreground="{StaticResource FsAccentGreen}"
-                                                   Text="0 B" Margin="0,4,0,0"/>
-                                    </StackPanel>
-                                </Grid>
+                            <Border Style="{StaticResource FsDoubleBezelShellStyle}" Margin="0,0,0,16">
+                                <Border Style="{StaticResource FsDoubleBezelCoreStyle}" Padding="16">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="오늘 변환된 파일"
+                                                       FontFamily="{StaticResource FsFontSans}"
+                                                       FontSize="10" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource FsTextSecondary}"/>
+                                            <TextBlock x:Name="ProcessedTodayText"
+                                                       FontFamily="{StaticResource FsFontMono}"
+                                                       FontSize="14"
+                                                       Foreground="{StaticResource FsTextPrimary}"
+                                                       Text="0" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="예상 절감 용량"
+                                                       FontFamily="{StaticResource FsFontSans}"
+                                                       FontSize="10" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource FsTextSecondary}"/>
+                                            <TextBlock x:Name="SpaceSavedText"
+                                                       FontFamily="{StaticResource FsFontMono}"
+                                                       FontSize="14"
+                                                       Foreground="{StaticResource FsAccentGreen}"
+                                                       Text="0 B" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
                             </Border>
                         </StackPanel>
                     </ScrollViewer>
@@ -631,10 +637,11 @@
                             </StackPanel>
 
                             <Button x:Name="ProcessQueueButton"
-                                    Content="대기 중 — 파일을 드래그하여 추가하세요"
-                                    Style="{StaticResource FsPrimaryButtonStyle}"
+                                    AutomationProperties.AutomationId="ProcessQueueButton"
+                                    Content="파일을 드래그하여 추가"
+                                    Style="{StaticResource FsIslandPrimaryButtonStyle}"
                                     IsEnabled="False"
-                                    Height="40"
+                                    Height="44"
                                     Command="{Binding ProcessQueueCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
                         </StackPanel>
                     </Border>
@@ -652,69 +659,69 @@
                     <ColumnDefinition x:Name="InspectorColumn" Width="380"/>
                 </Grid.ColumnDefinitions>
 
-                    <!-- 실시간 검색 & 카테고리 필터 툴바 -->
-                    <Border Grid.Row="0" Grid.ColumnSpan="2"
+                    <!-- 실시간 검색 & 카테고리 필터 툴바 (리스트 컬럼에 정합) -->
+                    <Border Grid.Row="0" Grid.Column="0"
                             Background="{StaticResource FsBgPanel}"
                             BorderBrush="{StaticResource FsBorderSubtle}"
-                            BorderThickness="0,0,0,1" Padding="24,8">
+                            BorderThickness="0,0,1,1" Padding="16,8">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="280"/>
+                                <ColumnDefinition Width="160"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <!-- Search Box -->
                             <Grid Grid.Column="0">
                                 <TextBox x:Name="SearchBox" Style="{StaticResource FsPathInputStyle}"
-                                         Padding="32,6,10,6" Text="{Binding SearchText, RelativeSource={RelativeSource AncestorType=Window}, UpdateSourceTrigger=PropertyChanged}"
+                                         Padding="30,5,8,5" Text="{Binding SearchText, RelativeSource={RelativeSource AncestorType=Window}, UpdateSourceTrigger=PropertyChanged}"
                                          ToolTip="파일명 또는 확장자로 검색"/>
-                                <ui:SymbolIcon Symbol="Search24" FontSize="14" Foreground="{StaticResource FsTextTertiary}"
-                                               HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0" IsHitTestVisible="False"/>
+                                <ui:SymbolIcon Symbol="Search24" FontSize="13" Foreground="{StaticResource FsTextTertiary}"
+                                               HorizontalAlignment="Left" VerticalAlignment="Center" Margin="9,0,0,0" IsHitTestVisible="False"/>
                             </Grid>
                             <!-- Category Filter Chips & Inspector Toggle -->
                             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                <Button Margin="0,0,4,0" Padding="10,4" Style="{StaticResource FsSecondaryButtonStyle}"
+                                <Button Margin="0,0,3,0" Padding="7,3" Style="{StaticResource FsSecondaryButtonStyle}"
                                         Command="{Binding FilterCategoryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="All">
                                     <TextBlock Text="전체" FontSize="11" VerticalAlignment="Center"/>
                                 </Button>
-                                <Button Margin="0,0,4,0" Padding="10,4" Style="{StaticResource FsSecondaryButtonStyle}"
+                                <Button Margin="0,0,3,0" Padding="7,3" Style="{StaticResource FsSecondaryButtonStyle}"
                                         Command="{Binding FilterCategoryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="Image">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <ui:SymbolIcon Symbol="Image24" FontSize="12" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <ui:SymbolIcon Symbol="Image24" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
                                         <TextBlock Text="이미지" FontSize="11" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
-                                <Button Margin="0,0,4,0" Padding="10,4" Style="{StaticResource FsSecondaryButtonStyle}"
+                                <Button Margin="0,0,3,0" Padding="7,3" Style="{StaticResource FsSecondaryButtonStyle}"
                                         Command="{Binding FilterCategoryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="Document">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <ui:SymbolIcon Symbol="Document24" FontSize="12" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <ui:SymbolIcon Symbol="Document24" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
                                         <TextBlock Text="문서" FontSize="11" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
-                                <Button Margin="0,0,4,0" Padding="10,4" Style="{StaticResource FsSecondaryButtonStyle}"
+                                <Button Margin="0,0,3,0" Padding="7,3" Style="{StaticResource FsSecondaryButtonStyle}"
                                         Command="{Binding FilterCategoryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="Media">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <ui:SymbolIcon Symbol="Video24" FontSize="12" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <ui:SymbolIcon Symbol="Video24" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
                                         <TextBlock Text="미디어" FontSize="11" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
-                                <Button Margin="0,0,4,0" Padding="10,4" Style="{StaticResource FsSecondaryButtonStyle}"
+                                <Button Margin="0,0,3,0" Padding="7,3" Style="{StaticResource FsSecondaryButtonStyle}"
                                         Command="{Binding FilterCategoryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="Data">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <ui:SymbolIcon Symbol="Database24" FontSize="12" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <ui:SymbolIcon Symbol="Database24" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
                                         <TextBlock Text="데이터" FontSize="11" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
-                                <Border Width="1" Height="16" Background="{StaticResource FsBorderSubtle}" Margin="8,0"/>
-                                <Button Padding="10,4" Style="{StaticResource FsSecondaryButtonStyle}"
+                                <Border Width="1" Height="14" Background="{StaticResource FsBorderSubtle}" Margin="5,0"/>
+                                <Button Padding="7,3" Style="{StaticResource FsSecondaryButtonStyle}"
                                         Command="{Binding ToggleInspectorCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         ToolTip="미리보기 패널 접기/펼치기">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <ui:SymbolIcon Symbol="PreviewLink24" FontSize="13" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <ui:SymbolIcon Symbol="PreviewLink24" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
                                         <TextBlock Text="미리보기" FontSize="11" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
@@ -767,60 +774,67 @@
 
                         <Grid Grid.Row="1">
                         <Grid x:Name="DropZoneEmpty">
-                            <Border Background="{StaticResource FsBgBase}" Padding="32">
-                                <!-- 점선 드롭존: 절제된 dashed 보더 + 중앙 정렬 안내 -->
-                                <Grid MaxWidth="460"
-                                      HorizontalAlignment="Center"
-                                      VerticalAlignment="Center">
-                                    <!-- 점선 테두리(드롭존 느낌) -->
-                                    <Rectangle RadiusX="12" RadiusY="12"
-                                               Stroke="{StaticResource FsBorderHairline}"
-                                               StrokeThickness="1.5"
-                                               StrokeDashArray="5 4"
-                                               Fill="{StaticResource FsBgSurface}"/>
-                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                Margin="48,44">
-                                        <Image Width="120" Height="120"
-                                               HorizontalAlignment="Center"
-                                               RenderOptions.BitmapScalingMode="HighQuality"
-                                               Source="pack://application:,,,/Everything2Everything;component/Assets/illus-empty.png"/>
-                                        <TextBlock Margin="0,16,0,0" FontSize="16" FontWeight="SemiBold"
-                                                   Foreground="{StaticResource FsTextPrimary}"
-                                                   HorizontalAlignment="Center"
-                                                   Text="변환할 파일을 드래그하여 추가하세요"/>
-                                        <TextBlock Margin="0,6,0,0" Style="{StaticResource FsCaptionStyle}"
-                                                   HorizontalAlignment="Center"
-                                                   TextAlignment="Center"
-                                                   Text="이미지 · 문서 · 데이터 · 영상 · 오디오 등 무엇이든"/>
-                                        <Button Margin="0,20,0,0"
-                                                HorizontalAlignment="Center"
-                                                Style="{StaticResource FsPrimaryButtonStyle}"
-                                                Padding="20,10"
-                                                Command="{Binding AddFilesCommand, RelativeSource={RelativeSource AncestorType=Window}}">
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <ui:SymbolIcon Symbol="Add24" FontSize="14" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                <TextBlock Text="파일 찾기…" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </Button>
-                                        <!-- 단축키 안내 칩 -->
-                                        <Border Margin="0,16,0,0" HorizontalAlignment="Center"
-                                                Background="{StaticResource FsBgPanel}"
-                                                BorderBrush="{StaticResource FsBorderSubtle}"
-                                                BorderThickness="1" CornerRadius="12" Padding="12,4">
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <TextBlock Text="단축키" Style="{StaticResource FsCaptionStyle}" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                                <Border Background="{StaticResource FsBgBase}" CornerRadius="4" Padding="6,2" Margin="0,0,4,0">
-                                                    <TextBlock Text="Ctrl + O" FontFamily="{StaticResource FsFontMono}" FontSize="11" Foreground="{StaticResource FsAccentBlue}" VerticalAlignment="Center"/>
+                            <Border Background="{StaticResource FsBgBase}" Padding="24">
+                                <!-- Double-Bezel Machine Drop Stage (high-end-visual-design & minimalist-ui) -->
+                                <Border Style="{StaticResource FsDoubleBezelShellStyle}"
+                                        MaxWidth="540"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center">
+                                    <Border Style="{StaticResource FsDoubleBezelCoreStyle}" Padding="36,32">
+                                        <Grid>
+                                            <!-- Subtle dashed inner frame for tactile drop affordance -->
+                                            <Rectangle RadiusX="10" RadiusY="10"
+                                                       Stroke="{StaticResource FsBorderHairline}"
+                                                       StrokeThickness="1.5"
+                                                       StrokeDashArray="5 4"
+                                                       Fill="Transparent"
+                                                       IsHitTestVisible="False"/>
+                                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        Margin="32,28">
+                                                <Image Width="110" Height="110"
+                                                       HorizontalAlignment="Center"
+                                                       RenderOptions.BitmapScalingMode="HighQuality"
+                                                       Source="pack://application:,,,/Everything2Everything;component/Assets/illus-empty.png"/>
+                                                <TextBlock Margin="0,16,0,0" FontSize="17" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource FsTextPrimary}"
+                                                           HorizontalAlignment="Center"
+                                                           Text="변환할 파일을 드래그하여 추가하세요"/>
+                                                <TextBlock Margin="0,6,0,0" Style="{StaticResource FsCaptionStyle}"
+                                                           HorizontalAlignment="Center"
+                                                           TextAlignment="Center"
+                                                           FontSize="12"
+                                                           Text="이미지 · 문서 · 데이터 · 영상 · 오디오 등 무엇이든"/>
+                                                <Button Margin="0,20,0,0"
+                                                        HorizontalAlignment="Center"
+                                                        Style="{StaticResource FsPrimaryButtonStyle}"
+                                                        Padding="22,10"
+                                                        Command="{Binding AddFilesCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <ui:SymbolIcon Symbol="Add24" FontSize="14" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                        <TextBlock Text="파일 찾기…" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </Button>
+                                                <!-- 단축키 안내 칩 -->
+                                                <Border Margin="0,18,0,0" HorizontalAlignment="Center"
+                                                        Background="{StaticResource FsBgPanel}"
+                                                        BorderBrush="{StaticResource FsBorderSubtle}"
+                                                        BorderThickness="1" CornerRadius="12" Padding="12,4">
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <TextBlock Text="단축키" Style="{StaticResource FsCaptionStyle}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                        <Border Background="{StaticResource FsBgBase}" CornerRadius="4" Padding="6,2" Margin="0,0,4,0">
+                                                            <TextBlock Text="Ctrl + O" FontFamily="{StaticResource FsFontMono}" FontSize="11" Foreground="{StaticResource FsAccentBlue}" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                        <TextBlock Text="파일 열기 ·" Style="{StaticResource FsCaptionStyle}" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                        <Border Background="{StaticResource FsBgBase}" CornerRadius="4" Padding="6,2" Margin="0,0,4,0">
+                                                            <TextBlock Text="Ctrl + Enter" FontFamily="{StaticResource FsFontMono}" FontSize="11" Foreground="{StaticResource FsAccentGreen}" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                        <TextBlock Text="변환 시작" Style="{StaticResource FsCaptionStyle}" VerticalAlignment="Center"/>
+                                                    </StackPanel>
                                                 </Border>
-                                                <TextBlock Text="파일 열기 ·" Style="{StaticResource FsCaptionStyle}" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                                                <Border Background="{StaticResource FsBgBase}" CornerRadius="4" Padding="6,2" Margin="0,0,4,0">
-                                                    <TextBlock Text="Ctrl + Enter" FontFamily="{StaticResource FsFontMono}" FontSize="11" Foreground="{StaticResource FsAccentGreen}" VerticalAlignment="Center"/>
-                                                </Border>
-                                                <TextBlock Text="변환 시작" Style="{StaticResource FsCaptionStyle}" VerticalAlignment="Center"/>
                                             </StackPanel>
-                                        </Border>
-                                    </StackPanel>
-                                </Grid>
+                                        </Grid>
+                                    </Border>
+                                </Border>
                             </Border>
                         </Grid>
                         <ScrollViewer x:Name="ActiveQueueScroll" VerticalScrollBarVisibility="Auto"
@@ -849,12 +863,12 @@
                                                         CornerRadius="10,0,0,10"/>
                                                 <Grid Grid.Column="1" Margin="14,10">
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="28"/>
+                                                        <ColumnDefinition Width="30"/>
                                                         <ColumnDefinition Width="40"/>
                                                         <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="100"/>
-                                                        <ColumnDefinition Width="120"/>
-                                                        <ColumnDefinition Width="40"/>
+                                                        <ColumnDefinition Width="70"/>
+                                                        <ColumnDefinition Width="85"/>
+                                                        <ColumnDefinition Width="36"/>
                                                     </Grid.ColumnDefinitions>
                                                     <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected, Mode=TwoWay}"
                                                               VerticalAlignment="Center"/>
@@ -880,7 +894,8 @@
                                                             </Border>
                                                             <TextBlock Text="{Binding MetaLine}"
                                                                        Style="{StaticResource FsCaptionStyle}"
-                                                                       VerticalAlignment="Center"/>
+                                                                       VerticalAlignment="Center"
+                                                                       TextTrimming="CharacterEllipsis"/>
                                                         </StackPanel>
                                                         <ProgressBar Height="2" Margin="0,5,0,0"
                                                                      Minimum="0" Maximum="100"
@@ -890,12 +905,15 @@
                                                     <TextBlock Grid.Column="3" Text="{Binding SizeText}"
                                                                Style="{StaticResource FsMonoStyle}"
                                                                HorizontalAlignment="Right"
-                                                               VerticalAlignment="Center"/>
-                                                    <TextBlock Grid.Column="4" Text="{Binding StateText}"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,8,0"/>
+                                                    <TextBlock Grid.Column="4" Text="{Binding DisplayStateText}"
                                                                FontFamily="{StaticResource FsFontMono}"
                                                                FontSize="12"
                                                                Foreground="{Binding StateBrush}"
-                                                               VerticalAlignment="Center"/>
+                                                               HorizontalAlignment="Left"
+                                                               VerticalAlignment="Center"
+                                                               Margin="6,0,0,0"/>
                                                     <Button Grid.Column="5"
                                                             Style="{StaticResource FsIconButtonStyle}"
                                                             Width="28" Height="28"
@@ -923,38 +941,42 @@
                     <Grid x:Name="PastResultsContainer" Visibility="Collapsed">
                         <!-- 빈 상태 안내 (Empty State) -->
                         <Grid x:Name="PastResultsEmpty" Visibility="Collapsed">
-                            <Border Background="{StaticResource FsBgBase}" Padding="32">
-                                <Grid MaxWidth="460" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <Rectangle RadiusX="12" RadiusY="12"
-                                               Stroke="{StaticResource FsBorderHairline}"
-                                               StrokeThickness="1.5"
-                                               StrokeDashArray="5 4"
-                                               Fill="{StaticResource FsBgSurface}"/>
-                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="48,44">
-                                        <ui:SymbolIcon Symbol="History24" FontSize="48"
-                                                       Foreground="{StaticResource FsTextTertiary}"
-                                                       HorizontalAlignment="Center"/>
-                                        <TextBlock Margin="0,16,0,0" FontSize="16" FontWeight="SemiBold"
-                                                   Foreground="{StaticResource FsTextPrimary}"
-                                                   HorizontalAlignment="Center"
-                                                   Text="변환 이력이 없습니다"/>
-                                        <TextBlock Margin="0,6,0,0" Style="{StaticResource FsCaptionStyle}"
-                                                   HorizontalAlignment="Center"
-                                                   TextAlignment="Center"
-                                                   Text="파일을 변환하면 완료된 내역과 절감된 용량이 여기에 기록됩니다"/>
-                                        <Button Margin="0,20,0,0"
-                                                HorizontalAlignment="Center"
-                                                Style="{StaticResource FsSecondaryButtonStyle}"
-                                                Padding="16,8"
-                                                Command="{Binding TabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                CommandParameter="Active">
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <ui:SymbolIcon Symbol="ArrowLeft24" FontSize="13" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                <TextBlock Text="큐로 이동하여 파일 추가하기" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </Button>
-                                    </StackPanel>
-                                </Grid>
+                            <Border Background="{StaticResource FsBgBase}" Padding="24">
+                                <!-- Double-Bezel History Empty Stage (high-end-visual-design & minimalist-ui) -->
+                                <Border Style="{StaticResource FsDoubleBezelShellStyle}"
+                                        MaxWidth="540" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Border Style="{StaticResource FsDoubleBezelCoreStyle}" Padding="40,36">
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <Border Width="72" Height="72" CornerRadius="36"
+                                                    Background="#0DFFFFFF" BorderBrush="{StaticResource FsBorderHairline}"
+                                                    BorderThickness="1" HorizontalAlignment="Center">
+                                                <ui:SymbolIcon Symbol="History24" FontSize="36"
+                                                               Foreground="{StaticResource FsAccentCyan}"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <TextBlock Margin="0,18,0,0" FontSize="18" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource FsTextPrimary}"
+                                                       HorizontalAlignment="Center"
+                                                       Text="변환 기록이 없습니다"/>
+                                            <TextBlock Margin="0,8,0,0" Style="{StaticResource FsCaptionStyle}"
+                                                       HorizontalAlignment="Center"
+                                                       TextAlignment="Center"
+                                                       FontSize="12"
+                                                       Text="파일을 변환하면 완료된 내역과 절감된 용량이 여기에 안전하게 보관됩니다"/>
+                                            <Button Margin="0,22,0,0"
+                                                    HorizontalAlignment="Center"
+                                                    Style="{StaticResource FsPrimaryButtonStyle}"
+                                                    Padding="20,10"
+                                                    Command="{Binding TabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="Active">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <ui:SymbolIcon Symbol="ArrowLeft24" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                    <TextBlock Text="대기열로 이동하여 파일 추가하기" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </StackPanel>
+                                    </Border>
+                                </Border>
                             </Border>
                         </Grid>
                         <ScrollViewer x:Name="PastResultsView" VerticalScrollBarVisibility="Auto"
@@ -998,12 +1020,12 @@
                                                         </i:Interaction.Triggers>
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="42"/>
-                                                                <ColumnDefinition Width="*"/>
-                                                                <ColumnDefinition Width="100"/>
-                                                                <ColumnDefinition Width="100"/>
-                                                                <ColumnDefinition Width="100"/>
                                                                 <ColumnDefinition Width="40"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="75"/>
+                                                                <ColumnDefinition Width="85"/>
+                                                                <ColumnDefinition Width="70"/>
+                                                                <ColumnDefinition Width="36"/>
                                                             </Grid.ColumnDefinitions>
 
                                                             <Image Width="34" Height="34" VerticalAlignment="Center"
@@ -1027,7 +1049,8 @@
                                                                     </Border>
                                                                     <TextBlock Text="{Binding MetaLine}"
                                                                                Style="{StaticResource FsCaptionStyle}"
-                                                                               VerticalAlignment="Center"/>
+                                                                               VerticalAlignment="Center"
+                                                                               TextTrimming="CharacterEllipsis"/>
                                                                 </StackPanel>
                                                             </StackPanel>
 
@@ -1110,7 +1133,7 @@
                                               Stroke="{StaticResource FsTextSecondary}" StrokeThickness="2"
                                               VerticalAlignment="Center"
                                               Data="M1,12 C1,12 5,4 12,4 C19,4 23,12 23,12 C23,12 19,20 12,20 C5,20 1,12 1,12 Z M12,9 A3,3 0 1,1 12,15 A3,3 0 1,1 12,9 Z"/>
-                                        <TextBlock Text="PREVIEW" Margin="8,0,0,0"
+                                        <TextBlock Text="미리보기" Margin="8,0,0,0"
                                                    Style="{StaticResource FsLabelStyle}"
                                                    VerticalAlignment="Center"/>
                                     </StackPanel>
@@ -1124,58 +1147,62 @@
                                 </Grid>
                             </Border>
 
-                            <!-- 이미지 영역 -->
+                            <!-- 이미지 영역 (Double-Bezel Machined Stage) -->
                             <Grid Grid.Row="1" Margin="20,16,20,16" x:Name="PreviewImageArea">
-                                <Border Background="{StaticResource FsBgInput}"
-                                        BorderBrush="{StaticResource FsBorderSubtle}"
-                                        BorderThickness="1" CornerRadius="6">
-                                    <Grid>
-                                        <!-- Empty state -->
-                                        <StackPanel x:Name="PreviewEmpty" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20">
-                                            <Path Width="36" Height="36" Stretch="Uniform"
-                                                  Stroke="{StaticResource FsTextTertiary}" StrokeThickness="1.5"
-                                                  Data="M1,12 C1,12 5,4 12,4 C19,4 23,12 23,12 C23,12 19,20 12,20 C5,20 1,12 1,12 Z M12,9 A3,3 0 1,1 12,15 A3,3 0 1,1 12,9 Z"/>
-                                            <TextBlock Margin="0,12,0,0" FontSize="13" FontWeight="SemiBold"
-                                                       Foreground="{StaticResource FsTextSecondary}"
-                                                       HorizontalAlignment="Center"
-                                                       Text="No selection"/>
-                                            <TextBlock Margin="0,4,0,0" Style="{StaticResource FsCaptionStyle}"
-                                                       HorizontalAlignment="Center" TextAlignment="Center"
-                                                       TextWrapping="Wrap" MaxWidth="240"
-                                                       Text="Active Queue 항목을 클릭하면 여기에 미리보기가 표시됩니다."/>
-                                        </StackPanel>
+                                <Border Style="{StaticResource FsDoubleBezelShellStyle}">
+                                    <Border Style="{StaticResource FsDoubleBezelCoreStyle}" Padding="0">
+                                        <Grid>
+                                            <!-- Empty state -->
+                                            <StackPanel x:Name="PreviewEmpty" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20">
+                                                <Border Width="56" Height="56" CornerRadius="28" Background="#0AFFFFFF"
+                                                        BorderBrush="{StaticResource FsBorderHairline}" BorderThickness="1"
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                    <ui:SymbolIcon Symbol="Eye24" FontSize="26" Foreground="{StaticResource FsTextTertiary}"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <TextBlock Margin="0,14,0,0" FontSize="13" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource FsTextSecondary}"
+                                                           HorizontalAlignment="Center"
+                                                           Text="선택된 항목 없음"/>
+                                                <TextBlock Margin="0,4,0,0" Style="{StaticResource FsCaptionStyle}"
+                                                           HorizontalAlignment="Center" TextAlignment="Center"
+                                                           TextWrapping="Wrap" MaxWidth="240"
+                                                           Text="대기열에서 항목을 선택하면 여기에 상세 정보와 미리보기가 표시됩니다."/>
+                                            </StackPanel>
 
-                                        <!-- Loading -->
-                                        <StackPanel x:Name="PreviewLoading" Visibility="Collapsed"
-                                                    HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <ProgressBar IsIndeterminate="True" Width="180" Height="3"
-                                                         Foreground="{StaticResource FsAccentBlue}"
-                                                         Background="{StaticResource FsBgSurface}"/>
-                                            <TextBlock Margin="0,12,0,0" Style="{StaticResource FsCaptionStyle}"
-                                                       HorizontalAlignment="Center"
-                                                       Text="미리보기 생성 중…"/>
-                                        </StackPanel>
+                                            <!-- Loading -->
+                                            <StackPanel x:Name="PreviewLoading" Visibility="Collapsed"
+                                                         HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <ProgressBar IsIndeterminate="True" Width="180" Height="3"
+                                                             Foreground="{StaticResource FsAccentBlue}"
+                                                             Background="{StaticResource FsBgSurface}"/>
+                                                <TextBlock Margin="0,12,0,0" Style="{StaticResource FsCaptionStyle}"
+                                                           HorizontalAlignment="Center"
+                                                           Text="미리보기 생성 중…"/>
+                                            </StackPanel>
 
-                                        <!-- Image -->
-                                        <Image x:Name="PreviewImage" Stretch="Uniform" Margin="16"
-                                               Visibility="Collapsed"/>
+                                            <!-- Image -->
+                                            <Image x:Name="PreviewImage" Stretch="Uniform" Margin="16"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                                   Visibility="Collapsed"/>
 
-                                        <!-- Reason -->
-                                        <StackPanel x:Name="PreviewReason" Visibility="Collapsed"
-                                                    HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20">
-                                            <Image x:Name="PreviewGlyph" Width="84" Height="84"
-                                                   HorizontalAlignment="Center" Visibility="Collapsed"
-                                                   RenderOptions.BitmapScalingMode="HighQuality"/>
-                                            <Path x:Name="PreviewWarnIcon" Width="32" Height="32" Stretch="Uniform"
-                                                  Stroke="{StaticResource FsAccentAmber}" StrokeThickness="1.5"
-                                                  Data="M12,2 L22,20 L2,20 Z M12,9 L12,14 M12,17 L12,17.01"/>
-                                            <TextBlock x:Name="PreviewReasonText" Margin="0,12,0,0"
-                                                       Style="{StaticResource FsBodyStyle}"
-                                                       FontSize="12"
-                                                       HorizontalAlignment="Center" TextAlignment="Center"
-                                                       TextWrapping="Wrap" MaxWidth="280"/>
-                                        </StackPanel>
-                                    </Grid>
+                                            <!-- Reason / Non-image Format Glyph Fallback -->
+                                            <StackPanel x:Name="PreviewReason" Visibility="Collapsed"
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20">
+                                                <Image x:Name="PreviewGlyph" Width="84" Height="84"
+                                                       HorizontalAlignment="Center" Visibility="Collapsed"
+                                                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                <Path x:Name="PreviewWarnIcon" Width="32" Height="32" Stretch="Uniform"
+                                                      Stroke="{StaticResource FsAccentAmber}" StrokeThickness="1.5"
+                                                      Data="M12,2 L22,20 L2,20 Z M12,9 L12,14 M12,17 L12,17.01"/>
+                                                <TextBlock x:Name="PreviewReasonText" Margin="0,12,0,0"
+                                                           Style="{StaticResource FsBodyStyle}"
+                                                           FontSize="12"
+                                                           HorizontalAlignment="Center" TextAlignment="Center"
+                                                           TextWrapping="Wrap" MaxWidth="280"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
                                 </Border>
                             </Grid>
 
@@ -1209,26 +1236,26 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
 
-                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Format"
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="형식"
                                                    Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
                                         <TextBlock x:Name="PreviewFormatText" Grid.Row="0" Grid.Column="1"
                                                    FontFamily="{StaticResource FsFontMono}" FontSize="12"
                                                    Foreground="{StaticResource FsTextPrimary}" Margin="0,0,0,4"/>
 
-                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Size"
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="크기"
                                                    Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
                                         <TextBlock x:Name="PreviewSizeText" Grid.Row="1" Grid.Column="1"
                                                    FontFamily="{StaticResource FsFontMono}" FontSize="12"
                                                    Foreground="{StaticResource FsTextPrimary}" Margin="0,0,0,4"/>
 
-                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Dimensions"
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="해상도 / 규격"
                                                    Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
                                         <TextBlock x:Name="PreviewDimText" Grid.Row="2" Grid.Column="1"
                                                    FontFamily="{StaticResource FsFontMono}" FontSize="12"
                                                    Foreground="{StaticResource FsTextPrimary}" Text="—"
                                                    Margin="0,0,0,4"/>
 
-                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Pages"
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="페이지 / 정보"
                                                    Style="{StaticResource FsCaptionStyle}"/>
                                         <TextBlock x:Name="PreviewPageText" Grid.Row="3" Grid.Column="1"
                                                    FontFamily="{StaticResource FsFontMono}" FontSize="12"
@@ -1269,16 +1296,30 @@
 
                     <!-- Drop hint overlay (전체 덮음) -->
                     <Border x:Name="DropHintOverlay" Visibility="Collapsed" Grid.RowSpan="2" Grid.ColumnSpan="2"
-                            Background="#CC090A0C" IsHitTestVisible="False">
-                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Path Width="64" Height="64" Stretch="Uniform"
-                                  Stroke="{StaticResource FsAccentBlue}" StrokeThickness="2"
-                                  Data="M21,15 L21,19 C21,20.1 20.1,21 19,21 L5,21 C3.9,21 3,20.1 3,19 L3,15 M7,10 L12,15 L17,10 M12,15 L12,3"/>
-                            <TextBlock Text="Drop to add to queue" Margin="0,16,0,0"
-                                       FontSize="18" FontWeight="SemiBold"
-                                       Foreground="{StaticResource FsTextPrimary}"
-                                       HorizontalAlignment="Center"/>
-                        </StackPanel>
+                            Background="#D9090A0C" IsHitTestVisible="False">
+                        <Border Style="{StaticResource FsDoubleBezelShellStyle}"
+                                MaxWidth="440" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Border Style="{StaticResource FsDoubleBezelCoreStyle}" Padding="40,32">
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Border Width="64" Height="64" CornerRadius="32"
+                                            Background="#153B82F6" BorderBrush="{StaticResource FsAccentBlue}"
+                                            BorderThickness="1.5" HorizontalAlignment="Center">
+                                        <Path Width="28" Height="28" Stretch="Uniform"
+                                              Stroke="{StaticResource FsAccentBlue}" StrokeThickness="2.5"
+                                              Data="M21,15 L21,19 C21,20.1 20.1,21 19,21 L5,21 C3.9,21 3,20.1 3,19 L3,15 M7,10 L12,15 L17,10 M12,15 L12,3"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="파일을 놓아 대기열에 추가" Margin="0,18,0,0"
+                                               FontSize="17" FontWeight="SemiBold"
+                                               Foreground="{StaticResource FsTextPrimary}"
+                                               HorizontalAlignment="Center"/>
+                                    <TextBlock Text="모든 파일 형식 지원 · 자동 분석 및 프리셋 매칭" Margin="0,6,0,0"
+                                               Style="{StaticResource FsCaptionStyle}"
+                                               Foreground="{StaticResource FsTextSecondary}"
+                                               HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </Border>
                     </Border>
                 </Grid>
             </Grid>

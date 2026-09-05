@@ -38,7 +38,7 @@ public static class FileInspectorBuilder
         catch { }
 
         var formattedSize = HumanizeBytes(size);
-        var meta = $"{ext.TrimStart('.').ToUpperInvariant()} · {category}";
+        var meta = $"{ext.TrimStart('.').ToUpperInvariant()} · {category.ToKoreanLabel()}";
 
         return new FileInspectorInfo(
             FileName: fileName,

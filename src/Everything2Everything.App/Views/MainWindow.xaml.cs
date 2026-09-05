@@ -145,7 +145,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         ToggleInspectorCommand = new RelayCommand(_ => ToggleInspector());
         RemoveQueueItemCommand = new RelayCommand(p => RemoveQueueItem(p as QueueItem));
         OpenFolderCommand = new RelayCommand(p => OpenFolderForPath(p as string));
-        TabCommand = new RelayCommand(p => ShowTab(p as string ?? "Past"));
+        TabCommand = new RelayCommand(p => ShowTab(p as string ?? "Active"));
         ConflictRuleCommand = new RelayCommand(p => SetConflictRule(p as string));
         CombineToggleCommand = new RelayCommand(_ => UpdateCombineState(SelectedOutputExtension));
         OutputFormatChangedCommand = new RelayCommand(_ => OnOutputFormatSelected());
@@ -156,10 +156,24 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         PastRowCommand = new RelayCommand(p => HandlePastRowClick(p as MouseButtonEventArgs));
 
         InitializeComponent();
+        Title = "Everything2Everything";
+        if (AppTitleBar is not null) AppTitleBar.Title = "Everything2Everything";
+
+        if (AdvancedOptionsExpander is not null)
+        {
+            AdvancedOptionsExpander.IsExpanded = true;
+            AdvancedOptionsExpander.Expanded += (_, _) => _options.IsAdvancedExpanded = true;
+            AdvancedOptionsExpander.Collapsed += (_, _) => _options.IsAdvancedExpanded = false;
+        }
 
         if (SmartPresetCombo is not null)
         {
             SmartPresetCombo.SelectionChanged += OnSmartPresetChanged;
+        }
+
+        if (OutputFormatCombo is not null)
+        {
+            OutputFormatCombo.SelectionChanged += (_, _) => OnOutputFormatSelected();
         }
 
         // ActiveQueueList/PastResultsList의 ItemsSource는 XAML이 ActiveQueue/PastResults에 바인딩(선언적).
@@ -202,7 +216,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
             return;
         }
 
-        CapabilityStatusText.Text = $"⚠ {notReady.Count}개 형식이 외부 도구를 기다립니다 (Diagnose 참조)";
+        CapabilityStatusText.Text = $"⚠ {notReady.Count}개 형식이 외부 도구를 기다립니다 (진단 도구 참조)";
         CapabilityStatusText.Visibility = Visibility.Visible;
     }
 
@@ -343,22 +357,26 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         var count = _activeQueue.Count;
         if (_cts is not null)
         {
-            ProcessQueueButton.Content = $"변환 처리 중… ({count}개 파일)";
+            ProcessQueueButton.Content = $"변환 처리 중… ({count}개)";
+            ProcessQueueButton.ToolTip = "파일 변환이 진행 중입니다.";
             ProcessQueueButton.IsEnabled = false;
         }
         else if (count == 0)
         {
-            ProcessQueueButton.Content = "대기 중 — 파일을 드래그하여 추가하세요";
+            ProcessQueueButton.Content = "파일을 드래그하여 추가";
+            ProcessQueueButton.ToolTip = "대기열에 변환할 파일을 추가하세요 (단축키: Ctrl + O)";
             ProcessQueueButton.IsEnabled = false;
         }
         else if (string.IsNullOrEmpty(SelectedOutputExtension))
         {
-            ProcessQueueButton.Content = "변환 불가 (공통 형식 없음)";
+            ProcessQueueButton.Content = "공통 형식 없음";
+            ProcessQueueButton.ToolTip = "선택된 파일들 간에 호환 가능한 공통 출력 형식이 없습니다.";
             ProcessQueueButton.IsEnabled = false;
         }
         else
         {
-            ProcessQueueButton.Content = $"대기열 일괄 변환 시작 ({count}개) [Ctrl + Enter]";
+            ProcessQueueButton.Content = $"변환 시작 ({count}개 파일)";
+            ProcessQueueButton.ToolTip = $"대기열 일괄 변환 시작 ({count}개 파일) [단축키: Ctrl + Enter]";
             ProcessQueueButton.IsEnabled = true;
         }
     }
@@ -508,7 +526,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         PreviewFormatText.Text = string.IsNullOrEmpty(formatLabel) || formatLabel == "—" ? info.Extension.TrimStart('.').ToUpperInvariant() : formatLabel;
         PreviewSizeText.Text = string.IsNullOrEmpty(sizeText) || sizeText == "—" ? info.FormattedSize : sizeText;
         PreviewDimText.Text = info.DimensionsOrMeta;
-        PreviewPageText.Text = info.Category.ToString();
+        PreviewPageText.Text = info.Category.ToKoreanLabel();
     }
 
     private void ShowPreviewLoading()
@@ -1043,10 +1061,9 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     private static string FormatDateLabel(DateOnly date)
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
-        var label = date == today ? "Today"
-            : date == today.AddDays(-1) ? "Yesterday"
-            : date.ToString("dddd", CultureInfo.GetCultureInfo("en-US"));
-        return $"{label}, {date:MMM d}";
+        if (date == today) return $"오늘 ({date:M월 d일})";
+        if (date == today.AddDays(-1)) return $"어제 ({date:M월 d일})";
+        return date.ToString("yyyy년 M월 d일 (ddd)", CultureInfo.GetCultureInfo("ko-KR"));
     }
 
     private void ApplyAppDataStats()
@@ -1098,7 +1115,7 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         else if (TabPastBtn.IsChecked == true)
         {
             var confirm = MessageBox.Show(this,
-                "Past Results 전체를 삭제하시겠습니까?\n영구 저장된 이력도 함께 삭제됩니다.",
+                "변환 기록 전체를 삭제하시겠습니까?\n영구 저장된 이력도 함께 삭제됩니다.",
                 "Everything2Everything",
                 MessageBoxButton.OKCancel, MessageBoxImage.Question);
             if (confirm != MessageBoxResult.OK) return;
@@ -1386,17 +1403,33 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
     private void UpdateQualityPanelForFormat(string? extension)
     {
-        if (QualityPanel is null || QualityLabelText is null) return;
         var ext = extension?.ToLowerInvariant();
-        var supportsQuality = ext is ".jpg" or ".jpeg" or ".webp" or ".avif";
-        QualityPanel.Visibility = supportsQuality ? Visibility.Visible : Visibility.Collapsed;
-        QualityLabelText.Text = ext switch
+        var isImageQuality = ext is ".jpg" or ".jpeg" or ".webp" or ".avif";
+        var isVideo = ext is ".mp4" or ".mkv" or ".webm" or ".mov" or ".avi";
+        var isAudio = ext is ".mp3" or ".aac" or ".m4a" or ".opus" or ".ogg" or ".flac" or ".wav";
+        var isPdf = ext is ".pdf";
+
+        if (QualityPanel is not null)
         {
-            ".jpg" or ".jpeg" => "JPEG QUALITY",
-            ".webp" => "WEBP QUALITY",
-            ".avif" => "AVIF QUALITY",
-            _ => "ENCODING QUALITY",
-        };
+            QualityPanel.Visibility = isImageQuality ? Visibility.Visible : Visibility.Collapsed;
+            if (QualityLabelText is not null)
+            {
+                QualityLabelText.Text = ext switch
+                {
+                    ".jpg" or ".jpeg" => "JPEG 압축 품질",
+                    ".webp" => "WebP 압축 품질",
+                    ".avif" => "AVIF 압축 품질",
+                    _ => "압축 품질",
+                };
+            }
+        }
+
+        if (VideoQuickPanel is not null)
+            VideoQuickPanel.Visibility = isVideo ? Visibility.Visible : Visibility.Collapsed;
+        if (AudioQuickPanel is not null)
+            AudioQuickPanel.Visibility = isAudio ? Visibility.Visible : Visibility.Collapsed;
+        if (PdfQuickPanel is not null)
+            PdfQuickPanel.Visibility = isPdf ? Visibility.Visible : Visibility.Collapsed;
 
         UpdateMediaPanelForFormat(extension);
     }
@@ -1471,8 +1504,16 @@ public sealed class QueueItem : INotifyPropertyChanged
     public string StateText
     {
         get => _state;
-        set { _state = value; Raise(nameof(StateText)); Raise(nameof(IsDone)); }
+        set { _state = value; Raise(nameof(StateText)); Raise(nameof(DisplayStateText)); Raise(nameof(IsDone)); }
     }
+
+    /// <summary>사용자에게 표시되는 정제된 한국어 상태 텍스트 (AGENTS.md Rule 3).</summary>
+    public string DisplayStateText => _state switch
+    {
+        "queued" => "대기 중",
+        "done" => "변환 완료",
+        _ => _state,
+    };
 
     public Brush StateBrush => _state switch
     {
@@ -1547,7 +1588,7 @@ public sealed class DateGroup : INotifyPropertyChanged
     public string DateTitle { get; }
     public ObservableCollection<HistoryRow> Entries { get; } = new();
     public long SessionSavingsBytes { get; set; }
-    public string SessionSavingsText => $"Session Savings: {MainWindow.HumanizeBytes(SessionSavingsBytes)}";
+    public string SessionSavingsText => $"세션 절감: {MainWindow.HumanizeBytes(SessionSavingsBytes)}";
 
     public DateGroup(string dateTitle) { DateTitle = dateTitle; }
 
@@ -1591,7 +1632,7 @@ public sealed record HistoryRow(
             FormatLabel: label,
             FormatBrush: brush,
             FileName: Path.GetFileName(e.SourcePath),
-            MetaLine: $"{e.Timestamp:HH:mm:ss} • {e.OutputCount} output(s)",
+            MetaLine: $"{e.Timestamp:HH:mm:ss} • {e.OutputCount}개 파일",
             SizeText: MainWindow.HumanizeBytes(e.SourceSizeBytes),
             SavingsText: $"{arrow} {MainWindow.HumanizeBytes(Math.Abs(saved))}",
             SourcePath: e.SourcePath,

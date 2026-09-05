@@ -66,6 +66,13 @@ public partial class OptionsViewModel : ObservableObject
     [ObservableProperty] private int _channelsIndex;         // 0=원본,1=모노,2=스테레오
     [ObservableProperty] private bool _loudnorm;
 
+    // ── 상세 인코딩 옵션 (폴드아웃 Expander 상태 및 전문 규격) ────────────────────────────────
+    [ObservableProperty] private bool _isAdvancedExpanded = true; // 사용자 피드백: 슬라이더/옵션을 바로 볼 수 있도록 기본 전개
+    [ObservableProperty] private int _pdfCompressLevelIndex;      // 0=Light, 1=Strong, 2=Max
+    [ObservableProperty] private int _pdfDpiIndex = 1;           // 0=150, 1=200, 2=300
+    [ObservableProperty] private bool _imageLossless;            // WebP/PNG 무손실
+    [ObservableProperty] private bool _progressive;              // JPEG 프로그레시브 웹 로딩
+
     /// <summary>현재 상태로 불변 ConvertOptions를 구성한다(기존 MainWindow.BuildOptions와 동일 동작 + 영상/오디오).</summary>
     public ConvertOptions ToConvertOptions()
     {
@@ -77,15 +84,23 @@ public partial class OptionsViewModel : ObservableObject
             _ => "summarize",
         };
 
+        var dpi = PdfDpiIndex switch
+        {
+            0 => 150,
+            2 => 300,
+            _ => 200,
+        };
+
         return new ConvertOptions
         {
             OnCollision = ConflictRule,
             OutputLocation = hasCustom ? OutputLocation.Custom : OutputLocation.SubfolderBesideSource,
             CustomOutputDirectory = hasCustom ? CustomOutputDirectory!.Trim() : null,
             KeepExifWhenPossible = !StripMetadata,
-            Jpeg = new JpegEncodingOptions { Quality = Quality },
-            Webp = new WebpEncodingOptions { Quality = Quality },
+            Jpeg = new JpegEncodingOptions { Quality = Quality, Progressive = Progressive },
+            Webp = new WebpEncodingOptions { Quality = Quality, Lossless = ImageLossless },
             Avif = new AvifEncodingOptions { Quality = Math.Clamp(Quality - 30, 1, 100) },
+            PdfRender = new PdfRenderOptions { Dpi = dpi },
             Ai = new AiOptions
             {
                 Task = aiTask,

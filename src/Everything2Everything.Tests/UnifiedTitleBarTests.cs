@@ -195,7 +195,7 @@ public class UnifiedTitleBarTests
 
             try
             {
-                var rtb = new System.Windows.Media.Imaging.RenderTargetBitmap(1280, 720, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                var rtb = new System.Windows.Media.Imaging.RenderTargetBitmap(1280, 960, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
                 rtb.Render(content);
                 var enc = new System.Windows.Media.Imaging.PngBitmapEncoder();
                 enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(rtb));
@@ -314,6 +314,306 @@ public class UnifiedTitleBarTests
     }
 
     [Fact]
+    public void MainWindow_PopulatedActiveQueue_DisplaysBatchBarAndItems_AndEnablesLaunchButton()
+    {
+        RunOnSta(() =>
+        {
+            var engine = Everything2EverythingBootstrap.CreateDefault();
+            var store = new FakeSettingsStore();
+            var window = new MainWindow(engine, store);
+
+            // Add sample items to ActiveQueue
+            var q1 = new QueueItem
+            {
+                SourcePath = @"C:\Mock\nature_photo.jpg",
+                FileName = "nature_photo.jpg",
+                FormatLabel = "JPG",
+                FormatBrush = System.Windows.Media.Brushes.Coral,
+                SizeText = "4.2 MB",
+                MetaLine = "3840x2160 · sRGB · 24-bit",
+                SourceSizeBytes = 4_404_019,
+                SelectedOutputExtension = ".webp",
+                IsSelected = true
+            };
+            q1.SetState("queued");
+
+            var q2 = new QueueItem
+            {
+                SourcePath = @"C:\Mock\quarterly_report.pdf",
+                FileName = "quarterly_report.pdf",
+                FormatLabel = "PDF",
+                FormatBrush = System.Windows.Media.Brushes.IndianRed,
+                SizeText = "12.8 MB",
+                MetaLine = "32 페이지 · 텍스트/벡터 포함",
+                SourceSizeBytes = 13_421_772,
+                SelectedOutputExtension = ".pdf",
+                IsSelected = false
+            };
+            q2.SetState("50%");
+
+            var q3 = new QueueItem
+            {
+                SourcePath = @"C:\Mock\keynote_presentation.mp4",
+                FileName = "keynote_presentation.mp4",
+                FormatLabel = "MP4",
+                FormatBrush = System.Windows.Media.Brushes.CornflowerBlue,
+                SizeText = "156.4 MB",
+                MetaLine = "1080p60 · H.264 / AAC · 05:22",
+                SourceSizeBytes = 164_000_000,
+                SelectedOutputExtension = ".mp4",
+                IsSelected = false
+            };
+            q3.SetState("done");
+
+            window.ActiveQueue.Add(q1);
+            window.ActiveQueue.Add(q2);
+            window.ActiveQueue.Add(q3);
+
+            // Trigger visibility updates via reflection
+            var updateVisMethod = typeof(MainWindow).GetMethod("UpdateActiveQueueVisibility", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            updateVisMethod?.Invoke(window, null);
+
+            var updateBtnMethod = typeof(MainWindow).GetMethod("UpdateProcessQueueButton", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            updateBtnMethod?.Invoke(window, null);
+
+            var updateBadgesMethod = typeof(MainWindow).GetMethod("UpdateBadges", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            updateBadgesMethod?.Invoke(window, null);
+
+            var setPreviewMetaMethod = typeof(MainWindow).GetMethod("SetPreviewMeta", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            setPreviewMetaMethod?.Invoke(window, new object[] { q1.FileName, q1.SourcePath, q1.FormatLabel, q1.SizeText });
+
+            var showPreviewGlyphMethod = typeof(MainWindow).GetMethod("ShowPreviewGlyph", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            showPreviewGlyphMethod?.Invoke(window, new object[] { ".jpg", "선택된 파일: " + q1.FileName });
+
+            var activeQueueList = (ItemsControl)window.FindName("ActiveQueueList");
+            activeQueueList.ItemsSource = window.ActiveQueue;
+            activeQueueList.ApplyTemplate();
+
+            var content = (UIElement)window.Content;
+            content.Measure(new Size(1280, 960));
+            content.Arrange(new Rect(0, 0, 1280, 960));
+            content.UpdateLayout();
+
+            var dropZoneEmpty = (FrameworkElement)window.FindName("DropZoneEmpty");
+            var activeQueueScroll = (FrameworkElement)window.FindName("ActiveQueueScroll");
+            var batchActionBar = (FrameworkElement)window.FindName("BatchActionBar");
+            var processBtn = (System.Windows.Controls.Button)window.FindName("ProcessQueueButton");
+
+            Assert.NotNull(dropZoneEmpty);
+            Assert.NotNull(activeQueueScroll);
+            Assert.NotNull(batchActionBar);
+            Assert.NotNull(processBtn);
+
+            Assert.Equal(Visibility.Collapsed, dropZoneEmpty.Visibility);
+            Assert.Equal(Visibility.Visible, activeQueueScroll.Visibility);
+            Assert.Equal(Visibility.Visible, batchActionBar.Visibility);
+
+            Assert.Equal("변환 시작 (3개 파일)", processBtn.Content);
+            Assert.True(processBtn.IsEnabled);
+
+            // DisplayStateText check on items
+            Assert.Equal("대기 중", q1.DisplayStateText);
+            Assert.Equal("50%", q2.DisplayStateText);
+            Assert.Equal("변환 완료", q3.DisplayStateText);
+
+            try
+            {
+                var rtb = new System.Windows.Media.Imaging.RenderTargetBitmap(1280, 960, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                rtb.Render(content);
+                var enc = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(rtb));
+                var outPath = @"C:\Users\encep\.gemini\antigravity\brain\b58fd023-a52b-4f4b-aa23-e6df654aa1fb\.tempmediaStorage\rendered_queue_populated.png";
+                using var fs = File.Create(outPath);
+                enc.Save(fs);
+            }
+            catch { }
+        });
+    }
+
+    [Fact]
+    public void MainWindow_PastResults_MustUseKorean_And_NotContainEnglishOutputOrSessionSavings()
+    {
+        RunOnSta(() =>
+        {
+            var dg = new DateGroup("오늘 (9월 5일)");
+            Assert.Contains("절감", dg.SessionSavingsText);
+            Assert.DoesNotContain("Session Savings", dg.SessionSavingsText);
+
+            var entry = new HistoryEntry(
+                DateTime.Now,
+                @"C:\photos\sample.png",
+                "png",
+                1024 * 1024,
+                512 * 1024,
+                1,
+                null,
+                ConvertStatus.Success,
+                null,
+                new[] { @"C:\photos\sample.webp" });
+
+            var row = HistoryRow.From(entry);
+            Assert.Contains("개", row.MetaLine);
+            Assert.DoesNotContain("output(s)", row.MetaLine);
+        });
+    }
+
+    [Fact]
+    public void MainWindow_TabCommand_DefaultFallback_MustBeActive()
+    {
+        RunOnSta(() =>
+        {
+            var engine = Everything2EverythingBootstrap.CreateDefault();
+            var store = new FakeSettingsStore();
+            var window = new MainWindow(engine, store);
+            var tabActiveBtn = (System.Windows.Controls.Primitives.ToggleButton)window.FindName("TabActiveBtn");
+            var tabPastBtn = (System.Windows.Controls.Primitives.ToggleButton)window.FindName("TabPastBtn");
+            var activeQueueView = (FrameworkElement)window.FindName("ActiveQueueView");
+            var pastResultsContainer = (FrameworkElement)window.FindName("PastResultsContainer");
+
+            // Switch to past first
+            window.TabCommand.Execute("Past");
+            Assert.False(tabActiveBtn.IsChecked);
+            Assert.True(tabPastBtn.IsChecked);
+            Assert.Equal(Visibility.Collapsed, activeQueueView.Visibility);
+            Assert.Equal(Visibility.Visible, pastResultsContainer.Visibility);
+
+            // Execute with null or empty fallback
+            window.TabCommand.Execute(null);
+            Assert.True(tabActiveBtn.IsChecked);
+            Assert.False(tabPastBtn.IsChecked);
+            Assert.Equal(Visibility.Visible, activeQueueView.Visibility);
+            Assert.Equal(Visibility.Collapsed, pastResultsContainer.Visibility);
+        });
+    }
+
+    [Fact]
+    public void MainWindow_PastResults_RendersPopulatedAndEmptyState()
+    {
+        RunOnSta(() =>
+        {
+            var engine = Everything2EverythingBootstrap.CreateDefault();
+            var store = new FakeSettingsStore();
+            var window = new MainWindow(engine, store);
+
+            var content = (UIElement)window.Content;
+            content.Measure(new Size(1280, 960));
+            content.Arrange(new Rect(0, 0, 1280, 960));
+            content.UpdateLayout();
+
+            var updateBadgesMethod = typeof(MainWindow).GetMethod("UpdateBadges", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // 1. Switch to Past tab when history is empty
+            window.PastResults.Clear();
+            updateBadgesMethod?.Invoke(window, null);
+            window.TabCommand.Execute("Past");
+
+            content.Measure(new Size(1280, 960));
+            content.Arrange(new Rect(0, 0, 1280, 960));
+            content.UpdateLayout();
+
+            var pastResultsContainer = (FrameworkElement)window.FindName("PastResultsContainer");
+            var pastResultsEmpty = (FrameworkElement)window.FindName("PastResultsEmpty");
+            var pastResultsView = (FrameworkElement)window.FindName("PastResultsView");
+
+            Assert.Equal(Visibility.Visible, pastResultsContainer.Visibility);
+            Assert.Equal(Visibility.Visible, pastResultsEmpty.Visibility);
+            Assert.Equal(Visibility.Collapsed, pastResultsView.Visibility);
+
+            // Render empty state
+            try
+            {
+                var rtbEmpty = new System.Windows.Media.Imaging.RenderTargetBitmap(1280, 960, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                rtbEmpty.Render(content);
+                var enc = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(rtbEmpty));
+                var outPath = @"C:\Users\encep\.gemini\antigravity\brain\b58fd023-a52b-4f4b-aa23-e6df654aa1fb\.tempmediaStorage\rendered_past_results_empty.png";
+                using var fs = File.Create(outPath);
+                enc.Save(fs);
+            }
+            catch { }
+
+            // 2. Populate Past Results
+            var dateGroup = new DateGroup("오늘 (9월 5일)");
+            var entry1 = new HistoryEntry(
+                DateTime.Now,
+                @"C:\demo\hero-graphic.png",
+                "png",
+                4_250_000,
+                820_000,
+                1,
+                null,
+                ConvertStatus.Success,
+                null,
+                new[] { @"C:\demo\hero-graphic.webp" });
+            var entry2 = new HistoryEntry(
+                DateTime.Now.AddMinutes(-12),
+                @"C:\demo\annual-report.docx",
+                "docx",
+                12_800_000,
+                3_150_000,
+                1,
+                null,
+                ConvertStatus.Success,
+                null,
+                new[] { @"C:\demo\annual-report.pdf" });
+
+            dateGroup.Add(HistoryRow.From(entry1));
+            dateGroup.Add(HistoryRow.From(entry2));
+            window.PastResults.Add(dateGroup);
+
+            updateBadgesMethod?.Invoke(window, null);
+
+            var pastRow = dateGroup.Entries.FirstOrDefault();
+            if (pastRow != null)
+            {
+                var setPreviewMetaMethod = typeof(MainWindow).GetMethod("SetPreviewMeta", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                setPreviewMetaMethod?.Invoke(window, new object[] { pastRow.FileName, pastRow.SourcePath, pastRow.FormatLabel, pastRow.SizeText });
+                var showPreviewGlyphMethod = typeof(MainWindow).GetMethod("ShowPreviewGlyph", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                showPreviewGlyphMethod?.Invoke(window, new object[] { ".png", "변환 완료: " + pastRow.FileName });
+            }
+
+            var pastResultsList = (ItemsControl)window.FindName("PastResultsList");
+            pastResultsList.ItemsSource = window.PastResults;
+            pastResultsList.ApplyTemplate();
+
+            content.Measure(new Size(1280, 960));
+            content.Arrange(new Rect(0, 0, 1280, 960));
+            content.UpdateLayout();
+
+            Assert.Equal(Visibility.Collapsed, pastResultsEmpty.Visibility);
+            Assert.Equal(Visibility.Visible, pastResultsView.Visibility);
+
+            // Render populated state
+            try
+            {
+                var rtbPopulated = new System.Windows.Media.Imaging.RenderTargetBitmap(1280, 960, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                rtbPopulated.Render(content);
+                var enc = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(rtbPopulated));
+                var outPath = @"C:\Users\encep\.gemini\antigravity\brain\b58fd023-a52b-4f4b-aa23-e6df654aa1fb\.tempmediaStorage\rendered_past_results.png";
+                using var fs = File.Create(outPath);
+                enc.Save(fs);
+            }
+            catch { }
+        });
+    }
+
+    [Fact]
+    public void MainWindow_EnsureHandle_CreatesValidHwnd()
+    {
+        RunOnSta(() =>
+        {
+            var engine = Everything2EverythingBootstrap.CreateDefault();
+            var store = new FakeSettingsStore();
+            var window = new MainWindow(engine, store);
+            var helper = new System.Windows.Interop.WindowInteropHelper(window);
+            var hwnd = helper.EnsureHandle();
+            Assert.NotEqual(IntPtr.Zero, hwnd);
+            window.Close();
+        });
+    }
+
+    [Fact]
     public void SettingsWindow_TitleBar_MustDisplayProperlyAlignedHeaderAndCloseButton()
     {
         RunOnSta(() =>
@@ -355,6 +655,18 @@ public class UnifiedTitleBarTests
             var closeCenterY = closeBtn.TransformToAncestor(titleBar).Transform(new Point(0, closeBtn.ActualHeight / 2.0)).Y;
             Assert.True(Math.Abs(textCenterY - closeCenterY) <= 2.0,
                 $"Title text CenterY ({textCenterY:F1}px) and CloseButton CenterY ({closeCenterY:F1}px) must match within 2px.");
+
+            try
+            {
+                var rtb = new System.Windows.Media.Imaging.RenderTargetBitmap(560, 720, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                rtb.Render(content);
+                var enc = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(rtb));
+                var outPath = @"C:\Users\encep\.gemini\antigravity\brain\b58fd023-a52b-4f4b-aa23-e6df654aa1fb\.tempmediaStorage\rendered_settings.png";
+                using var fs = File.Create(outPath);
+                enc.Save(fs);
+            }
+            catch { }
         });
     }
 

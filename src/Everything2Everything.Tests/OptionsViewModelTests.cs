@@ -65,4 +65,26 @@ public class OptionsViewModelTests
         Assert.Equal(NameCollision.Skip, o.OnCollision);
         Assert.False(o.VideoPreferGpu);
     }
+
+    [Fact]
+    public void OptionsViewModel_HasAdvancedProperties_And_DefaultExpandedIsTrue()
+    {
+        // 사용자 피드백 반영: 슬라이더와 상세 옵션을 바로 확인할 수 있도록 기본값으로 펼침(true) 상태여야 한다.
+        var vm = new OptionsViewModel();
+        Assert.True(vm.IsAdvancedExpanded);
+        Assert.Equal(0, vm.PdfCompressLevelIndex);
+        Assert.Equal(1, vm.PdfDpiIndex);
+        Assert.False(vm.ImageLossless);
+        Assert.False(vm.Progressive);
+
+        vm.ImageLossless = true;
+        vm.Progressive = true;
+        vm.PdfCompressLevelIndex = 1;
+        vm.PdfDpiIndex = 2;
+
+        var options = vm.ToConvertOptions();
+        Assert.True(options.Webp.Lossless);
+        Assert.True(options.Jpeg.Progressive);
+        Assert.Equal(300, options.PdfRender.Dpi);
+    }
 }

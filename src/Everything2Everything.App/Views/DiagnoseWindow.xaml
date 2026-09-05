@@ -12,6 +12,7 @@
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <ui:ControlsDictionary/>
                 <ResourceDictionary Source="FormatShiftTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
