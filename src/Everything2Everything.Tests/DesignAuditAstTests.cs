@@ -1078,6 +1078,32 @@ public class DesignAuditAstTests
         Assert.True(hasCtrlA, "Window.InputBindings에 Ctrl+A 단축키가 등록되어야 합니다.");
         Assert.True(hasDelete, "Window.InputBindings에 Delete 단축키가 등록되어야 합니다.");
     }
+
+    [Fact]
+    public void InspectorPanel_MustSpanFullHeight_And_NotLeaveTopDeadSpace()
+    {
+        // 미리보기 패널(Inspector Border)은 검색 툴바 상단에 빈 공간/어색한 마진을 남기지 않도록
+        // Grid.RowSpan="2" 및 Grid.Row="0"으로 메인 영역 전체 높이에 걸쳐 배치되어야 한다.
+        var file = Path.Combine(ViewsDir, "MainWindow.xaml");
+        var doc = XDocument.Parse(File.ReadAllText(file));
+
+        var mainViewGrid = doc.Descendants().FirstOrDefault(e =>
+            e.Name.LocalName == "Grid" &&
+            e.Elements().Any(c => c.Name.LocalName == "Grid.ColumnDefinitions" &&
+                                  c.Elements().Any(cd => cd.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "InspectorColumn")));
+        Assert.NotNull(mainViewGrid);
+
+        var previewBorder = mainViewGrid.Elements().FirstOrDefault(e =>
+            e.Name.LocalName == "Border" &&
+            e.Attribute("Grid.Column")?.Value == "1");
+        Assert.NotNull(previewBorder);
+
+        var row = previewBorder.Attribute("Grid.Row")?.Value ?? "0";
+        var rowSpan = previewBorder.Attribute("Grid.RowSpan")?.Value;
+
+        Assert.Equal("0", row);
+        Assert.Equal("2", rowSpan);
+    }
 }
 
 

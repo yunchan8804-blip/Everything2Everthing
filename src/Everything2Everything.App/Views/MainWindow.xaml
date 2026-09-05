@@ -1232,8 +1232,8 @@
                     </Grid>
                     <!-- /좌측 컬럼 끝 -->
 
-                    <!-- 우측: Preview 컬럼 (항상 보임) -->
-                    <Border Grid.Row="1" Grid.Column="1"
+                    <!-- 우측: Preview 컬럼 (상단 툴바부터 전고 일체형) -->
+                    <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="1"
                             Background="{StaticResource FsBgPanel}"
                             BorderBrush="{StaticResource FsBorderSubtle}"
                             BorderThickness="1,0,0,0">
@@ -1244,8 +1244,8 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <!-- 헤더 -->
-                            <Border Grid.Row="0" Padding="20,12,16,12"
+                            <!-- 헤더: 좌측 검색 툴바와 수평 기준선 및 하단 경계선 정합 -->
+                            <Border Grid.Row="0" Height="47" Padding="20,0,16,0"
                                     BorderBrush="{StaticResource FsBorderSubtle}"
                                     BorderThickness="0,0,0,1">
                                 <Grid VerticalAlignment="Center">
