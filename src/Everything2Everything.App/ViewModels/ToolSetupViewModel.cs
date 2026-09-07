@@ -156,7 +156,8 @@ public sealed class ToolSetupViewModel : INotifyPropertyChanged
         IsInstalling = true;
         try
         {
-            foreach (var item in Tools.Where(t => t.IsSelected).ToList())
+            // 이미 설치된 도구는 재설치하지 않고 건너뛴다(감지 상태가 Installed인 항목 제외).
+            foreach (var item in Tools.Where(t => t.IsSelected && t.State != ToolInstallState.Installed).ToList())
                 await InstallOneAsync(item, ct).ConfigureAwait(true);
         }
         finally

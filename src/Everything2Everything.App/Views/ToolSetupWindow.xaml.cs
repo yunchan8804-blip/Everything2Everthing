@@ -25,6 +25,8 @@ public partial class ToolSetupWindow : Wpf.Ui.Controls.FluentWindow
         try
         {
             await _vm.InstallSelectedAsync(_cts.Token);
+            // 온보딩 완료 → 다이얼로그를 닫아 ShowMainWindow가 뒤이어 메인 창을 띄우게 한다.
+            Close();
         }
         finally
         {
