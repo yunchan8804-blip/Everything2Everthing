@@ -76,15 +76,27 @@ public partial class App : Application
 
     private void ShowMainWindow()
     {
-        var window = new MainWindow(Engine, Settings);
+        RunFirstRunSetupIfNeeded();
+        var adService = _services.GetService<Everything2Everything.Core.Ads.IAdService>();
+        var window = new MainWindow(Engine, Settings, null, adService);
         MainWindow = window;
         window.Show();
         window.Activate();
     }
 
+    /// <summary>첫 실행이면 외부 도구 설치 마법사를 한 번 띄우고 완료 플래그를 남긴다(설정 창에서 재진입 가능).</summary>
+    private void RunFirstRunSetupIfNeeded()
+    {
+        if (Settings.Get("setup.tools.done") == "1") return;
+        var wizard = new ToolSetupWindow();
+        wizard.ShowDialog();
+        Settings.Set("setup.tools.done", "1");
+    }
+
     private void ShowConvertDialog(IReadOnlyList<string> files)
     {
-        var window = new Views.MainWindow(Engine, Settings, files);
+        var adService = _services.GetService<Everything2Everything.Core.Ads.IAdService>();
+        var window = new Views.MainWindow(Engine, Settings, files, adService);
         MainWindow = window;
         window.Show();
         window.Activate();

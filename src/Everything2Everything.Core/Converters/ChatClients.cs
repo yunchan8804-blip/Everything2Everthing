@@ -137,3 +137,108 @@ public sealed class CodexChatClient : IChatClient
 
     private static string Truncate(string s) => s.Length > 400 ? s[..400] : s;
 }
+
+public sealed class AgyChatClient : IChatClient
+{
+    private readonly string _agyPath;
+
+    public AgyChatClient(string? agyPath = null)
+    {
+        if (!string.IsNullOrWhiteSpace(agyPath))
+        {
+            _agyPath = agyPath;
+        }
+        else if (ExternalToolDetector.IsAgyAvailable(out var detected))
+        {
+            _agyPath = detected;
+        }
+        else
+        {
+            _agyPath = "agy";
+        }
+    }
+
+    public string Name => "Antigravity CLI (agy)";
+
+    public async Task<string> CompleteAsync(string systemPrompt, string userPrompt, string model, int maxTokens, CancellationToken ct)
+    {
+        var prompt = string.IsNullOrWhiteSpace(systemPrompt) ? userPrompt : systemPrompt + "\n\n---\n\n" + userPrompt;
+
+        var args = new List<string>
+        {
+            "-p", prompt,
+            "--dangerously-skip-permissions",
+            "--disable-slash-commands",
+            "--output-format", "text"
+        };
+        if (!string.IsNullOrWhiteSpace(model))
+        {
+            args.Add("--model");
+            args.Add(model);
+        }
+
+        var r = await ExternalProcessRunner.RunAsync(
+            _agyPath, args, TimeSpan.FromMinutes(5), workingDirectory: null,
+            cancellationToken: ct).ConfigureAwait(false);
+
+        if (r.TimedOut)
+            throw new InvalidOperationException("Antigravity CLI 응답이 시간 초과되었습니다 (5분).");
+
+        if (!r.Success)
+        {
+            var detail = !string.IsNullOrWhiteSpace(r.StdErr) ? r.StdErr : r.StdOut;
+            throw new InvalidOperationException($"Antigravity CLI 오류 (exit {r.ExitCode}): {Truncate(detail)}");
+        }
+
+        return r.StdOut.Trim();
+    }
+
+    private static string Truncate(string s) => s.Length > 400 ? s[..400] : s;
+}
+
+/// <summary>
+/// 로컬 또는 네트워크에 기동된 Switchboard Gateway (http://127.0.0.1:8787)를 호출하는 백엔드.
+/// 게이트웨이의 /chat 엔드포인트와 통신하며, 게이트웨이가 관리하는 에이전트(agy, codex 등)를 통해 텍스트를 완성한다.
+/// </summary>
+public sealed class SwitchboardChatClient : IChatClient
+{
+    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromMinutes(5) };
+    private readonly string _endpoint;
+
+    public SwitchboardChatClient(string? endpoint = null)
+    {
+        var raw = string.IsNullOrWhiteSpace(endpoint) ? "http://127.0.0.1:8787" : endpoint.Trim();
+        _endpoint = raw.TrimEnd('/');
+    }
+
+    public string Name => "Switchboard Gateway";
+    public string Endpoint => _endpoint;
+
+    public async Task<string> CompleteAsync(string systemPrompt, string userPrompt, string model, int maxTokens, CancellationToken ct)
+    {
+        var message = string.IsNullOrWhiteSpace(systemPrompt) ? userPrompt : systemPrompt + "\n\n---\n\n" + userPrompt;
+        var payload = new
+        {
+            message,
+            sessionId = "e2e-" + Guid.NewGuid().ToString("N")[..8],
+            model = string.IsNullOrWhiteSpace(model) ? null : model,
+        };
+
+        using var req = new HttpRequestMessage(HttpMethod.Post, $"{_endpoint}/chat");
+        req.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+        using var resp = await Http.SendAsync(req, ct).ConfigureAwait(false);
+        var json = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        if (!resp.IsSuccessStatusCode)
+            throw new InvalidOperationException($"Switchboard 게이트웨이 오류 ({(int)resp.StatusCode}): {Truncate(json)}");
+
+        using var doc = JsonDocument.Parse(json);
+        if (doc.RootElement.TryGetProperty("reply", out var replyProp))
+            return replyProp.GetString() ?? "";
+
+        throw new InvalidOperationException("Switchboard 게이트웨이 응답에 'reply' 필드가 없습니다.");
+    }
+
+    private static string Truncate(string s) => s.Length > 400 ? s[..400] : s;
+}
+

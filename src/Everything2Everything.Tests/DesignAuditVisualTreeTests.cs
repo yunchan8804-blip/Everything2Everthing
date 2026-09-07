@@ -5,6 +5,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using Everything2Everything.App.Views;
 using Everything2Everything.Core;
+using Everything2Everything.Core.Filters;
 using Xunit;
 
 namespace Everything2Everything.Tests;
@@ -398,8 +399,9 @@ public class DesignAuditVisualTreeTests
             var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
             encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(rtb));
 
-            var outDir = @"C:\Users\encep\.gemini\antigravity\brain\a5abaf02-dd4b-45f7-8890-144e9da36bcc";
-            var outPath = System.IO.Path.Combine(outDir, "app_rendered_preview.png");
+            var outDir = @"C:\Users\encep\.gemini\antigravity\brain\b58fd023-a52b-4f4b-aa23-e6df654aa1fb";
+            if (!System.IO.Directory.Exists(outDir)) System.IO.Directory.CreateDirectory(outDir);
+            var outPath = System.IO.Path.Combine(outDir, "rendered_toolbar_fixed.png");
             using (var fs = new System.IO.FileStream(outPath, System.IO.FileMode.Create, System.IO.FileAccess.Write, System.IO.FileShare.ReadWrite))
             {
                 encoder.Save(fs);
@@ -407,6 +409,86 @@ public class DesignAuditVisualTreeTests
 
             Assert.True(System.IO.File.Exists(outPath));
             Assert.True(new System.IO.FileInfo(outPath).Length > 1000);
+        });
+    }
+
+    [Fact]
+    public void MainWindow_CategoryFilterCombo_ChangesCategory_And_FiltersQueue()
+    {
+        RunOnSta(() =>
+        {
+            var engine = Everything2EverythingBootstrap.CreateDefault();
+            var settings = new FakeSettingsStore();
+            var window = new MainWindow(engine, settings);
+            window.ActiveQueue.Add(new QueueItem { SourcePath = @"C:\test.png", FileName = "test.png" });
+            window.ActiveQueue.Add(new QueueItem { SourcePath = @"C:\doc.pdf", FileName = "doc.pdf" });
+            window.ActiveQueue.Add(new QueueItem { SourcePath = @"C:\clip.mp4", FileName = "clip.mp4" });
+            window.ActiveQueue.Add(new QueueItem { SourcePath = @"C:\sheet.xlsx", FileName = "sheet.xlsx" });
+
+            var combo = (ComboBox)window.FindName("CategoryFilterCombo");
+            Assert.NotNull(combo);
+            Assert.Equal(5, combo.Items.Count);
+
+            // 0: 전체 (All)
+            Assert.Equal(FilterCategory.All, window.SelectedCategory);
+
+            // 1: 이미지 (Image)
+            combo.SelectedIndex = 1;
+            Assert.Equal(FilterCategory.Image, window.SelectedCategory);
+
+            var view = System.Windows.Data.CollectionViewSource.GetDefaultView(window.ActiveQueue);
+            var filteredItems = view.Cast<QueueItem>().ToList();
+            Assert.Single(filteredItems);
+            Assert.Equal("test.png", filteredItems[0].FileName);
+
+            // 0: 전체 복귀 (All)
+            combo.SelectedIndex = 0;
+            Assert.Equal(FilterCategory.All, window.SelectedCategory);
+            filteredItems = view.Cast<QueueItem>().ToList();
+            Assert.Equal(4, filteredItems.Count);
+
+            // 가상 레이아웃 검증 (너비 360px 환경에서도 DesiredSize가 정상 계산되는지)
+            var content = (UIElement)window.Content;
+            content.Measure(new Size(360, 600));
+            content.Arrange(new Rect(0, 0, 360, 600));
+            Assert.True(content.DesiredSize.Width > 0);
+            Assert.False(double.IsNaN(content.DesiredSize.Width));
+        });
+    }
+
+    [Fact]
+    public void AdBannerControl_MeasureAndArrange_HasValidLayoutBounds()
+    {
+        RunOnSta(() =>
+        {
+            var adService = new Everything2Everything.Core.Ads.AdService();
+            var vm = new Everything2Everything.App.ViewModels.AdViewModel(adService);
+            var banner = new AdBannerControl { DataContext = vm };
+            banner.Measure(new Size(800, 100));
+            banner.Arrange(new Rect(0, 0, 800, 100));
+
+            Assert.True(banner.DesiredSize.Width > 0);
+            Assert.True(banner.DesiredSize.Height > 0);
+            Assert.False(double.IsNaN(banner.DesiredSize.Width));
+            Assert.False(double.IsNaN(banner.DesiredSize.Height));
+        });
+    }
+
+    [Fact]
+    public void AdLargeCardControl_MeasureAndArrange_HasValidLayoutBounds()
+    {
+        RunOnSta(() =>
+        {
+            var adService = new Everything2Everything.Core.Ads.AdService();
+            var vm = new Everything2Everything.App.ViewModels.AdViewModel(adService);
+            var card = new AdLargeCardControl { DataContext = vm };
+            card.Measure(new Size(340, 300));
+            card.Arrange(new Rect(0, 0, 340, 300));
+
+            Assert.True(card.DesiredSize.Width > 0);
+            Assert.True(card.DesiredSize.Height > 0);
+            Assert.False(double.IsNaN(card.DesiredSize.Width));
+            Assert.False(double.IsNaN(card.DesiredSize.Height));
         });
     }
 

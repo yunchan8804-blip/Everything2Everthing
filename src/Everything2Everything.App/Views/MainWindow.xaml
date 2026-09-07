@@ -3,6 +3,7 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
                  xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+                 xmlns:local="clr-namespace:Everything2Everything.App.Views"
                  Title="Everything2Everything"
                  Icon="pack://application:,,,/Everything2Everything;component/Assets/app-icon.png"
                  Width="1280" Height="960"
@@ -325,6 +326,26 @@
                                             <ComboBoxItem Content="Strong (웹/이메일 균형 · 150 DPI 리샘플링)"/>
                                             <ComboBoxItem Content="Max (최대 압축 · 흑백/고압축)"/>
                                         </ComboBox>
+                                    </StackPanel>
+
+                                    <!-- E. AI 텍스트 변환 작업 선택기 (TXT/MD) -->
+                                    <StackPanel x:Name="AiQuickPanel" Margin="0,0,0,6" Visibility="Collapsed">
+                                        <TextBlock Text="AI 변환 작업" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,4"/>
+                                        <ComboBox x:Name="AiTaskQuickCombo"
+                                                  AutomationProperties.AutomationId="AiTaskQuickCombo"
+                                                  SelectedIndex="{Binding Options.AiTaskIndex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"
+                                                  SelectionChanged="OnAiTaskSelectionChanged">
+                                            <ComboBoxItem Content="핵심 요약 (Summarize)"/>
+                                            <ComboBoxItem Content="다국어 번역 (Translate)"/>
+                                            <ComboBoxItem Content="오탈자 및 문법 교정 (Proofread)"/>
+                                        </ComboBox>
+                                        <StackPanel x:Name="AiTargetLanguagePanel" Margin="0,8,0,0" Visibility="Collapsed">
+                                            <TextBlock Text="번역 대상 언어" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
+                                            <TextBox x:Name="AiTargetLanguageBox"
+                                                     Style="{StaticResource FsPathInputStyle}"
+                                                     Padding="10,6"
+                                                     Text="{Binding Options.TargetLanguage, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </StackPanel>
                                     </StackPanel>
 
                                     <!-- 5. 상세 인코딩 설정 (폴드아웃 Expander: 프리셋 직하단 위치) -->
@@ -666,17 +687,18 @@
                     <Border Grid.Row="0" Grid.Column="0"
                             Background="{StaticResource FsBgPanel}"
                             BorderBrush="{StaticResource FsBorderSubtle}"
-                            BorderThickness="0,0,1,1" Padding="16,8">
+                            BorderThickness="0,0,1,1" Padding="12,8">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="175"/>
-                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*" MinWidth="110"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <!-- Search Box with Live Watermark & Clear Button -->
-                            <Grid Grid.Column="0" Width="175" VerticalAlignment="Center">
+                            <!-- Search Box with Live Watermark & Clear Button (Flex Width) -->
+                            <Grid Grid.Column="0" Margin="0,0,8,0" VerticalAlignment="Center">
                                 <TextBox x:Name="SearchBox" Style="{StaticResource FsPathInputStyle}"
                                          Padding="28,5,24,5" Text="{Binding SearchText, RelativeSource={RelativeSource AncestorType=Window}, UpdateSourceTrigger=PropertyChanged}"
-                                         ToolTip="파일명 또는 확장자로 검색" VerticalAlignment="Center"/>
+                                         ToolTip="파일명 또는 확장자로 검색" VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
                                 <ui:SymbolIcon Symbol="Search24" FontSize="13" Foreground="{StaticResource FsTextTertiary}"
                                                HorizontalAlignment="Left" VerticalAlignment="Center" Margin="8,0,0,0" IsHitTestVisible="False"/>
                                 <TextBlock x:Name="SearchPlaceholderText"
@@ -720,49 +742,26 @@
                                     <ui:SymbolIcon Symbol="Dismiss24" FontSize="10" Foreground="{StaticResource FsTextTertiary}" VerticalAlignment="Center"/>
                                 </Button>
                             </Grid>
-                            <!-- Category Filter Chips & Inspector Toggle -->
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                <Button Margin="0,0,3,0" Padding="7,3" Style="{StaticResource FsSecondaryButtonStyle}"
-                                        Command="{Binding FilterCategoryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                        CommandParameter="All">
-                                    <TextBlock Text="전체" FontSize="11" VerticalAlignment="Center"/>
-                                </Button>
-                                <Button Margin="0,0,3,0" Padding="7,3" Style="{StaticResource FsSecondaryButtonStyle}"
-                                        Command="{Binding FilterCategoryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                        CommandParameter="Image">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <ui:SymbolIcon Symbol="Image24" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                        <TextBlock Text="이미지" FontSize="11" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Margin="0,0,3,0" Padding="7,3" Style="{StaticResource FsSecondaryButtonStyle}"
-                                        Command="{Binding FilterCategoryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                        CommandParameter="Document">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <ui:SymbolIcon Symbol="Document24" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                        <TextBlock Text="문서" FontSize="11" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Margin="0,0,3,0" Padding="7,3" Style="{StaticResource FsSecondaryButtonStyle}"
-                                        Command="{Binding FilterCategoryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                        CommandParameter="Media">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <ui:SymbolIcon Symbol="Video24" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                        <TextBlock Text="미디어" FontSize="11" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Margin="0,0,3,0" Padding="7,3" Style="{StaticResource FsSecondaryButtonStyle}"
-                                        Command="{Binding FilterCategoryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                        CommandParameter="Data">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <ui:SymbolIcon Symbol="Database24" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                        <TextBlock Text="데이터" FontSize="11" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                                <Border Width="1" Height="14" Background="{StaticResource FsBorderSubtle}" Margin="5,0"/>
-                                <Button Padding="7,3" Style="{StaticResource FsSecondaryButtonStyle}"
+                            <!-- 카테고리 필터 폴드아웃 드롭다운 -->
+                            <ComboBox x:Name="CategoryFilterCombo" Grid.Column="1"
+                                      AutomationProperties.AutomationId="CategoryFilterCombo"
+                                      MinWidth="90" Height="28" Padding="10,4"
+                                      FontSize="11" VerticalAlignment="Center"
+                                      ToolTip="카테고리 필터 (전체 · 이미지 · 문서 · 미디어 · 데이터)"
+                                      SelectionChanged="OnCategoryFilterSelectionChanged">
+                                <ComboBoxItem Tag="All" IsSelected="True" Content="전체"/>
+                                <ComboBoxItem Tag="Image" Content="이미지"/>
+                                <ComboBoxItem Tag="Document" Content="문서"/>
+                                <ComboBoxItem Tag="Media" Content="미디어"/>
+                                <ComboBoxItem Tag="Data" Content="데이터"/>
+                            </ComboBox>
+                            <!-- 구분선 & 미리보기 토글 버튼 -->
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0,0,0">
+                                <Border Width="1" Height="14" Background="{StaticResource FsBorderSubtle}" Margin="2,0,6,0"/>
+                                <Button Padding="7,4" Height="28" Style="{StaticResource FsSecondaryButtonStyle}"
                                         Command="{Binding ToggleInspectorCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                        ToolTip="미리보기 패널 접기/펼치기">
+                                        ToolTip="미리보기 패널 접기/펼치기"
+                                        VerticalAlignment="Center">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <ui:SymbolIcon Symbol="PreviewLink24" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
                                         <TextBlock Text="미리보기" FontSize="11" VerticalAlignment="Center"/>
@@ -774,8 +773,13 @@
 
                     <!-- 좌측: Active Queue OR Past Results -->
                     <Grid Grid.Row="1" Grid.Column="0">
-                    <!-- Active Queue view (default) -->
-                    <Grid x:Name="ActiveQueueView" Visibility="Visible">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Active Queue view (default) -->
+                        <Grid x:Name="ActiveQueueView" Grid.Row="0" Visibility="Visible">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
@@ -1012,7 +1016,7 @@
                 </Grid>
 
                     <!-- Past Results view -->
-                    <Grid x:Name="PastResultsContainer" Visibility="Collapsed">
+                    <Grid x:Name="PastResultsContainer" Grid.Row="0" Visibility="Collapsed">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
@@ -1229,6 +1233,9 @@
                         </Grid>
                     </Grid>
 
+                        <!-- 가로 슬림 배너 광고 슬롯 -->
+                        <local:AdBannerControl Grid.Row="1" Margin="12,4,12,8"
+                                               DataContext="{Binding AdVm, RelativeSource={RelativeSource AncestorType=Window}}"/>
                     </Grid>
                     <!-- /좌측 컬럼 끝 -->
 
@@ -1468,6 +1475,10 @@
                                             </StackPanel>
                                         </Button>
                                     </Grid>
+
+                                    <!-- 대형 카드 광고 슬롯 (스폰서십 및 솔루션 안내) -->
+                                    <local:AdLargeCardControl Margin="0,12,0,0"
+                                                              DataContext="{Binding AdVm, RelativeSource={RelativeSource AncestorType=Window}}"/>
                                 </StackPanel>
                             </Border>
                         </Grid>

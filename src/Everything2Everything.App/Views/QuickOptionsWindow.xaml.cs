@@ -34,10 +34,12 @@ public partial class QuickOptionsWindow : FluentWindow
         var isVideo = ext is ".mp4" or ".mkv" or ".webm" or ".mov" or ".avi";
         var isLossyAudio = ext is ".mp3" or ".aac" or ".m4a" or ".opus" or ".ogg";
         var isImageQuality = ext is ".jpg" or ".jpeg" or ".webp" or ".avif";
+        var isText = ext is ".txt" or ".md";
 
         VideoQuickPanel.Visibility = isVideo ? Visibility.Visible : Visibility.Collapsed;
         AudioQuickPanel.Visibility = (isVideo || isLossyAudio) ? Visibility.Visible : Visibility.Collapsed;
         ImageQualityPanel.Visibility = isImageQuality ? Visibility.Visible : Visibility.Collapsed;
+        AiQuickPanel.Visibility = isText ? Visibility.Visible : Visibility.Collapsed;
 
         // 영상의 오디오 트랙임을 구분
         if (isVideo) AudioPanelLabel.Text = "오디오 비트레이트";

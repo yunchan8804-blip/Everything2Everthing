@@ -39,11 +39,47 @@
 
                             <TextBlock Text="기본 백엔드" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,6"/>
                             <ComboBox x:Name="BackendCombo" Margin="0,0,0,16">
-                                <ComboBoxItem Content="자동 (API 키 우선, 없으면 Codex)"/>
+                                <ComboBoxItem Content="자동 (API 키 우선 · Switchboard · Antigravity · Codex)"/>
+                                <ComboBoxItem Content="Switchboard 게이트웨이 (http://127.0.0.1:8787 · 로컬/LAN)"/>
+                                <ComboBoxItem Content="Antigravity CLI (agy · Gemini OAuth · 무료/구독)"/>
                                 <ComboBoxItem Content="OpenAI (API 키)"/>
                                 <ComboBoxItem Content="Anthropic (API 키)"/>
                                 <ComboBoxItem Content="Codex CLI (ChatGPT 구독 OAuth)"/>
                             </ComboBox>
+
+                            <!-- Switchboard Gateway -->
+                            <TextBlock Text="Switchboard 게이트웨이 (로컬/LAN 멀티에이전트 오케스트레이션)" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,6"/>
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="SwitchboardEndpointBox" Grid.Column="0"
+                                         Style="{StaticResource FsPathInputStyle}"
+                                         TextChanged="OnSwitchboardEndpointChanged"/>
+                                <Button x:Name="SwitchboardVerifyBtn" Grid.Column="1" Content="테스트"
+                                        Style="{StaticResource FsSecondaryButtonStyle}" Margin="8,0,0,0"
+                                        Padding="12,6" Click="OnVerifySwitchboard"/>
+                                <Button x:Name="SwitchboardStartBtn" Grid.Column="2" Content="게이트웨이 기동"
+                                        Style="{StaticResource FsSecondaryButtonStyle}" Margin="8,0,0,0"
+                                        Padding="12,6" Click="OnStartSwitchboardGateway"/>
+                            </Grid>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,16">
+                                <Ellipse x:Name="SwitchboardDot" Style="{StaticResource FsLossDotStyle}"
+                                         Fill="{StaticResource FsTextTertiary}" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="SwitchboardStatus" Text="확인 중…" Style="{StaticResource FsCaptionStyle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <!-- Antigravity CLI (OAuth) -->
+                            <TextBlock Text="Antigravity CLI (agy · Google OAuth · API 키 불필요)" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,6"/>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,16">
+                                <Ellipse x:Name="AgyDot" Style="{StaticResource FsLossDotStyle}"
+                                         Fill="{StaticResource FsTextTertiary}" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="AgyStatus" Text="확인 중…" Style="{StaticResource FsCaptionStyle}" VerticalAlignment="Center"/>
+                                <Button x:Name="AgyVerifyBtn" Content="테스트" Style="{StaticResource FsSecondaryButtonStyle}"
+                                        Margin="12,0,0,0" Padding="10,4" IsEnabled="False" Click="OnVerifyAgy" VerticalAlignment="Center"/>
+                            </StackPanel>
 
                             <!-- OpenAI -->
                             <TextBlock Text="OpenAI API Key" Style="{StaticResource FsLabelStyle}" Margin="0,0,0,6"/>
@@ -111,6 +147,9 @@
                             <TextBlock Text="외부 도구" Style="{StaticResource FsBodyStyle}" FontWeight="SemiBold" FontSize="15"/>
                             <TextBlock Text="설치하면 영상/오디오·한글/Word 변환이 자동 활성화됩니다."
                                        Style="{StaticResource FsCaptionStyle}" TextWrapping="Wrap" Margin="0,4,0,12"/>
+                            <Button Content="외부 도구 설치 / 검증" Style="{StaticResource FsSecondaryButtonStyle}"
+                                    Padding="14,6" HorizontalAlignment="Right" Margin="0,0,0,12"
+                                    Click="OnOpenToolInstaller"/>
                             <CheckBox x:Name="GpuToggle" Content="영상 변환 시 GPU 가속(NVENC) 시도 — 없으면 CPU 자동 전환"
                                       Foreground="{StaticResource FsTextSecondary}" IsChecked="True" Margin="0,0,0,16"/>
 

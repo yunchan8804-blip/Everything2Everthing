@@ -26,12 +26,15 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
         var backend = (_settings.Get("ai.backend") ?? "auto").ToLowerInvariant();
         BackendCombo.SelectedIndex = backend switch
         {
-            "openai" => 1,
-            "anthropic" => 2,
-            "codex" => 3,
+            "switchboard" or "gateway" => 1,
+            "agy" => 2,
+            "openai" => 3,
+            "anthropic" => 4,
+            "codex" => 5,
             _ => 0,
         };
         ModelBox.Text = _settings.Get("ai.model") ?? string.Empty;
+        SwitchboardEndpointBox.Text = _settings.Get("switchboard.endpoint") ?? "http://127.0.0.1:8787";
 
         SetKeyStatus(OpenAiDot, OpenAiStatus, _settings.Contains("openai.apikey"), HasEnv("OPENAI_API_KEY"));
         SetKeyStatus(AnthropicDot, AnthropicStatus, _settings.Contains("anthropic.apikey"), HasEnv("ANTHROPIC_API_KEY"));
@@ -58,6 +61,9 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
     private void OnAnthropicKeyChanged(object sender, RoutedEventArgs e)
         => AnthropicVerifyBtn.IsEnabled = AnthropicKeyBox.Password.StartsWith("sk-ant-", StringComparison.Ordinal);
 
+    private void OnSwitchboardEndpointChanged(object sender, TextChangedEventArgs e)
+        => _ = CheckSwitchboardGatewayAsync();
+
     private async void OnVerifyOpenAi(object sender, RoutedEventArgs e)
         => await VerifyAsync(OpenAiDot, OpenAiStatus, OpenAiVerifyBtn,
             new OpenAiChatClient(OpenAiKeyBox.Password), ModelOr("gpt-4o-mini"));
@@ -65,6 +71,63 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
     private async void OnVerifyAnthropic(object sender, RoutedEventArgs e)
         => await VerifyAsync(AnthropicDot, AnthropicStatus, AnthropicVerifyBtn,
             new AnthropicChatClient(AnthropicKeyBox.Password), ModelOr("claude-3-5-sonnet-latest"));
+
+    private async void OnVerifySwitchboard(object sender, RoutedEventArgs e)
+    {
+        var ep = string.IsNullOrWhiteSpace(SwitchboardEndpointBox.Text)
+            ? (_settings.Get("switchboard.endpoint") ?? "http://127.0.0.1:8787")
+            : SwitchboardEndpointBox.Text.Trim();
+        await VerifyAsync(SwitchboardDot, SwitchboardStatus, SwitchboardVerifyBtn,
+            new SwitchboardChatClient(ep), ModelOr(string.Empty));
+        await CheckSwitchboardGatewayAsync();
+    }
+
+    private void OnStartSwitchboardGateway(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var candidates = new[]
+            {
+                @"D:\workspace\Switchboard\start-gateway-lan.cmd",
+                @"D:\workspace\Switchboard\start-gateway-agy.cmd",
+                @"D:\workspace\Switchboard\start-gateway.cmd",
+            };
+            string? cmdPath = candidates.FirstOrDefault(System.IO.File.Exists);
+            if (cmdPath is null)
+            {
+                var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                var relativeCandidates = new[]
+                {
+                    System.IO.Path.GetFullPath(System.IO.Path.Combine(baseDir, "..", "..", "..", "..", "..", "Switchboard", "start-gateway-lan.cmd")),
+                    System.IO.Path.GetFullPath(System.IO.Path.Combine(baseDir, "..", "..", "..", "..", "..", "Switchboard", "start-gateway-agy.cmd")),
+                    System.IO.Path.GetFullPath(System.IO.Path.Combine(baseDir, "..", "..", "..", "..", "..", "Switchboard", "start-gateway.cmd")),
+                };
+                cmdPath = relativeCandidates.FirstOrDefault(System.IO.File.Exists);
+            }
+
+            if (cmdPath is not null)
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = cmdPath,
+                    UseShellExecute = true,
+                    WorkingDirectory = System.IO.Path.GetDirectoryName(cmdPath)!,
+                });
+                SwitchboardStatus.Text = "게이트웨이 기동 중… 잠시 후 테스트를 누르세요.";
+            }
+            else
+            {
+                SwitchboardStatus.Text = "런처 스크립트를 찾을 수 없습니다 (start-gateway-lan.cmd).";
+            }
+        }
+        catch (Exception ex)
+        {
+            SwitchboardStatus.Text = "기동 실패: " + Trunc(ex.Message);
+        }
+    }
+
+    private async void OnVerifyAgy(object sender, RoutedEventArgs e)
+        => await VerifyAsync(AgyDot, AgyStatus, AgyVerifyBtn, new AgyChatClient(), ModelOr(string.Empty));
 
     private async void OnVerifyCodex(object sender, RoutedEventArgs e)
         => await VerifyAsync(CodexDot, CodexStatus, CodexVerifyBtn, new CodexChatClient(), ModelOr(string.Empty));
@@ -107,22 +170,58 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
         LibreDot.Fill = Res(libre ? "FsStatusSuccess" : "FsStatusWarn");
         LibreStatus.Text = libre ? "준비됨" : "미설치";
 
+        _ = CheckSwitchboardGatewayAsync();
+
+        var agy = ExternalToolDetector.IsAgyAvailable(out _);
+        AgyDot.Fill = Res(agy ? "FsStatusSuccess" : "FsTextTertiary");
+        AgyStatus.Text = agy ? "설치됨 — 키 없이 사용 가능" : "미설치 (winget install Google.AntigravityCLI)";
+        AgyVerifyBtn.IsEnabled = agy;
+
         var codex = ExternalToolDetector.IsCodexAvailable();
         CodexDot.Fill = Res(codex ? "FsStatusSuccess" : "FsTextTertiary");
         CodexStatus.Text = codex ? "설치됨 — 키 없이 사용 가능" : "미설치 (npm i -g @openai/codex)";
         CodexVerifyBtn.IsEnabled = codex;
     }
 
+    private async Task CheckSwitchboardGatewayAsync()
+    {
+        if (SwitchboardDot is null || SwitchboardStatus is null) return;
+        var ep = string.IsNullOrWhiteSpace(SwitchboardEndpointBox?.Text)
+            ? (_settings.Get("switchboard.endpoint") ?? "http://127.0.0.1:8787")
+            : SwitchboardEndpointBox.Text.Trim();
+        var (ok, profile, resolvedEp) = await ExternalToolDetector.CheckSwitchboardGatewayHealthAsync(ep);
+        if (ok)
+        {
+            SwitchboardDot.Fill = Res("FsStatusSuccess");
+            SwitchboardStatus.Text = string.IsNullOrWhiteSpace(profile)
+                ? $"실행 중 ({resolvedEp})"
+                : $"실행 중 ({resolvedEp} · {profile})";
+            if (SwitchboardStartBtn is not null) SwitchboardStartBtn.IsEnabled = false;
+        }
+        else
+        {
+            SwitchboardDot.Fill = Res("FsTextTertiary");
+            SwitchboardStatus.Text = $"미실행 ({ep})";
+            if (SwitchboardStartBtn is not null) SwitchboardStartBtn.IsEnabled = true;
+        }
+    }
+
     private void OnSave(object sender, RoutedEventArgs e)
     {
         var backend = BackendCombo.SelectedIndex switch
         {
-            1 => "openai",
-            2 => "anthropic",
-            3 => "codex",
+            1 => "switchboard",
+            2 => "agy",
+            3 => "openai",
+            4 => "anthropic",
+            5 => "codex",
             _ => "auto",
         };
         _settings.Set("ai.backend", backend);
+
+        var sbEndpoint = SwitchboardEndpointBox.Text?.Trim();
+        if (!string.IsNullOrEmpty(sbEndpoint))
+            _settings.Set("switchboard.endpoint", sbEndpoint);
 
         var model = ModelBox.Text?.Trim();
         if (string.IsNullOrEmpty(model)) _settings.Remove("ai.model");
@@ -136,6 +235,13 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
     }
 
     private void OnClose(object sender, RoutedEventArgs e) => Close();
+
+    private void OnOpenToolInstaller(object sender, RoutedEventArgs e)
+    {
+        var win = new ToolSetupWindow { Owner = this };
+        win.ShowDialog();
+        RefreshToolStatus();
+    }
 
     private void OnDownloadFfmpeg(object sender, RoutedEventArgs e)
         => OpenUrl("https://github.com/BtbN/FFmpeg-Builds/releases");

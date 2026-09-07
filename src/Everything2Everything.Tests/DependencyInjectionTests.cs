@@ -26,6 +26,7 @@ public class DependencyInjectionTests
 
         Assert.NotNull(sp.GetRequiredService<ProviderRegistry>());
         Assert.NotNull(sp.GetRequiredService<ConversionEngine>());
+        Assert.NotNull(sp.GetRequiredService<Everything2Everything.Core.Ads.IAdService>());
     }
 
     [Fact]

@@ -1,0 +1,88 @@
+<ui:FluentWindow x:Class="Everything2Everything.App.Views.ToolSetupWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    Title="처음 설정 — 외부 도구 설치"
+    Width="640" Height="680"
+    WindowStartupLocation="CenterScreen"
+    ExtendsContentIntoTitleBar="True"
+    WindowBackdropType="Mica"
+    Background="{DynamicResource FsBgBase}">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ui:ControlsDictionary/>
+                <ResourceDictionary Source="FormatShiftTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Background="{StaticResource FsBgBase}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="처음 설정" ShowMaximize="False" ShowMinimize="False"/>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="24,8,24,16">
+            <StackPanel>
+                <TextBlock Text="필요한 외부 도구를 설치합니다."
+                           Style="{StaticResource FsBodyStyle}" FontWeight="SemiBold" FontSize="16"/>
+                <TextBlock Text="변환에 필요한 외부 도구 목록입니다. 기본값은 모두 선택된 상태이며, 아래 버튼으로 한 번에 순차 설치합니다. 이미 설치된 도구는 설치 단계에서 확인만 됩니다. (H2Orestart는 라이선스상 자동 설치 대신 직접 추가가 필요합니다.)"
+                           Style="{StaticResource FsCaptionStyle}" TextWrapping="Wrap" Margin="0,4,0,16"/>
+
+                <ItemsControl ItemsSource="{Binding Tools}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource FsDoubleBezelShellStyle}" Margin="0,0,0,10" HorizontalAlignment="Stretch">
+                                <Border Style="{StaticResource FsDoubleBezelCoreStyle}" Padding="16,12">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}"
+                                                  VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                        <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                                            <TextBlock Text="{Binding Name}" Style="{StaticResource FsBodyStyle}" FontWeight="Medium"/>
+                                            <TextBlock Text="{Binding Description}" Style="{StaticResource FsCaptionStyle}"
+                                                       TextWrapping="Wrap" Margin="0,3,0,0"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Ellipse Width="9" Height="9" Style="{StaticResource FsLossDotStyle}"
+                                                     Fill="{Binding StatusBrush}" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                            <TextBlock Text="{Binding StatusText}" Style="{StaticResource FsCaptionStyle}"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="2" Background="{StaticResource FsBgPanel}"
+                BorderBrush="{StaticResource FsBorderSubtle}" BorderThickness="0,1,0,0" Padding="24,14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <CheckBox Grid.Column="0" IsChecked="{Binding SelectAll}" Content="전체 선택"
+                          Foreground="{StaticResource FsTextSecondary}" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="나중에" Style="{StaticResource FsSecondaryButtonStyle}" Padding="20,8" Click="OnLater"/>
+                    <Button x:Name="InstallButton" Content="설치 시작"
+                            Style="{StaticResource FsPrimaryButtonStyle}" Padding="20,8" Margin="8,0,0,0" Click="OnInstall"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</ui:FluentWindow>

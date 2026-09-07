@@ -944,8 +944,8 @@ public class DesignAuditAstTests
         Assert.NotNull(searchBoxCol);
 
         var widthVal = searchBoxCol.Attribute("Width")?.Value;
-        Assert.True(int.TryParse(widthVal, out var w) && w <= 180,
-            $"SearchBox 컬럼 폭은 180px 이하여야 필터 버튼들이 잘리지 않습니다. 현재: {widthVal}");
+        Assert.True(widthVal == "*" || (int.TryParse(widthVal, out var w) && w <= 180),
+            $"SearchBox 컬럼 폭은 가변(*)이거나 180px 이하여야 필터 컨트롤이 잘리지 않습니다. 현재: {widthVal}");
     }
 
     [Fact]
@@ -1103,6 +1103,33 @@ public class DesignAuditAstTests
 
         Assert.Equal("0", row);
         Assert.Equal("2", rowSpan);
+    }
+
+    [Fact]
+    public void MainWindow_Toolbar_MustHave_FlexibleSearch_And_CategoryFilterDropdown_Without_Overflow()
+    {
+        // 파일명 검색창과 카테고리 필터가 좁은 창 가로폭(360px)에서도 씹힘/겹침(Overflow Collision)이 발생하지 않도록
+        // 1) 5개 개별 가로 버튼 대신 단일 폴드아웃 드롭다운(CategoryFilterCombo)으로 정합되어야 하며
+        // 2) 검색창은 Width="*" 컬럼에 위치하여 가변 너비를 가져야 하고
+        // 3) CategoryFilterCombo는 VerticalAlignment="Center"를 준수해야 한다.
+        var file = Path.Combine(ViewsDir, "MainWindow.xaml");
+        var doc = XDocument.Parse(File.ReadAllText(file));
+
+        // CategoryFilterCombo ComboBox 존재 검증
+        var combo = doc.Descendants().FirstOrDefault(e =>
+            e.Name.LocalName == "ComboBox" &&
+            e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value == "CategoryFilterCombo");
+        Assert.NotNull(combo);
+
+        var vAlign = combo.Attribute("VerticalAlignment")?.Value;
+        Assert.Equal("Center", vAlign);
+
+        // 이전 5개 개별 가로 버튼(CommandParameter="All" 등)이 툴바에서 제거되어 드롭다운으로 대체되었는지 검증
+        var individualFilterButtons = doc.Descendants().Where(e =>
+            e.Name.LocalName == "Button" &&
+            e.Attribute("Command")?.Value?.Contains("FilterCategoryCommand") == true &&
+            e.Attribute("CommandParameter")?.Value is "All" or "Image" or "Document" or "Media" or "Data").ToList();
+        Assert.Empty(individualFilterButtons);
     }
 }
 

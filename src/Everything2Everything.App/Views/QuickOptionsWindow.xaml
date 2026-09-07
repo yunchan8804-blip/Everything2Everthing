@@ -74,6 +74,20 @@
                 </ComboBox>
             </StackPanel>
 
+            <!-- AI 텍스트 처리 (txt/md) -->
+            <StackPanel x:Name="AiQuickPanel" Margin="0,18,0,0" Visibility="Collapsed">
+                <TextBlock Text="AI 작업 선택" Style="{StaticResource FsCaptionStyle}" Margin="0,0,0,4"/>
+                <ComboBox SelectedIndex="{Binding AiTaskIndex, Mode=TwoWay}">
+                    <ComboBoxItem Content="핵심 요약 (Summarize)"/>
+                    <ComboBoxItem Content="자연스러운 번역 (Translate)"/>
+                    <ComboBoxItem Content="오탈자 및 문법 교정 (Proofread)"/>
+                </ComboBox>
+                <TextBox Margin="0,8,0,0" Style="{StaticResource FsPathInputStyle}"
+                         Padding="10,6"
+                         Text="{Binding TargetLanguage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="번역 시 대상 언어 (예: 영어, 일본어, 중국어)"/>
+            </StackPanel>
+
             <!-- 버튼 -->
             <Grid Margin="0,22,0,0">
                 <Button HorizontalAlignment="Left" Content="자세히 옵션…"

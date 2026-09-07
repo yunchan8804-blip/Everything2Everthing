@@ -22,6 +22,8 @@ public static class ServiceCollectionExtensions
         else
             services.TryAddSingleton<ISettingsStore, DpapiSettingsStore>();
 
+        services.TryAddSingleton<Everything2Everything.Core.Ads.IAdService, Everything2Everything.Core.Ads.AdService>();
+
         // IConverterProvider 구현 전수 자동 등록. AsSelfWithInterfaces =
         // 구체 타입을 단일 싱글턴으로 등록 + IConverterProvider는 그 인스턴스로 포워드한다.
         // → Heic(MagickProvider)/Docx·Ocr·Hwpx(PdfProvider)/Llm(ISettingsStore) 생성자 의존이

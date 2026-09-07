@@ -96,15 +96,27 @@ public sealed class LlmProvider : IConverterProvider
             return openaiKey is null ? (null, "") : (new OpenAiChatClient(openaiKey), ai.Model ?? "gpt-4o-mini");
         if (backend == "anthropic")
             return anthropicKey is null ? (null, "") : (new AnthropicChatClient(anthropicKey), ai.Model ?? "claude-3-5-sonnet-latest");
+        if (backend == "agy")
+            return ExternalToolDetector.IsAgyAvailable(out var agyPath) ? (new AgyChatClient(agyPath), ai.Model ?? "") : (null, "");
+        if (backend == "switchboard" || backend == "gateway")
+        {
+            var ep = _settings.Get("switchboard.endpoint");
+            return (new SwitchboardChatClient(ep), ai.Model ?? "");
+        }
         if (backend == "codex")
             return ExternalToolDetector.IsCodexAvailable() ? (new CodexChatClient(), ai.Model ?? "") : (null, "");
 
-        // auto: API 키 우선, 없으면 Codex CLI(ChatGPT 구독 OAuth)
+        // auto: API 키 우선, 없으면 Antigravity CLI(Gemini OAuth) 또는 Switchboard Gateway 또는 Codex CLI(ChatGPT 구독 OAuth)
         if (openaiKey is not null) return (new OpenAiChatClient(openaiKey), ai.Model ?? "gpt-4o-mini");
         if (anthropicKey is not null) return (new AnthropicChatClient(anthropicKey), ai.Model ?? "claude-3-5-sonnet-latest");
+        if (ExternalToolDetector.IsAgyAvailable(out var defaultAgyPath)) return (new AgyChatClient(defaultAgyPath), ai.Model ?? "");
+        var sbEp = _settings.Get("switchboard.endpoint");
+        if (ExternalToolDetector.IsSwitchboardGatewayAvailable(out var defaultEp, sbEp)) return (new SwitchboardChatClient(defaultEp), ai.Model ?? "");
         if (ExternalToolDetector.IsCodexAvailable()) return (new CodexChatClient(), ai.Model ?? "");
         return (null, "");
     }
+
+    internal (IChatClient? client, string model) ResolveClientForTesting(AiOptions ai) => ResolveClient(ai);
 
     private string? GetKey(string provider)
     {

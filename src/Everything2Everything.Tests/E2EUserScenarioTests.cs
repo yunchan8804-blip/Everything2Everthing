@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using Everything2Everything.App.ViewModels;
 using Everything2Everything.Core;
+using Everything2Everything.Core.Converters;
 using Everything2Everything.Core.Providers;
 using Everything2Everything.Core.Filters;
 using Xunit;
@@ -147,5 +148,56 @@ public class E2EUserScenarioTests
         Assert.False(MediaConversionNegotiator.CanConvert(".xlsx", ".png"));
     }
 
-}
+    [Theory]
+    [InlineData("summarize", null, "요약")]
+    [InlineData("translate", "일본어", "일본어")]
+    [InlineData("proofread", null, "교정")]
+    public void Scenario8_AiQuickPanel_Options_BuildPrompt_FormatsCorrectlyForAllTasks(string task, string? targetLang, string expectedKeyword)
+    {
+        var options = new AiOptions { Task = task, TargetLanguage = targetLang };
+        var (system, user) = LlmProvider.BuildPrompt(options, "테스트 입력 문장");
+        Assert.Contains(expectedKeyword, system);
+        Assert.Equal("테스트 입력 문장", user);
+    }
 
+    [Fact]
+    public async Task Scenario9_AiConversion_EndToEnd_SwitchboardResolution()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "E2E_AiConversion_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var srcFile = Path.Combine(tempDir, "sample.md");
+            await File.WriteAllTextAsync(srcFile, "# Hello\nEverything2Everything test content.");
+
+            var store = new FakeSettingsStore();
+            store.Set("switchboard.endpoint", "http://192.168.0.225:8787");
+            var provider = new LlmProvider(store);
+
+            var options = new ConvertOptions
+            {
+                Ai = new AiOptions { Task = "summarize", Backend = "switchboard" }
+            };
+
+            var (client, _) = provider.ResolveClientForTesting(options.Ai);
+            Assert.NotNull(client);
+            Assert.Equal("Switchboard Gateway", client.Name);
+            var sbClient = Assert.IsType<SwitchboardChatClient>(client);
+            Assert.Equal("http://192.168.0.225:8787", sbClient.Endpoint);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
+    }
+
+    private sealed class FakeSettingsStore : ISettingsStore
+    {
+        private readonly Dictionary<string, string> _d = new();
+        public string? Get(string key) => _d.TryGetValue(key, out var v) ? v : null;
+        public void Set(string key, string value) => _d[key] = value;
+        public void Remove(string key) => _d.Remove(key);
+        public bool Contains(string key) => _d.ContainsKey(key);
+    }
+}

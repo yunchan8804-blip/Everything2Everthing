@@ -12,6 +12,7 @@ using Everything2Everything.App.Shell;
 using Everything2Everything.App.ViewModels;
 using Everything2Everything.Core;
 using Everything2Everything.Core.Filters;
+using Everything2Everything.Core.Ads;
 using Everything2Everything.Core.Inspector;
 using Everything2Everything.Core.Presets;
 using LossClass = Everything2Everything.Core.Providers.LossClass;
@@ -134,15 +135,22 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow, INotifyPropertyC
             if (_selectedCategory != value)
             {
                 _selectedCategory = value;
+                if (CategoryFilterCombo != null && CategoryFilterCombo.SelectedIndex != (int)value)
+                {
+                    CategoryFilterCombo.SelectedIndex = (int)value;
+                }
                 ApplyQueueFilters();
             }
         }
     }
 
-    public MainWindow(ConversionEngine engine, ISettingsStore settings, IReadOnlyList<string>? initialFiles = null)
+    public AdViewModel AdVm { get; }
+
+    public MainWindow(ConversionEngine engine, ISettingsStore settings, IReadOnlyList<string>? initialFiles = null, IAdService? adService = null)
     {
         _engine = engine;
         _settings = settings;
+        AdVm = new AdViewModel(adService ?? new AdService());
 
         AddFilesCommand = new RelayCommand(_ => PickAndAddFiles());
         ProcessQueueCommand = new RelayCommand(_ => OnProcessQueueClick(this, new RoutedEventArgs()),
@@ -825,6 +833,18 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow, INotifyPropertyC
         if (QualityValueText is not null)
         {
             QualityValueText.Text = _options.Quality.ToString(CultureInfo.InvariantCulture) + "%";
+        }
+    }
+
+    private void OnCategoryFilterSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (CategoryFilterCombo?.SelectedItem is ComboBoxItem item && item.Tag is string tag)
+        {
+            ApplyFilterCategory(tag);
+        }
+        else if (CategoryFilterCombo != null && CategoryFilterCombo.SelectedIndex >= 0)
+        {
+            SelectedCategory = (FilterCategory)CategoryFilterCombo.SelectedIndex;
         }
     }
 
@@ -1540,7 +1560,23 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow, INotifyPropertyC
         if (PdfQuickPanel is not null)
             PdfQuickPanel.Visibility = isPdf ? Visibility.Visible : Visibility.Collapsed;
 
+        var isText = ext is ".txt" or ".md";
+        if (AiQuickPanel is not null)
+            AiQuickPanel.Visibility = isText ? Visibility.Visible : Visibility.Collapsed;
+        if (AiTargetLanguagePanel is not null && AiTaskQuickCombo is not null)
+            AiTargetLanguagePanel.Visibility = (isText && AiTaskQuickCombo.SelectedIndex == 1)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
         UpdateMediaPanelForFormat(extension);
+    }
+
+    private void OnAiTaskSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (AiTargetLanguagePanel is null || AiTaskQuickCombo is null) return;
+        AiTargetLanguagePanel.Visibility = AiTaskQuickCombo.SelectedIndex == 1
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     /// <summary>출력이 영상/오디오/PDF/이미지일 때 상세 인코딩 폴드아웃 서브패널 노출(Fluent 2 점진적 공개 패턴).</summary>
